@@ -12,7 +12,7 @@ import { parseTsv } from './tsv.js'
  *   .tadori/rulesets/*.tsv       工程ごとのルールセット
  *   .tadori/checks.tsv           チェックの記録（5W1H）
  *   ledger/items.tsv             台帳（設計書の章・節、commit、観点、試験ケース、試験の記録、指摘…）
- *   ledger/wbs.tsv               WBS の作業
+ *   ledger/wbs.tsv               WBS のタスク
  *   ledger/approvals.tsv         人の承認の記録（人が書く）
  */
 export const PATHS = {
@@ -191,7 +191,7 @@ export async function loadProject(dir: string): Promise<Project> {
     return { id: row.id ?? '', name: row.name ?? '', order }
   })
   const tasks = wbsRows.map(row => toTask(row, problems))
-  // WBS の作業は台帳の行（種類 W）としても辿れるようにする。台帳へ書き写すと正本が 2 つになるため
+  // WBS のタスクは台帳の行（種類 W）としても辿れるようにする。台帳へ書き写すと正本が 2 つになるため
   const taskItems: Item[] = tasks.map(t => ({ id: t.id, kind: 'W', title: t.name, source: PATHS.wbs, refs: [], fields: {} }))
   const items = [...taskItems, ...itemRows.map(toItem)]
   problems.push(...duplicateIdProblems(items))

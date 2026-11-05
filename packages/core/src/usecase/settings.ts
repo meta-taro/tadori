@@ -20,7 +20,7 @@ function basicProblems(entries: readonly { id: string; name: string }[], label: 
 
 /**
  * 工程の設定を変えてよいかを見る。
- * ルールや WBS の作業が使っている工程を消すと、それらが宙に浮くので止める。
+ * ルールや WBS のタスクが使っている工程を消すと、それらが宙に浮くので止める。
  */
 export function validatePhases(project: Project, next: readonly Phase[]): string[] {
   const kept = new Set(next.map(p => p.id))
@@ -34,7 +34,7 @@ export function validatePhases(project: Project, next: readonly Phase[]): string
   return [...basicProblems(next, '工程'), ...inUse]
 }
 
-/** ステータスの設定を変えてよいかを見る。作業が使っているステータスは消せない */
+/** ステータスの設定を変えてよいかを見る。タスクが使っているステータスは消せない */
 export function validateStatuses(project: Project, next: readonly StatusDef[]): string[] {
   if (!next.length) return ['ステータスは 1 つ以上必要です']
   const kept = new Set(next.map(s => s.id))

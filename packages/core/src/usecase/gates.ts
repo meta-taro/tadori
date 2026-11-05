@@ -10,12 +10,12 @@ export interface Gate {
   readonly leaks: readonly Leak[]
   readonly pendingApprovals: readonly Rule[]
   readonly state: GateState
-  /** WBS の作業の最初の開始日〜最後の終了日。期間が入っていなければ無い */
+  /** WBS のタスクの最初の開始日〜最後の終了日。期間が入っていなければ無い */
   readonly span?: { readonly start: string; readonly end: string }
   readonly tasks: readonly Task[]
-  /** 終わっていない作業のうち、WBS 番号がいちばん若いもの */
+  /** 終わっていないタスクのうち、WBS 番号がいちばん若いもの */
   readonly currentTask?: Task
-  /** 前の工程の関門が閉じていないのに、この工程の作業が動いているとき、その前の工程 */
+  /** 前の工程の関門が閉じていないのに、この工程のタスクが動いているとき、その前の工程 */
   readonly startedBefore?: Phase
   readonly maxLateDays: number
 }
@@ -44,7 +44,7 @@ function stateOf(leaks: readonly Leak[], pending: readonly Rule[]): GateState {
   return 'clear'
 }
 
-/** 工程ごとに、漏れ・承認待ち・期間・いまの作業・前の関門の前に着手・遅れを組み立てる */
+/** 工程ごとに、漏れ・承認待ち・期間・いまのタスク・前の関門の前に着手・遅れを組み立てる */
 export function buildGates(project: Project, leaks: readonly Leak[], today: string): Gate[] {
   const isDone = doneChecker(project)
   const notStarted = notStartedStatus(project)

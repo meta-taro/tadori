@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { lateDays } from '../src/domain/schedule.js'
 
-const task = (status: string, end?: string) => ({ id: 'W-1', phase: 'bd', name: '作業', status, ...(end ? { start: '2026-10-01', end } : {}) })
+const task = (status: string, end?: string) => ({ id: 'W-1', phase: 'bd', name: 'タスク', status, ...(end ? { start: '2026-10-01', end } : {}) })
 const isDone = (status: string) => status === 'done'
 
 describe('lateDays', () => {
@@ -14,11 +14,11 @@ describe('lateDays', () => {
     expect(lateDays(task('doing', '2026-12-01'), '2026-11-05', isDone)).toBe(0)
   })
 
-  test('終わった作業は遅れにしない', () => {
+  test('終わったタスクは遅れにしない', () => {
     expect(lateDays(task('done', '2026-10-01'), '2026-11-05', isDone)).toBe(0)
   })
 
-  test('期間が入っていない作業は遅れにしない', () => {
+  test('期間が入っていないタスクは遅れにしない', () => {
     expect(lateDays(task('doing'), '2026-11-05', isDone)).toBe(0)
   })
 })

@@ -32,8 +32,8 @@ export async function saveSettings(dir: string, change: SettingsChange, message:
 }
 
 /**
- * WBS の作業のステータスを書き換える。wbs.tsv のその 1 セルだけを変え、ほかはそのまま残す。
- * git リポジトリなら commit する。作業が無ければ null。
+ * WBS のタスクのステータスを書き換える。wbs.tsv のその 1 セルだけを変え、ほかはそのまま残す。
+ * git リポジトリなら commit する。タスクが無ければ null。
  */
 export async function saveTaskStatus(dir: string, taskId: string, status: string): Promise<CommitResult | null> {
   const path = join(dir, PATHS.wbs)

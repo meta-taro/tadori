@@ -37,7 +37,7 @@ describe('loadProject', () => {
     expect(project.tasks.at(0)).toMatchObject({ id: 'W-1', start: '2026-09-01', status: 'done' })
   })
 
-  test('WBS の作業は、台帳の行（種類 W）としても辿れる。台帳に書き写さなくてよい', async () => {
+  test('WBS のタスクは、台帳の行（種類 W）としても辿れる。台帳に書き写さなくてよい', async () => {
     await writeMinimalProject()
     const project = await loadProject(dir)
     expect(project.items.find(i => i.id === 'W-1')).toMatchObject({ kind: 'W', title: '作成', refs: [] })
@@ -51,7 +51,7 @@ describe('loadProject', () => {
     expect(project.items.find(i => i.id === 'D')?.refs).toEqual(['A', 'B'])
   })
 
-  test('期間の入っていない作業は start / end を持たない', async () => {
+  test('期間の入っていないタスクは start / end を持たない', async () => {
     await writeMinimalProject()
     await put('ledger/wbs.tsv', 'id\tphase\tname\tstart\tend\tstatus\nW-1\tbd\t作成\t\t\ttodo\n')
     const task = (await loadProject(dir)).tasks.at(0)
@@ -85,7 +85,7 @@ describe('loadProject', () => {
     await expect(loadProject(dir)).rejects.toThrow(/items\.tsv/)
   })
 
-  test('ID が重複していれば止める（WBS の作業と台帳の行の重複も）', async () => {
+  test('ID が重複していれば止める（WBS のタスクと台帳の行の重複も）', async () => {
     await writeMinimalProject()
     await put('ledger/items.tsv', 'id\tkind\ttitle\tsource\trefs\nBD-1\tBD\t章\ta.md\t\nW-1\tBD\t章\tb.md\t\n')
     await expect(loadProject(dir)).rejects.toThrow(/W-1.*重複/)

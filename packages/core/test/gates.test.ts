@@ -30,20 +30,20 @@ describe('buildGates', () => {
     expect(gate('bd').state).toBe('waiting')
   })
 
-  test('WBS の作業から工程の期間を出す', () => {
+  test('WBS のタスクから工程の期間を出す', () => {
     expect(gate('bd').span).toEqual({ start: '2026-09-01', end: '2026-10-10' })
   })
 
-  test('いまの作業は、終わっていない作業のうち最初のもの', () => {
+  test('いまのタスクは、終わっていないタスクのうち最初のもの', () => {
     expect(gate('bd').currentTask?.id).toBe('W-2')
   })
 
-  test('前の工程の関門が閉じていないのに作業が動いていれば、前の関門の前に着手とする', () => {
+  test('前の工程の関門が閉じていないのにタスクが動いていれば、前の関門の前に着手とする', () => {
     expect(gate('dd').startedBefore?.id).toBe('bd')
     expect(gate('it').startedBefore).toBeUndefined() // 結合テストはまだ未着手
   })
 
-  test('終わっていない作業のいちばん大きい遅れの日数を出す', () => {
+  test('終わっていないタスクのいちばん大きい遅れの日数を出す', () => {
     expect(gate('bd').maxLateDays).toBe(26) // W-2 の終了予定 10/10 から 11/5 まで
   })
 })

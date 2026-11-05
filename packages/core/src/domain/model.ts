@@ -26,7 +26,7 @@ export interface Item {
   readonly fields: Readonly<Record<string, string>>
 }
 
-/** WBS の作業。期間は入っていないこともある */
+/** WBS のタスク。期間は入っていないこともある */
 export interface Task {
   readonly id: string
   readonly phase: string

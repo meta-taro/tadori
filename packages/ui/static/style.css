@@ -382,3 +382,6 @@
   .pick-row .chip { grid-area:chip; padding:0 8px; font-size:11px; }
   .pick-row .pick-title { grid-area:title; color:var(--ink); font-size:13px; }
   @media (max-width: 1000px) { .trace-layout { grid-template-columns:1fr; } }
+  /* 用語 */
+  .glossary-query { font:inherit; font-size:13px; color:var(--ink); background:var(--surface-2); border:1px solid var(--hairline-strong); border-radius:var(--r-md); padding:9px 12px; width:min(420px, 100%); }
+  table.glossary td { font-size:13px; }

@@ -24,6 +24,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.json': 'application/json; charset=utf-8',
+  '.tsv': 'text/tab-separated-values; charset=utf-8',
 }
 
 class HttpError extends Error {
@@ -173,7 +174,7 @@ async function route(options: ServerOptions, port: number, req: IncomingMessage,
       throw new HttpError(400, '設定に無いステータスです')
     }
     const commit = await saveTaskStatus(dir, safeDecode(statusMatch[1] ?? ''), body.status)
-    if (!commit) throw new HttpError(404, 'その作業は WBS にありません')
+    if (!commit) throw new HttpError(404, 'そのタスクは WBS にありません')
     return sendJson(res, 200, { commit })
   }
 

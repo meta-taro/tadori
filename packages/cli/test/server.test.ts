@@ -111,7 +111,7 @@ describe('書き込み', () => {
     expect(await readFile(join(dir, '.tadori/phases.tsv'), 'utf8')).toContain('it\t結合試験\t4')
   })
 
-  test('WBS の作業のステータスを変えると wbs.tsv に書き戻す', async () => {
+  test('WBS のタスクのステータスを変えると wbs.tsv に書き戻す', async () => {
     const res = await fetch(`${base}/api/tasks/W-09/status`, { method: 'PUT', headers: WRITE_HEADERS, body: JSON.stringify({ status: 'doing' }) })
     expect(res.status).toBe(200)
     expect(await readFile(join(dir, 'ledger/wbs.tsv'), 'utf8')).toMatch(/W-09\tit\t試験ケースの作成\t2026-11-16\t2026-11-24\tdoing/)

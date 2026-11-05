@@ -1,7 +1,8 @@
 # tadori（辿り）
 
 > ⚠ **MVP です。**架空の見本の案件で、判定（`check`・`why`）と手元で開く画面（`serve`）が動きます。
-> 方向性は [PRD.md](PRD.md)、決めたことと理由は [docs/decisions.md](docs/decisions.md) にあります。
+> 方向性は [PRD.md](PRD.md)、決めたことと理由は [docs/decisions.md](docs/decisions.md)、
+> 画面と文書で使う言葉は [用語集（glossary.tsv）](packages/ui/static/glossary.tsv) にあります。
 
 **仕様の 1 文から、試験ケース・実施の証跡・指摘・再発防止までを ID でつなぐ、git 上の台帳。**
 工程ごとにルールセットを持ち、「どこが漏れているか」を出します。漏れを認めるのは人です。
@@ -60,7 +61,7 @@ node packages/cli/dist/main.js serve examples/lend-v12 --port 4870
 .tadori/rulesets/*.tsv     工程ごとのルールセット（判定は covered / refers / filled / approval）
 .tadori/checks.tsv         チェックの記録（5W1H）
 ledger/items.tsv           台帳（設計書の章・節、commit、観点、試験ケース、試験の記録、指摘、再発防止）
-ledger/wbs.tsv             WBS の作業
+ledger/wbs.tsv             WBS のタスク
 ledger/approvals.tsv       人の承認の記録（人が書く）
 ```
 

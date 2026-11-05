@@ -14,7 +14,7 @@ export const ICON_INFO = '<svg viewBox="0 0 16 16" fill="none" stroke="currentCo
 
 /** 台帳の種類の読み方（画面での呼び名） */
 export const KIND_LABELS = {
-  W: 'WBS の作業', BD: '基本設計の章', DD: '詳細設計の節', Q: '未確認の項目', COMMIT: 'ソースの変更',
+  W: 'WBS のタスク', BD: '基本設計の章', DD: '詳細設計の節', Q: '未確認の項目', COMMIT: 'ソースの変更',
   V: '観点', TC: '試験ケース', RUN: '試験の記録', F: '指摘', R: '再発防止',
 }
 export const kindLabel = kind => KIND_LABELS[kind] ?? kind

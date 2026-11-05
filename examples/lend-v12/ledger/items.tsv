@@ -1,5 +1,5 @@
 # 台帳（架空の見本）。refs は「この行が元にしている行の ID」。、か , で区切って複数書ける
-# kind: W=WBS の作業（ledger/wbs.tsv から自動で入る。ここには書かない） / BD=基本設計の章 / DD=詳細設計の節 / Q=未確認の項目 / COMMIT=ソースの変更 / V=観点 / TC=試験ケース / RUN=試験の記録 / F=指摘 / R=再発防止
+# kind: W=WBS のタスク（ledger/wbs.tsv から自動で入る。ここには書かない） / BD=基本設計の章 / DD=詳細設計の節 / Q=未確認の項目 / COMMIT=ソースの変更 / V=観点 / TC=試験ケース / RUN=試験の記録 / F=指摘 / R=再発防止
 id	kind	title	source	refs	change	verifier
 BD-2	BD	2. 貸出上限	docs/basic-design.md §2	W-06		
 BD-3	BD	3. 延滞の扱い	docs/basic-design.md §3	W-07		

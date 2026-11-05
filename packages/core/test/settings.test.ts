@@ -13,7 +13,7 @@ describe('validatePhases', () => {
     expect(validatePhases(sampleProject, next)).toEqual([])
   })
 
-  test('ルールや作業が使っている工程は消せない', () => {
+  test('ルールやタスクが使っている工程は消せない', () => {
     const next = [{ id: 'dd', name: '詳細設計', order: 1 }, { id: 'it', name: '結合テスト', order: 2 }]
     const problems = validatePhases(sampleProject, next)
     expect(problems.join('\n')).toMatch(/基本設計/)
@@ -37,7 +37,7 @@ describe('validatePhases', () => {
 })
 
 describe('validateStatuses', () => {
-  test('作業が使っているステータスは消せない', () => {
+  test('タスクが使っているステータスは消せない', () => {
     const next = sampleProject.statuses.filter(s => s.id !== 'doing')
     expect(validateStatuses(sampleProject, next).join('\n')).toMatch(/進行中.*W-3/)
   })

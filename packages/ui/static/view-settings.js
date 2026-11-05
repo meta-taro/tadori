@@ -61,7 +61,7 @@ export function renderSettings(view, state, reload) {
     ${problems.length ? `<div class="note">${ICON_INFO}<span>${problems.map(esc).join('<br>')}</span></div>` : ''}
     <h2>工程 · ${state.phases.length} 件</h2>
     <div class="panel"><table>
-      <thead><tr><th style="width:48px">順</th><th>名前</th><th style="width:90px">ID</th><th>使っているルール・作業</th><th style="width:170px"></th></tr></thead>
+      <thead><tr><th style="width:48px">順</th><th>名前</th><th style="width:90px">ID</th><th>使っているルール・タスク</th><th style="width:170px"></th></tr></thead>
       <tbody>${phaseRows(state)}</tbody></table>
       <form class="add" id="add-phase">
         <label>ID（英数字）<input name="id" required pattern="[A-Za-z0-9_-]+" placeholder="例：st"></label>
@@ -70,7 +70,7 @@ export function renderSettings(view, state, reload) {
       </form></div>
     <h2>WBS のステータス · ${state.statuses.length} 件</h2>
     <div class="panel"><table>
-      <thead><tr><th style="width:48px">順</th><th>名前</th><th style="width:200px">色の意味</th><th style="width:96px">使っている作業</th><th style="width:170px"></th></tr></thead>
+      <thead><tr><th style="width:48px">順</th><th>名前</th><th style="width:200px">色の意味</th><th style="width:96px">使っているタスク</th><th style="width:170px"></th></tr></thead>
       <tbody>${statusRows(state)}</tbody></table>
       <form class="add" id="add-status">
         <label>ID（英数字）<input name="id" required pattern="[A-Za-z0-9_-]+" placeholder="例：back"></label>

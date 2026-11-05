@@ -4,6 +4,7 @@ import { renderGates } from './view-gates.js'
 import { renderWbs } from './view-wbs.js'
 import { renderLog, renderRules, renderTrace } from './view-records.js'
 import { renderSettings } from './view-settings.js'
+import { renderGlossary } from './view-glossary.js'
 
 const view = document.getElementById('view')
 let state = null
@@ -15,6 +16,7 @@ const VIEWS = {
   log: { label: 'チェックの記録', render: () => renderLog(view, state) },
   trace: { label: 'つながりを辿る', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
   settings: { label: '設定', render: () => renderSettings(view, state, reload) },
+  glossary: { label: '用語', render: () => renderGlossary(view) },
 }
 
 /** つながりを辿るの最初の行：漏れのある指摘、無ければ漏れのある行、無ければ指摘（何も無ければ選んでもらう） */

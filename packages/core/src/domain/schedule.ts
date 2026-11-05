@@ -6,7 +6,7 @@ const MS_PER_DAY = 86_400_000
 export const toDay = (iso: string): number => Math.floor(Date.parse(`${iso}T00:00:00Z`) / MS_PER_DAY)
 
 /**
- * 終了予定を過ぎた日数。終わった作業・期間の入っていない作業・まだ予定内の作業は 0。
+ * 終了予定を過ぎた日数。終わったタスク・期間の入っていないタスク・まだ予定内のタスクは 0。
  * 今日は外から渡す（画面と判定と試験で同じ日を使うため）。
  */
 export function lateDays(task: Task, today: string, isDone: (status: string) => boolean): number {

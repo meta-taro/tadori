@@ -16,7 +16,7 @@ function taskRow(state, task) {
   const current = state.statuses.find(s => s.id === task.status)
   const options = state.statuses.map(s => `<option value="${esc(s.id)}" ${s.id === task.status ? 'selected' : ''}>${esc(s.name)}</option>`).join('')
   const late = lateDays(state, task)
-  // 終わった作業は色を付けない。終わっていない作業は青、遅れるほど赤へ
+  // 終わったタスクは色を付けない。終わっていないタスクは青、遅れるほど赤へ
   const color = isDoneStatus(state, task.status) ? 'transparent' : lateColor(late)
   const lateText = late ? `<span class="late" style="color:${color}">${late} 日遅れ</span>` : ''
   const dates = task.start ? `${shortDate(task.start)}–${shortDate(task.end)}` : '期間なし'
@@ -42,7 +42,7 @@ function wbsHtml(state) {
     const range = dated.length ? `${shortDate(dated.map(t => t.start).sort().at(0))} – ${shortDate(dated.map(t => t.end).sort().at(-1))}` : ''
     return `<details class="wbs-phase" data-phase-group="${esc(phase.id)}" ${closed.has(phase.id) ? '' : 'open'}>
       <summary><span class="tw">›</span><span class="late-dot" style="background:${dot}"></span>${esc(phase.name)}<span class="count">${visible.length}/${tasks.length}</span><span class="dates">${range}</span></summary>
-      ${visible.length ? visible.map(t => taskRow(state, t)).join('') : '<div class="wbs-task muted"><span></span><span>該当する作業はありません</span></div>'}
+      ${visible.length ? visible.map(t => taskRow(state, t)).join('') : '<div class="wbs-task muted"><span></span><span>該当するタスクはありません</span></div>'}
     </details>`
   }).join('')
   return `<div class="toolbar">
@@ -51,7 +51,7 @@ function wbsHtml(state) {
       <span class="spacer"></span>
       <button type="button" class="btn-ghost" id="wbs-open-all">すべて開く</button>
       <button type="button" class="btn-ghost" id="wbs-close-all">すべて閉じる</button>
-    </div>${groups || `<div class="note">${ICON_INFO}<span>WBS（ledger/wbs.tsv）に作業がありません。</span></div>`}`
+    </div>${groups || `<div class="note">${ICON_INFO}<span>WBS（ledger/wbs.tsv）にタスクがありません。</span></div>`}`
 }
 
 export function renderWbs(view, state, reload) {
