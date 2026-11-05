@@ -12,7 +12,12 @@ export function formatCheck(state: ProjectState): string {
     const early = gate.startedBefore ? `  ← ${gate.startedBefore.name}の完了判定より前に着手` : ''
     const late = gate.maxLateDays ? `  ${gate.maxLateDays} 日遅れ` : ''
     lines.push(`■ ${gate.phase.name}  ${counts}${late}${early}`)
-    for (const leak of gate.leaks) lines.push(`    ${leak.rule} ${leak.message}`)
+    for (const leak of gate.leaks) {
+      lines.push(`    ${leak.rule} ${leak.message}`)
+      // 誰が・どこをどう直せば消えるか
+      if (leak.fix) lines.push(`        ${leak.owner ? `担当：${leak.owner}　` : ''}直し方：${leak.fix}`)
+    }
+    for (const p of gate.pending) lines.push(`    ${p.rule.id} 承認待ち（${p.status}）　直し方：${p.fix}`)
   }
   const dangling = state.leaks.filter(l => !state.gates.some(g => g.leaks.includes(l)))
   if (dangling.length) {

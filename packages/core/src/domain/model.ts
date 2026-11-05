@@ -55,7 +55,16 @@ export interface Rule {
   readonly label: string
   /** 対象の行を絞る（例：change 列が「変わる」の行だけ）。無ければ from の種類の全行 */
   readonly only?: { readonly field: string; readonly value: string }
+  /** 担当の役割（例：設計担当・検証担当・PM）。漏れを直す人・承認する人。案件ごとに自由に書く */
+  readonly owner?: string
 }
+
+/** 台帳のファイル（直し方の案内に使う。読み書きの場所と同じ） */
+export const LEDGER_FILES = {
+  items: 'ledger/items.tsv',
+  wbs: 'ledger/wbs.tsv',
+  approvals: 'ledger/approvals.tsv',
+} as const
 
 /** ルールの対象の行か（種類が from で、only があればその列の値も合う） */
 export function isRuleTarget(rule: Rule, item: Item): boolean {
@@ -78,6 +87,10 @@ export interface Leak {
   readonly rule: string
   readonly itemId: string
   readonly message: string
+  /** どのファイルの、どの行の、何を直せば消えるか（1 行） */
+  readonly fix?: string
+  /** 直す担当（ルールの owner） */
+  readonly owner?: string
 }
 
 /** 存在しない ID を指している、を表すルール ID（どのルールセットにも属さない） */

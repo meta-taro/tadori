@@ -132,9 +132,11 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
         return []
       }
       const only = parseOnly(row.only ?? '')
+      const owner = (row.owner ?? '').trim()
       return [{
         id: row.id ?? '', phase: row.phase ?? '', kind, from: row.from ?? '', to: row.to ?? '', field: row.field ?? '', label: row.label ?? '',
         ...(only ? { only } : {}),
+        ...(owner ? { owner } : {}),
       }]
     })
   }))

@@ -25,6 +25,16 @@ describe('buildGates', () => {
     expect(gate('bd').pendingApprovals.map(r => r.id)).toEqual(['R2'])
   })
 
+  test('承認待ちには、承認する人（owner）と承認のしかたが付く', () => {
+    const project = { ...sampleProject, rules: sampleProject.rules.map(r => (r.id === 'R2' ? { ...r, owner: 'レビュー担当' } : r)) }
+    const g = buildGates(project, runChecks(project), TODAY).find(x => x.phase.id === 'bd')
+    expect(g?.pending.at(0)).toMatchObject({
+      rule: { id: 'R2', owner: 'レビュー担当' },
+      status: '差し戻し',
+      fix: 'レビュー担当が ledger/approvals.tsv の R2 の行の状態を「承認」にする（名前と日付も書く）',
+    })
+  })
+
   test('漏れがあれば blocked、漏れが無く承認待ちがあれば waiting', () => {
     expect(gate('dd').state).toBe('blocked')
     expect(gate('bd').state).toBe('waiting')

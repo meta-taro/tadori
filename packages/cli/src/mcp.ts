@@ -84,7 +84,9 @@ function buildProjectTools(options: McpOptions): Tool[] {
         const phase = str(args.phase)
         const ruleIds = new Set(state.rules.filter(r => !phase || r.phase === phase).map(r => r.id))
         const leaks = state.leaks.filter(l => !phase || ruleIds.has(l.rule))
-        return text(leaks.length ? leaks.map(l => `- ${l.rule} ${l.message}`).join('\n') : '漏れはありません')
+        // 漏れごとに、担当と、どこをどう直せば消えるかを添える（エージェントが人に伝えやすいように）
+        const lines = leaks.map(l => `- ${l.rule}·${l.itemId} ${l.message}${l.fix ? `\n  ${l.owner ? `担当：${l.owner}　` : ''}直し方：${l.fix}` : ''}`)
+        return text(lines.length ? lines.join('\n') : '漏れはありません')
       }),
     },
     {

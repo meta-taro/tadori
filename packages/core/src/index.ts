@@ -1,7 +1,7 @@
 export * from './domain/model.js'
 export { lateDays, toDay } from './domain/schedule.js'
 export { runChecks } from './usecase/check.js'
-export { buildGates, type Gate, type GateState } from './usecase/gates.js'
+export { buildGates, type Gate, type GateState, type PendingApproval } from './usecase/gates.js'
 export { trace, type TraceResult, type TraceStep } from './usecase/trace.js'
 export { validatePhases, validateStatuses } from './usecase/settings.js'
 export { resolvedItems, type ResolvedItem } from './usecase/history.js'

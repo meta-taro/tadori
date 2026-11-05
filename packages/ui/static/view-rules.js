@@ -32,7 +32,7 @@ function whatText(rule) {
 }
 
 function matches(rule, words) {
-  const text = `${rule.id} ${rule.label} ${whatText(rule)} ${KIND_NAMES[rule.kind]}`.toLowerCase()
+  const text = `${rule.id} ${rule.label} ${whatText(rule)} ${KIND_NAMES[rule.kind]} ${rule.owner ?? ''}`.toLowerCase()
   return words.every(w => text.includes(w))
 }
 
@@ -56,6 +56,7 @@ function ruleRow(state, r) {
     <td><div class="pair">${esc(whatText(r))}</div>${r.only ? `<div class="cond">${esc(r.only.field)} が「${esc(r.only.value)}」の行だけ</div>` : ''}</td>
     <td class="cond">${esc(r.label)}</td>
     <td class="kind">${KIND_NAMES[r.kind]}</td>
+    <td class="kind">${esc(r.owner ?? '')}</td>
     <td>${STATUS_HTML[s.key](s.count)}</td>
   </tr>`
 }
@@ -73,7 +74,7 @@ function listHtml(state) {
     return `<details class="rules-group" data-group="${esc(phase.id)}" ${closedPhases.has(phase.id) ? '' : 'open'}>
       <summary class="rules-band"><span class="tw">›</span><span>${esc(phase.name)}</span>
         <span class="rules-band-counts">${leaks ? `<span class="nav-badge hole" title="漏れ ${leaks} 件">${leaks}</span>` : ''}<span class="pick-count">${inPhase.length} 件</span></span></summary>
-      <table><thead><tr><th style="width:72px">ID</th><th style="width:28%">何と何が</th><th>条件</th><th style="width:130px">判定</th><th style="width:120px">いまの状態</th></tr></thead>
+      <table><thead><tr><th style="width:72px">ID</th><th style="width:28%">何と何が</th><th>条件</th><th style="width:130px">判定</th><th style="width:96px">担当</th><th style="width:120px">いまの状態</th></tr></thead>
       <tbody>${inPhase.slice(0, limit).map(r => ruleRow(state, r)).join('')}</tbody></table>${more}
     </details>`
   }).join('')
@@ -91,7 +92,7 @@ export function renderRules(view, state) {
     <p class="lede">工程ごとのルールセットです。エージェントは作業の前にこれを読んで守り、チェックした結果を記録に残します。人の承認が要るルールは、人がチェックします。
       ルールは <span class="mono">.tadori/rulesets/*.tsv</span> を編集して足します（画面からの追加は次の段）。</p>
     <div class="rules-tools">
-      <input id="rules-query" class="glossary-query" type="search" placeholder="ルールを探す（例：R9、試験ケース、改修後）" value="${esc(filters.query)}" aria-label="ルールを探す">
+      <input id="rules-query" class="glossary-query" type="search" placeholder="ルールを探す（例：R9、試験ケース、改修後、検証担当）" value="${esc(filters.query)}" aria-label="ルールを探す">
       ${segHtml('phase', phaseOptions)}
       <div class="rules-tools-row">
         ${segHtml('judge', [['all', '判定：すべて'], ['machine', '機械'], ['human', '人']])}

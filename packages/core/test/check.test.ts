@@ -65,6 +65,25 @@ describe('runChecks', () => {
     expect(messages).toContain('に DD が紐づいていない') // 読み方の無い種類は記号のまま
   })
 
+  test('漏れには、担当（ルールの owner）と、どこをどう直せば消えるかが付く', () => {
+    const project = {
+      ...sampleProject,
+      rules: sampleProject.rules.map(r => (r.id === 'R4' ? { ...r, owner: '設計担当' } : r)),
+      labels: { kinds: { RUN: '試験の記録' }, columns: { change: '改修後の対応' } },
+    }
+    const leaks = runChecks(project)
+    const r4 = leaks.find(l => l.rule === 'R4')
+    expect(r4).toMatchObject({ owner: '設計担当' })
+    expect(r4?.fix).toBe('ledger/items.tsv の DD-2 の行の「改修後の対応」列に書く')
+    const r9 = leaks.find(l => l.rule === 'R9')
+    expect(r9?.owner).toBeUndefined() // owner の無いルールは担当なし
+    expect(r9?.fix).toBe('ledger/items.tsv に試験の記録（RUN）の行を足し、その refs に TC-2 を書く')
+    const r3 = leaks.find(l => l.rule === 'R3')
+    expect(r3?.fix).toBe('ledger/items.tsv に DD の行を足し、その refs に BD-2 を書く')
+    const dangling = leaks.find(l => l.rule === 'ID')
+    expect(dangling?.fix).toContain('TC-2 の行の refs')
+  })
+
   test('漏れの文には、どの行がどのルールを満たしていないかが入る', () => {
     const leak = leaks.find(l => l.rule === 'R3')
     expect(leak?.message).toContain('BD-2')

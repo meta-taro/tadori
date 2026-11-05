@@ -82,17 +82,21 @@ function cardsHtml(state) {
   return `<div class="rail" role="group" aria-label="工程">${cards}</div>`
 }
 
+/** どこをどう直せば消えるか（漏れ・承認待ちの下に出す） */
+const fixHtml = fix => (fix ? `<div class="fix-line"><span class="fix-label">直し方</span>${esc(fix)}</div>` : '')
+
 function ruleStatus(state, rule) {
   if (rule.kind === 'approval') {
     const a = state.approvals.find(x => x.rule === rule.id)
     if (a?.status === '承認') return chip('ok', `承認済 ${esc(a.who)} · ${esc(a.when)}`)
-    return chip('wait', a ? `${esc(a.status)} ${esc(a.who)} · ${esc(a.when)}` : '承認待ち')
+    const pending = state.gates.flatMap(g => g.pending ?? []).find(p => p.rule.id === rule.id)
+    return chip('wait', a ? `${esc(a.status)} ${esc(a.who)} · ${esc(a.when)}` : '承認待ち') + fixHtml(pending?.fix)
   }
   const leaks = state.leaks.filter(l => l.rule === rule.id)
   if (!leaks.length) return chip('ok', '漏れなし')
   // 1 つのルールに漏れが数百あっても読めるよう、最初は 3 件だけ。残りはその場で開く
   const limit = expandedRules.has(rule.id) ? leaks.length : LEAKS_PER_RULE
-  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
+  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}${fixHtml(l.fix)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
   const more = leaks.length > limit ? `<button type="button" class="btn-ghost leaks-more" data-expand="${esc(rule.id)}">ほか ${leaks.length - limit} 件を出す</button>` : ''
   return rows + more
 }
@@ -103,6 +107,7 @@ const RULES_PAGE = 50
 const expandedRules = new Set()
 let showSatisfied = false
 let rulesShown = RULES_PAGE
+let ownerFilter = 'all' // 担当で絞る（自分の担当だけを見る）
 
 /** 残っているルール（漏れがある・承認されていない） */
 function isRemaining(state, rule) {
@@ -125,12 +130,15 @@ export function renderGates(view, state, onTrace, phaseId) {
   // 残課題の画面なので、最初は残っているルール（漏れ・承認待ち）だけ。50 件ずつ出す
   const allRules = gate?.rules ?? []
   const remaining = allRules.filter(r => isRemaining(state, r))
-  const listed = showSatisfied ? allRules : remaining
+  const owners = [...new Set(state.rules.map(r => r.owner).filter(Boolean))]
+  const byOwner = r => ownerFilter === 'all' || r.owner === ownerFilter
+  const listed = (showSatisfied ? allRules : remaining).filter(byOwner)
   const rows = listed.slice(0, rulesShown).map(r => `
     <tr>
       <td class="rule-id">${esc(r.id)}</td>
       <td><div class="pair">${esc(kindLabel(r.from) || r.label)}${r.to ? `<span class="arrow">→</span>${esc(kindLabel(r.to))}` : ''}</div><div class="cond">${esc(r.label)}</div></td>
       <td class="kind">${KIND_NAMES[r.kind] ?? ''}</td>
+      <td class="kind">${esc(r.owner ?? '')}</td>
       <td>${ruleStatus(state, r)}</td>
     </tr>`).join('')
   view.innerHTML = `
@@ -143,16 +151,20 @@ export function renderGates(view, state, onTrace, phaseId) {
     ${shown === 'timeline' ? timelineHtml(state) : cardsHtml(state)}
     ${gate ? `<div class="gate-table-head">
       <h2>${esc(gate.phase.name)} · 残っているルール ${remaining.length} 件 / 全 ${allRules.length} 件</h2>
-      <label class="cond"><input type="checkbox" id="show-satisfied" ${showSatisfied ? 'checked' : ''}> 満たすルールも出す</label>
+      <span class="gate-filters">
+        ${owners.length ? `<label class="cond">担当 <select id="owner-filter" class="inline-select"><option value="all">すべての担当</option>${owners.map(o => `<option ${o === ownerFilter ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>` : ''}
+        <label class="cond"><input type="checkbox" id="show-satisfied" ${showSatisfied ? 'checked' : ''}> 満たすルールも出す</label>
+      </span>
     </div>
     <div class="panel"><table>
-      <thead><tr><th style="width:72px">ルール</th><th>何と何が</th><th style="width:64px">判定</th><th>いまの状態</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="4" class="cond">${allRules.length ? 'この工程に残っているルールはありません' : 'この工程にはルールがありません'}</td></tr>`}</tbody>
+      <thead><tr><th style="width:72px">ルール</th><th>何と何が</th><th style="width:64px">判定</th><th style="width:96px">担当</th><th>いまの状態（直し方）</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="5" class="cond">${allRules.length ? 'この工程に残っているルールはありません' : 'この工程にはルールがありません'}</td></tr>`}</tbody>
     </table>
     ${listed.length > rulesShown ? `<button type="button" class="btn-ghost rules-more" id="gate-more">さらに ${Math.min(RULES_PAGE, listed.length - rulesShown)} 件（残り ${listed.length - rulesShown} 件）</button>` : ''}
     </div>` : ''}`
   const rerender = () => renderGates(view, state, onTrace)
   view.querySelector('#show-satisfied')?.addEventListener('change', e => { showSatisfied = e.target.checked; rulesShown = RULES_PAGE; rerender() })
+  view.querySelector('#owner-filter')?.addEventListener('change', e => { ownerFilter = e.target.value; rulesShown = RULES_PAGE; rerender() })
   view.querySelector('#gate-more')?.addEventListener('click', () => { rulesShown += RULES_PAGE; rerender() })
   view.querySelectorAll('[data-expand]').forEach(b => b.addEventListener('click', () => { expandedRules.add(b.dataset.expand); rerender() }))
   view.querySelectorAll('.tl-row, .stage').forEach(b => b.addEventListener('click', () => { selectedPhase = b.dataset.phase; rulesShown = RULES_PAGE; renderGates(view, state, onTrace) }))
