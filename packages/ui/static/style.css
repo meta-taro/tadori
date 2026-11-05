@@ -456,3 +456,18 @@
   .leaks-more { margin-top:6px; }
   .nav-badge { padding:0 5px; min-width:18px; }
   nav a { padding-right:8px; }
+  /* 画面の上の検索：どの画面のどこに出てくるかを並べる */
+  .jump { position:relative; }
+  .search-panel { position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); width:min(560px, 92vw); max-height:min(520px, 70vh); overflow-y:auto;
+    background:var(--surface-1); border:1px solid var(--hairline-strong); border-radius:var(--r-lg); box-shadow:0 16px 40px rgba(0,0,0,.55); z-index:30; }
+  .search-panel[hidden] { display:none; }
+  .search-group { position:sticky; top:0; display:flex; justify-content:space-between; padding:6px 12px; background:#171d36; color:var(--ink); font-size:11.5px; font-weight:600; border-bottom:1px solid #262f55; }
+  .search-row { display:grid; grid-template-columns:92px 1fr; grid-template-areas:'id title' 'id where'; gap:0 10px; width:100%; text-align:left; font:inherit; color:var(--ink-muted); background:none; border:none; border-bottom:1px solid var(--hairline); padding:7px 12px; cursor:pointer; }
+  .search-row.on, .search-row:hover { background:var(--accent-soft); }
+  .search-id { grid-area:id; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .search-title { grid-area:title; color:var(--ink); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .search-where { grid-area:where; font-size:11.5px; color:var(--ink-tertiary); }
+  .search-empty { padding:14px; color:var(--ink-subtle); font-size:13px; }
+  .search-panel mark { background:rgba(255,209,102,.35); color:inherit; border-radius:2px; padding:0 1px; }
+  /* 検索の候補が、下の画面（今日の線など）より前に出るように */
+  .topbar { z-index:25; }

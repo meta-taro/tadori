@@ -43,3 +43,8 @@ export async function renderGlossary(view) {
     body.innerHTML = `<div class="cond">${esc(error.message)}</div>`
   }
 }
+
+/** 検索から開くとき、その言葉で絞った状態にする */
+export function setGlossaryQuery(value) {
+  query = value
+}

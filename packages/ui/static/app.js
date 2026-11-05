@@ -1,11 +1,12 @@
 // tadori の画面の入口：/api/state を読み、#名前 で画面を切り替える
-import { api, chip, esc, ICON_INFO, setKindLabels, toast } from './util.js'
+import { api, chip, esc, ICON_INFO, setKindLabels } from './util.js'
 import { renderGates } from './view-gates.js'
 import { renderWbs } from './view-wbs.js'
 import { renderLog, renderTrace } from './view-records.js'
-import { renderRules } from './view-rules.js'
+import { renderRules, setRulesQuery } from './view-rules.js'
+import { initSearch } from './search.js'
 import { renderSettings } from './view-settings.js'
-import { renderGlossary } from './view-glossary.js'
+import { renderGlossary, setGlossaryQuery } from './view-glossary.js'
 
 const view = document.getElementById('view')
 let state = null
@@ -82,27 +83,14 @@ function route() {
 }
 
 /**
- * 「ID で開く」：会議で聞いた番号へすぐ飛ぶ。大文字・小文字は区別しない。
- * タスクはプロダクト（WBS）のその行へ、台帳のほかの行はつながりを辿るで開く。漏れの呼び名（R4·DD-2.3）は行の ID で開く。
+ * 検索で選ばれた先へ移る。ルールセットと用語は、その言葉で絞った状態で開く。
+ * 同じ画面にいるときは hash が変わらないので、自分で描き直す。
  */
-function jumpTo(raw) {
-  const wanted = raw.trim().split(/[·・]/).at(-1)?.trim().toLowerCase() ?? ''
-  if (!wanted) return
-  const item = state.items.find(i => i.id.toLowerCase() === wanted)
-  if (!item) { toast(`「${raw.trim()}」は台帳にもタスクにもありません`); return }
-  const isTask = state.tasks.some(t => t.id === item.id)
-  location.hash = `${isTask ? 'browse' : 'trace'}-${encodeURIComponent(item.id)}`
-}
-
-function bindJump() {
-  const form = document.getElementById('jump')
-  const input = document.getElementById('jump-input')
-  form.addEventListener('submit', e => { e.preventDefault(); jumpTo(input.value); input.value = ''; input.blur() })
-  // 「/」で ID の欄へ（文字を打っている途中は横取りしない）
-  document.addEventListener('keydown', e => {
-    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName ?? '')
-    if (e.key === '/' && !typing) { e.preventDefault(); input.focus() }
-  })
+function navigate(open) {
+  if (open.query?.view === 'rules') setRulesQuery(open.query.value)
+  if (open.query?.view === 'glossary') setGlossaryQuery(open.query.value)
+  const hash = `#${open.hash}`
+  if (location.hash === hash) route(); else location.hash = hash
 }
 
 /** 案件を読み直す（保存のあと・画面に戻ったとき。git pull した内容もここで反映される） */
@@ -119,5 +107,5 @@ async function reload() {
 window.addEventListener('hashchange', route)
 // 別のウィンドウや git pull で台帳が変わっても、画面に戻ったら読み直す
 window.addEventListener('focus', reload)
-bindJump()
+initSearch({ getState: () => state, navigate })
 reload()

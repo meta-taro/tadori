@@ -125,3 +125,12 @@ export function renderRules(view, state) {
     renderRules(view, state)
   }))
 }
+
+/** 検索から開くとき、その言葉で絞った状態にする */
+export function setRulesQuery(value) {
+  filters.query = value
+  filters.phase = 'all'
+  filters.judge = 'all'
+  filters.status = 'all'
+  shownCount.clear()
+}
