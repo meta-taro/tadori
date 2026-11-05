@@ -117,6 +117,16 @@ describe('書き込み', () => {
     expect(await readFile(join(dir, 'ledger/wbs.tsv'), 'utf8')).toMatch(/W-09\tit\t試験ケースの作成\t2026-11-16\t2026-11-24\tdoing/)
   })
 
+  test('同時に 2 つ書き込んでも、両方とも残る（書き込みは 1 本の列に並べる）', async () => {
+    const put = (id: string, status: string) => fetch(`${base}/api/tasks/${id}/status`, { method: 'PUT', headers: WRITE_HEADERS, body: JSON.stringify({ status }) })
+    const results = await Promise.all([put('W-10', 'doing'), put('W-11', 'hold'), put('W-08', 'done')])
+    expect(results.map(r => r.status)).toEqual([200, 200, 200])
+    const wbs = await readFile(join(dir, 'ledger/wbs.tsv'), 'utf8')
+    expect(wbs).toMatch(/W-10\t.*\tdoing/)
+    expect(wbs).toMatch(/W-11\t.*\thold/)
+    expect(wbs).toMatch(/W-08\t.*\tdone/)
+  })
+
   test('設定に無いステータスは断る', async () => {
     const res = await fetch(`${base}/api/tasks/W-09/status`, { method: 'PUT', headers: WRITE_HEADERS, body: JSON.stringify({ status: 'nope' }) })
     expect(res.status).toBe(400)

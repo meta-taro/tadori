@@ -130,6 +130,17 @@ async function serveStatic(uiDir: string, urlPath: string, res: ServerResponse):
   }
 }
 
+/**
+ * 書き込みを 1 本の列に並べる。読み込み → 検査 → 書き込み → commit の途中に別の書き込みが割り込むと、
+ * 片方の変更が失われたり、git の index がぶつかったりするため。手元の道具なので、同時に来る書き込みは少ない。
+ */
+let writeChain: Promise<unknown> = Promise.resolve()
+function serialized<T>(work: () => Promise<T>): Promise<T> {
+  const run = writeChain.then(work, work)
+  writeChain = run.catch(() => undefined) // 失敗しても、次の書き込みは続ける
+  return run
+}
+
 async function route(options: ServerOptions, port: number, req: IncomingMessage, res: ServerResponse): Promise<void> {
   assertLocalHost(req, port)
   const url = new URL(req.url ?? '/', 'http://localhost')
@@ -150,31 +161,41 @@ async function route(options: ServerOptions, port: number, req: IncomingMessage,
   if (req.method === 'PUT' && url.pathname === '/api/settings/phases') {
     assertWriteAllowed(req)
     const next = parsePhases(await readJson(req))
-    const { project } = await loadState(dir, today)
-    const problems = validatePhases(project, next)
-    if (problems.length) throw new HttpError(400, '工程の設定を保存できません', problems)
-    return sendJson(res, 200, { commit: await saveSettings(dir, { phases: next }, '工程の設定を変更') })
+    const commit = await serialized(async () => {
+      const { project } = await loadState(dir, today)
+      const problems = validatePhases(project, next)
+      if (problems.length) throw new HttpError(400, '工程の設定を保存できません', problems)
+      return saveSettings(dir, { phases: next }, '工程の設定を変更')
+    })
+    return sendJson(res, 200, { commit })
   }
 
   if (req.method === 'PUT' && url.pathname === '/api/settings/statuses') {
     assertWriteAllowed(req)
     const next = parseStatuses(await readJson(req))
-    const { project } = await loadState(dir, today)
-    const problems = validateStatuses(project, next)
-    if (problems.length) throw new HttpError(400, 'ステータスの設定を保存できません', problems)
-    return sendJson(res, 200, { commit: await saveSettings(dir, { statuses: next }, 'ステータスの設定を変更') })
+    const commit = await serialized(async () => {
+      const { project } = await loadState(dir, today)
+      const problems = validateStatuses(project, next)
+      if (problems.length) throw new HttpError(400, 'ステータスの設定を保存できません', problems)
+      return saveSettings(dir, { statuses: next }, 'ステータスの設定を変更')
+    })
+    return sendJson(res, 200, { commit })
   }
 
   const statusMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/status$/)
   if (req.method === 'PUT' && statusMatch) {
     assertWriteAllowed(req)
     const body = await readJson(req) as { status?: unknown }
-    const { project } = await loadState(dir, today)
-    if (!isString(body?.status) || !project.statuses.some(s => s.id === body.status)) {
-      throw new HttpError(400, '設定に無いステータスです')
-    }
-    const commit = await saveTaskStatus(dir, safeDecode(statusMatch[1] ?? ''), body.status)
-    if (!commit) throw new HttpError(404, 'そのタスクは WBS にありません')
+    const taskId = safeDecode(statusMatch[1] ?? '')
+    const commit = await serialized(async () => {
+      const { project } = await loadState(dir, today)
+      if (!isString(body?.status) || !project.statuses.some(s => s.id === body.status)) {
+        throw new HttpError(400, '設定に無いステータスです')
+      }
+      const result = await saveTaskStatus(dir, taskId, body.status)
+      if (!result) throw new HttpError(404, 'そのタスクは WBS にありません')
+      return result
+    })
     return sendJson(res, 200, { commit })
   }
 
