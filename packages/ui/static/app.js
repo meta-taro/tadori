@@ -2,7 +2,8 @@
 import { api, chip, esc, ICON_INFO, setKindLabels, toast } from './util.js'
 import { renderGates } from './view-gates.js'
 import { renderWbs } from './view-wbs.js'
-import { renderLog, renderRules, renderTrace } from './view-records.js'
+import { renderLog, renderTrace } from './view-records.js'
+import { renderRules } from './view-rules.js'
 import { renderSettings } from './view-settings.js'
 import { renderGlossary } from './view-glossary.js'
 

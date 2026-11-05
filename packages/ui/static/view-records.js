@@ -1,31 +1,6 @@
-// ルールセット・チェックの記録・つながりを辿る
+// チェックの記録・つながりを辿る
 import { api, chip, esc, ICON_INFO, kindLabel, toast } from './util.js'
 import { renderPicker } from './trace-picker.js'
-
-const KIND_NAMES = { covered: '下流が出ている', refers: '上流を元にしている', filled: '列が埋まっている', approval: '人の承認' }
-
-export function renderRules(view, state) {
-  const sets = state.phases.map(phase => {
-    const rules = state.rules.filter(r => r.phase === phase.id)
-    const rows = rules.map(r => `
-      <tr>
-        <td class="rule-id">${esc(r.id)}</td>
-        <td><div class="pair">${r.from ? esc(kindLabel(r.from)) : ''}${r.to ? `<span class="arrow">→</span>${esc(kindLabel(r.to))}` : ''}${r.field ? ` の ${esc(r.field)}` : ''}</div>
-            ${r.only ? `<div class="cond">${esc(r.only.field)} が「${esc(r.only.value)}」の行だけ</div>` : ''}</td>
-        <td class="cond">${esc(r.label)}</td>
-        <td class="kind">${KIND_NAMES[r.kind]}</td>
-      </tr>`).join('')
-    return `<details class="ruleset" open>
-      <summary><span class="tw">›</span><span class="pair">${esc(phase.name)}</span><span class="count">${rules.length} 件</span></summary>
-      ${rules.length ? `<table><thead><tr><th style="width:64px">ID</th><th style="width:34%">何と何が</th><th>条件</th><th style="width:150px">判定</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">ルールはありません</div>'}
-    </details>`
-  }).join('')
-  view.innerHTML = `
-    <h1>ルールセット</h1>
-    <p class="lede">工程ごとのルールセットです。エージェントは作業の前にこれを読んで守り、チェックした結果を記録に残します。人の承認が要るルールは、人がチェックします。</p>
-    <div class="note">${ICON_INFO}<span>MVP では、ルールは <span class="mono">.tadori/rulesets/*.tsv</span> を直接編集して足します（画面からの追加は次の段）。</span></div>
-    <div class="panel">${sets}</div>`
-}
 
 const RESULT_TONE = result => (/^漏れ|差し戻し/.test(result) ? 'hole' : /^満たす|承認/.test(result) ? 'ok' : '')
 

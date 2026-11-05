@@ -435,3 +435,19 @@
   /* 指された行を光らせる */
   .flash-row { animation:flashrow 2.4s ease-out; }
   @keyframes flashrow { 0%,40% { background:rgba(130,143,255,.28); } 100% { background:transparent; } }
+  /* ルールセット：探す道具と工程ごとの帯 */
+  .rules-tools { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+  .rules-tools .seg { margin:0; flex-wrap:wrap; }
+  .rules-tools-row { display:flex; gap:10px; flex-wrap:wrap; }
+  .rules-total { margin:0 0 8px; }
+  .rules-list { overflow:visible; }
+  .rules-group { border-bottom:1px solid var(--hairline); }
+  .rules-group:last-child { border-bottom:none; }
+  .rules-band { position:sticky; top:62px; z-index:1; list-style:none; display:flex; align-items:center; gap:10px; padding:9px 14px; cursor:pointer;
+    background:#171d36; color:var(--ink); font-weight:600; border-left:3px solid var(--accent); border-bottom:1px solid #262f55; }
+  .rules-band::-webkit-details-marker { display:none; }
+  .rules-band .tw { color:var(--ink-tertiary); transition:transform .15s; }
+  .rules-group[open] .rules-band .tw { transform:rotate(90deg); }
+  .rules-band-counts { margin-left:auto; display:inline-flex; align-items:center; gap:8px; }
+  .rules-group table { table-layout:fixed; }
+  .rules-more { margin:10px 14px; }
