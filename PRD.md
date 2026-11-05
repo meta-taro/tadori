@@ -1,7 +1,9 @@
 # PRD — tadori（辿り）
 
 > **叩き**です。ここで決めるのは「何のための道具か」と「最初の一歩」までです。
-> 決定とその理由は [`.claude/decisions.md`](.claude/decisions.md)、進め方は [`.claude/roadmap.md`](.claude/roadmap.md) にあります。
+> 文中の D1〜D7 は開発側の決定記録の番号です。要点はこの PRD に書き下してあります
+> （D3 / D7 ＝実案件のデータはこのリポジトリに入れない・D4 ＝ md-business と git-qa へ今頼むのは動かない ID の 2 つだけ・
+> D5 ＝第 1 段は check と why だけ）。
 
 ## §0 一行で
 

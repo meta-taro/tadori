@@ -11,6 +11,9 @@
 - **`.claude/decisions.md`** — 決定と、その理由（D1〜D7）。
 - **`.claude/issues/`** — 着手すべきローカル Issue。
 
+> 上の 3 つと `.claude/project-status.md` は**作業の記録なので git に入れません**（`.gitignore` の `/.claude/*`）。
+> 手元の `.claude/` と、非公開の `oss-notes/tadori/` に同じものがあります。直したら両方へ反映すること。
+
 ## この製品に固有の禁止事項（最優先）
 
 1. **実案件のデータをこのリポジトリに入れない。**仕様の文・試験ケース・指摘・証跡・

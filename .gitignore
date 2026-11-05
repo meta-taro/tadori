@@ -12,6 +12,18 @@ coverage/
 # ローカル秘密控え（🟡 識別子のみ・🔴 token/key は置かない）— commit 禁止
 SECRETS.local.md
 
+# 作業の記録（decisions / roadmap / project-status / issues）は公開しない — 非公開の oss-notes/tadori/ に置く
+# .claude/ のうち公開するのは設定と配布物だけ（.github/scripts/oss-placement-check.sh と同じ範囲）
+/.claude/*
+!/.claude/tools/
+!/.claude/rules/
+!/.claude/templates/
+!/.claude/hooks/
+!/.claude/commands/
+!/.claude/agents/
+!/.claude/skills/
+!/.claude/settings.json
+
 # ベースルール完全版（内部事例を含むため公開しない）— commit 禁止
 .claude/rules/product-baseline.full.md
 
