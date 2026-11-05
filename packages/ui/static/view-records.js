@@ -67,12 +67,33 @@ function storyPath(result, resolved = []) {
     const leakHtml = other.map(l => `<div class="sp-leak">漏れ ${esc(l.rule)}：${esc(l.message)}</div>`).join('')
     // 前のチェックでは漏れだったが、いまは満たす行（チェックの記録から読む）
     const was = resolved.find(r => r.itemId === s.item.id)
-    const resolvedHtml = was && !other.length ? `<div class="sp-resolved">${esc(was.when.slice(5, 10).replace('-', '/'))} のチェックでは漏れ（${esc(was.rule)}）→ いまは満たす</div>` : ''
-    parts.push(`<div class="sp-card ${other.length ? 'ng' : 'ok'} ${isStart ? 'end' : ''}"><div class="sp-phase">${isStart ? '辿り始め' : ''}</div><div class="sp-icon">${other.length ? ICON_NG : ICON_OK}</div>
+    // カードは 3 つ：いまも漏れ（ng）／前は漏れで、いまは満たす（resolved）／初めから漏れなし（ok）
+    // 漏れが切れ目として出ている行も、その行自身の漏れなので「漏れ」にする（中身は切れ目のカードに書く）
+    const card = (s.leaks ?? []).length ? 'ng' : was ? 'resolved' : 'ok'
+    const resolvedHtml = card === 'resolved' && was ? `<div class="sp-resolved">${esc(was.when.slice(5, 10).replace('-', '/'))} のチェックでは漏れ（${esc(was.rule)}）→ いまは満たす</div>` : ''
+    const badge = { ng: '<span class="sp-badge ng">漏れ</span>', resolved: '<span class="sp-badge resolved">対応済み</span>', ok: '<span class="sp-badge ok">漏れなし</span>' }[card]
+    const icon = { ng: ICON_NG, resolved: `<span class="sp-flip">${ICON_NG}<span>→</span>${ICON_OK}</span>`, ok: ICON_OK }[card]
+    parts.push(`<div class="sp-card ${card === 'ng' && !other.length ? 'ng-gap' : card} ${isStart ? 'end' : ''}"><div class="sp-phase">${isStart ? '辿り始め' : ''}${badge}</div><div class="sp-icon">${icon}</div>
       <div class="sp-kind">${esc(kindLabel(s.item.kind))} <span class="mono">${esc(s.item.id)}</span></div>
       <div class="sp-say">${esc(s.item.title)}</div>${leakHtml}${resolvedHtml}<div class="sp-src">${esc(s.item.source)}</div></div>`)
   })
   return parts.join('')
+}
+
+/** 図の上の 1 行：この線の上の漏れと対応済みが、どの行のものかを並べる */
+function traceSummary(result, resolved) {
+  const leakIds = new Set()
+  for (const s of result.steps) {
+    if (s.type === 'missing') leakIds.add(s.after ?? s.before)
+    else if ((s.leaks ?? []).length) leakIds.add(s.item.id)
+  }
+  const onLine = new Set(result.steps.filter(s => s.type === 'item').map(s => s.item.id))
+  const done = resolved.filter(r => onLine.has(r.itemId) && !leakIds.has(r.itemId)).map(r => r.itemId)
+  const parts = [
+    leakIds.size ? `<span class="chip hole"><span class="dot"></span>漏れ ${leakIds.size} 件（${[...leakIds].map(esc).join('・')}）</span>` : '<span class="chip ok"><span class="dot"></span>この線の上に漏れはありません</span>',
+    done.length ? `<span class="chip ok"><span class="dot"></span>対応済み ${done.length} 件（${done.map(esc).join('・')}）</span>` : '',
+  ]
+  return `<div class="trace-summary"><span class="cond">この線の上：</span>${parts.join('')}</div>`
 }
 
 export async function renderTrace(view, state, startId) {
@@ -85,6 +106,7 @@ export async function renderTrace(view, state, startId) {
       <section aria-label="どこから辿る"><h2>どこから辿る</h2><div id="picker"></div></section>
       <section aria-label="辿った結果">
         <h2>${start ? `${esc(start.id)}「${esc(start.title)}」から辿った結果` : '辿った結果'}</h2>
+        <div id="trace-summary"></div>
         <div class="story-path" id="story" role="list"><div class="cond">${startId ? '読み込み中…' : '左で辿り始めの行を選んでください'}</div></div>
         <div class="verdict"><span>この線のどこが漏れていたかを決めるのは人です。確かめたら、チェックの記録に人の行として残してください。</span></div>
       </section>
@@ -93,7 +115,8 @@ export async function renderTrace(view, state, startId) {
   if (!startId) return
   try {
     const result = await api(`/api/trace/${encodeURIComponent(startId)}`)
-    view.querySelector('#story').innerHTML = storyPath(result, state.resolved)
+    view.querySelector('#story').innerHTML = storyPath(result, state.resolved ?? [])
+    view.querySelector('#trace-summary').innerHTML = traceSummary(result, state.resolved ?? [])
   } catch (error) {
     view.querySelector('#story').innerHTML = `<div class="note">${ICON_INFO}<span>${esc(error.message)}</span></div>`
   }
