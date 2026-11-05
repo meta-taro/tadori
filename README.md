@@ -38,7 +38,7 @@ git config core.hooksPath .githooks
 |---|---|
 | `tadori check [案件]` | 工程ごとの漏れと人の承認待ち。漏れがあれば終了コード 1（CI でも使える）。`--log` でチェックの記録に 5W1H で足す |
 | `tadori why <ID> [案件]` | その 1 件から上下に辿った全部と、線が切れている所 |
-| `tadori serve [案件]` | 手元（127.0.0.1）で画面を開く。関門（タイムライン／カード）・WBS・ルールセット・チェックの記録・1 件をたどる・設定 |
+| `tadori serve [案件]` | 手元（127.0.0.1）で画面を開く。関門（タイムライン／カード）・WBS・ルールセット・チェックの記録・つながりを辿る・設定 |
 
 ```bash
 node packages/cli/dist/main.js check examples/lend-v12

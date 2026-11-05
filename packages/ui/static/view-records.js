@@ -1,5 +1,6 @@
-// ルールセット・チェックの記録・1 件をたどる
+// ルールセット・チェックの記録・つながりを辿る
 import { api, chip, esc, ICON_INFO, kindLabel } from './util.js'
+import { renderPicker } from './trace-picker.js'
 
 const KIND_NAMES = { covered: '下流が出ている', refers: '上流を元にしている', filled: '列が埋まっている', approval: '人の承認' }
 
@@ -64,14 +65,21 @@ function storyPath(result) {
 }
 
 export async function renderTrace(view, state, startId) {
-  const options = state.items.map(i => `<option value="${esc(i.id)}" ${i.id === startId ? 'selected' : ''}>${esc(i.id)} · ${esc(kindLabel(i.kind))} · ${esc(i.title)}</option>`).join('')
+  const start = state.items.find(i => i.id === startId)
   view.innerHTML = `
-    <h1>1 件をたどる</h1>
-    <div class="picker"><label class="cond">どこから辿る <select id="pick-start">${options}</select></label></div>
-    <p class="lede">つながりは台帳に書かれた ID だけで tadori が判定します。推測でつなぎません。切れている所が赤です。</p>
-    <div class="story-path" id="story" role="list"><div class="cond">読み込み中…</div></div>
-    <div class="verdict"><span>この線のどこが漏れていたかを決めるのは人です。確かめたら、チェックの記録に人の行として残してください。</span></div>`
-  view.querySelector('#pick-start').addEventListener('change', e => { location.hash = `trace-${encodeURIComponent(e.target.value)}` })
+    <h1>つながりを辿る</h1>
+    <p class="lede">台帳の 1 行（指摘・試験ケース・設計書の章など）から、上流と下流のつながりを工程の順に並べます。
+      つながりは台帳に書かれた ID だけで tadori が判定し、推測でつなぎません。切れている所が赤です。</p>
+    <div class="trace-layout">
+      <section aria-label="どこから辿る"><h2>どこから辿る</h2><div id="picker"></div></section>
+      <section aria-label="辿った結果">
+        <h2>${start ? `${esc(start.id)}「${esc(start.title)}」から辿った結果` : '辿った結果'}</h2>
+        <div class="story-path" id="story" role="list"><div class="cond">${startId ? '読み込み中…' : '左で辿り始めの行を選んでください'}</div></div>
+        <div class="verdict"><span>この線のどこが漏れていたかを決めるのは人です。確かめたら、チェックの記録に人の行として残してください。</span></div>
+      </section>
+    </div>`
+  renderPicker(view.querySelector('#picker'), state, startId, id => { location.hash = `trace-${encodeURIComponent(id)}` })
+  if (!startId) return
   try {
     const result = await api(`/api/trace/${encodeURIComponent(startId)}`)
     view.querySelector('#story').innerHTML = storyPath(result)

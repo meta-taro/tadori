@@ -13,12 +13,18 @@ const VIEWS = {
   phases: { label: 'リリースまでの関門', render: () => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }) },
   rules: { label: 'ルールセット', render: () => renderRules(view, state) },
   log: { label: 'チェックの記録', render: () => renderLog(view, state) },
-  trace: { label: '1 件をたどる', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
+  trace: { label: 'つながりを辿る', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
   settings: { label: '設定', render: () => renderSettings(view, state, reload) },
 }
 
-/** 1 件をたどるの最初の 1 件：指摘があればその最初、無ければ台帳の最初 */
-const defaultTraceStart = () => (state.items.find(i => i.kind === 'F') ?? state.items.at(0))?.id ?? ''
+/** つながりを辿るの最初の行：漏れのある指摘、無ければ漏れのある行、無ければ指摘（何も無ければ選んでもらう） */
+function defaultTraceStart() {
+  const leakIds = new Set(state.leaks.map(l => l.itemId))
+  const pick = state.items.find(i => i.kind === 'F' && leakIds.has(i.id))
+    ?? state.items.find(i => leakIds.has(i.id))
+    ?? state.items.find(i => i.kind === 'F')
+  return pick?.id ?? ''
+}
 
 function renderChrome(key) {
   const waits = state.gates.reduce((n, g) => n + g.pendingApprovals.length, 0)
@@ -35,7 +41,7 @@ function renderChrome(key) {
 function route() {
   if (!state) return
   const hash = decodeURIComponent(location.hash.slice(1))
-  // #trace-F-02 のように、1 件をたどるは辿り始めの ID を持てる
+  // #trace-F-02 のように、つながりを辿るは辿り始めの ID を持てる
   const [key, traceId] = hash.startsWith('trace-') ? ['trace', hash.slice('trace-'.length)] : [VIEWS[hash] ? hash : 'phases', undefined]
   renderChrome(key)
   VIEWS[key].render(traceId)
