@@ -412,3 +412,12 @@
   /* 件数のバッジが付いてもメニューの名前が折り返さないよう、左の列を少し広げる */
   .app { grid-template-columns:252px 1fr; }
   nav a { white-space:nowrap; }
+  /* 探す欄のグループの見出し：紺の帯にして、行と見分ける。スクロールしても今いるグループの帯が上に残る */
+  .pick-head { position:sticky; top:0; z-index:1; display:flex; justify-content:space-between; align-items:center;
+    padding:8px 12px; background:#171d36; color:var(--ink); font-size:12px; font-weight:600; letter-spacing:.2px;
+    border-bottom:1px solid #262f55; border-left:3px solid var(--ink-tertiary); }
+  .pick-head .pick-count { font-weight:500; color:var(--ink-subtle); font-variant-numeric:tabular-nums; }
+  .pick-head.tone-leak { border-left-color:var(--hole); }
+  .pick-head.tone-resolved { border-left-color:var(--ok); }
+  .pick-head.tone-finding { border-left-color:var(--wait); }
+  .pick-head.tone-search { border-left-color:var(--accent); }

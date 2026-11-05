@@ -42,9 +42,9 @@ function suggestionGroups(state) {
   const shown = new Set([...leak, ...resolved].map(i => i.id))
   const findings = state.items.filter(i => byKind(i) && i.kind === 'F' && !shown.has(i.id))
   return [
-    { heading: '漏れのある行', items: leak },
-    { heading: '対応済み（前のチェックでは漏れ）', items: resolved },
-    { heading: '指摘', items: findings },
+    { heading: '漏れのある行', items: leak, tone: 'leak' },
+    { heading: '対応済み（前のチェックでは漏れ）', items: resolved, tone: 'resolved' },
+    { heading: '指摘', items: findings, tone: 'finding' },
   ].filter(g => g.items.length)
 }
 
@@ -60,7 +60,7 @@ function resultsHtml(state, startId) {
   }
   return groups.map(g => {
     const rest = g.items.length > MAX_RESULTS ? `<div class="cond pick-more">ほか ${g.items.length - MAX_RESULTS} 件。もう少し絞ってください</div>` : ''
-    return `<div class="cond pick-head">${g.heading} · ${g.items.length} 件</div>${g.items.slice(0, MAX_RESULTS).map(i => rowHtml(state, i, startId)).join('')}${rest}`
+    return `<div class="pick-head tone-${g.tone ?? 'search'}"><span>${g.heading}</span><span class="pick-count">${g.items.length} 件</span></div>${g.items.slice(0, MAX_RESULTS).map(i => rowHtml(state, i, startId)).join('')}${rest}`
   }).join('')
 }
 
