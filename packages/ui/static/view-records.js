@@ -1,5 +1,5 @@
 // ルールセット・チェックの記録・つながりを辿る
-import { api, chip, esc, ICON_INFO, kindLabel } from './util.js'
+import { api, chip, esc, ICON_INFO, kindLabel, toast } from './util.js'
 import { renderPicker } from './trace-picker.js'
 
 const KIND_NAMES = { covered: '下流が出ている', refers: '上流を元にしている', filled: '列が埋まっている', approval: '人の承認' }
@@ -58,13 +58,13 @@ function storyPath(result, resolved = []) {
     if (i > 0) parts.push(`<div class="sp-link ${broken ? 'broken' : ''}"><span class="sp-line"></span><span class="sp-link-label">${s.type === 'missing' ? 'ここで切れている' : ''}</span></div>`)
     if (s.type === 'missing') {
       const what = s.before ? `元にした${kindLabel(s.kind)}が無い` : `${kindLabel(s.kind)}が無い`
-      parts.push(`<div class="sp-card ng"><div class="sp-phase">${esc(s.rule)}</div><div class="sp-icon">${ICON_NG}</div>
+      parts.push(`<div class="sp-card ng"><div class="sp-phase"><span class="leak-id">${esc(s.rule)}·${esc(s.after ?? s.before)}</span></div><div class="sp-icon">${ICON_NG}</div>
         <div class="sp-kind">${esc(kindLabel(s.kind))}</div><div class="sp-say">${esc(what)}</div><div class="sp-src">台帳に ${esc(s.kind)} の行が無い</div></div>`)
       return
     }
     const isStart = s.item.id === result.start.id
     const other = (s.leaks ?? []).filter(l => !shownAsGap.has(`${l.rule}:${l.itemId}`))
-    const leakHtml = other.map(l => `<div class="sp-leak">漏れ ${esc(l.rule)}：${esc(l.message)}</div>`).join('')
+    const leakHtml = other.map(l => `<div class="sp-leak">漏れ <b>${esc(l.rule)}·${esc(l.itemId)}</b>：${esc(l.message)}</div>`).join('')
     // 前のチェックでは漏れだったが、いまは満たす行（チェックの記録から読む）
     const was = resolved.find(r => r.itemId === s.item.id)
     // カードは 3 つ：いまも漏れ（ng）／前は漏れで、いまは満たす（resolved）／初めから漏れなし（ok）
@@ -105,7 +105,7 @@ export async function renderTrace(view, state, startId) {
     <div class="trace-layout">
       <section aria-label="どこから辿る"><h2>どこから辿る</h2><div id="picker"></div></section>
       <section aria-label="辿った結果">
-        <h2>${start ? `${esc(start.id)}「${esc(start.title)}」から辿った結果` : '辿った結果'}</h2>
+        <div class="trace-head"><h2>${start ? `<span class="big-id">${esc(start.id)}</span>「${esc(start.title)}」から辿った結果` : '辿った結果'}</h2>${start ? '<button type="button" class="btn-ghost" id="copy-link" title="この結果を開くリンク（会議で渡すとき）">リンクをコピー</button>' : ''}</div>
         <div id="trace-summary"></div>
         <div class="story-path" id="story" role="list"><div class="cond">${startId ? '読み込み中…' : '左で辿り始めの行を選んでください'}</div></div>
         <div class="verdict"><span>この線のどこが漏れていたかを決めるのは人です。確かめたら、チェックの記録に人の行として残してください。</span></div>
@@ -113,6 +113,15 @@ export async function renderTrace(view, state, startId) {
     </div>`
   renderPicker(view.querySelector('#picker'), state, startId, id => { location.hash = `trace-${encodeURIComponent(id)}` })
   if (!startId) return
+  // リンクをコピー：クリックの中でだけ書き込める。断られたら URL を知らせる
+  view.querySelector('#copy-link')?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(location.href)
+      toast(`リンクをコピーしました：${location.href}`)
+    } catch {
+      toast(`コピーできませんでした。アドレスバーの URL を渡してください：${location.href}`)
+    }
+  })
   try {
     const result = await api(`/api/trace/${encodeURIComponent(startId)}`)
     view.querySelector('#story').innerHTML = storyPath(result, state.resolved ?? [])

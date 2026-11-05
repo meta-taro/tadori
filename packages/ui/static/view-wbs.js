@@ -20,7 +20,7 @@ function taskRow(state, task) {
   const color = isDoneStatus(state, task.status) ? 'transparent' : lateColor(late)
   const lateText = late ? `<span class="late" style="color:${color}">${late} 日遅れ</span>` : ''
   const dates = task.start ? `${shortDate(task.start)}–${shortDate(task.end)}` : '期間なし'
-  return `<div class="wbs-task" style="--row-color:${color}">
+  return `<div class="wbs-task" id="task-${esc(task.id)}" style="--row-color:${color}">
     <span class="tid">${esc(task.id)}</span>
     <span>${esc(task.name)}${lateText}</span>
     <select class="status-select tone-${current?.tone ?? 'none'}" data-task="${esc(task.id)}" aria-label="${esc(task.id)} のステータス">${options}</select>
@@ -54,7 +54,10 @@ function wbsHtml(state) {
     </div>${groups || `<div class="note">${ICON_INFO}<span>WBS（ledger/wbs.tsv）にタスクがありません。</span></div>`}`
 }
 
-export function renderWbs(view, state, reload) {
+export function renderWbs(view, state, reload, highlightId) {
+  // 指された行（ID で開く・URL の #browse-W-03）が閉じた工程にあれば開いておく
+  const target = state.tasks.find(t => t.id === highlightId)
+  if (target) closed.delete(target.phase)
   const dated = state.tasks.filter(t => t.start)
   const period = dated.length ? `予定 ${fullDate(dated.map(t => t.start).sort().at(0))} – ${fullDate(dated.map(t => t.end).sort().at(-1))}` : '予定期間なし'
   view.innerHTML = `
@@ -72,6 +75,11 @@ export function renderWbs(view, state, reload) {
       </div>
     </div>`
   const rerender = () => renderWbs(view, state, reload)
+  if (target) {
+    const row = view.querySelector(`#task-${CSS.escape(target.id)}`)
+    row?.scrollIntoView({ block: 'center' })
+    row?.classList.add('flash-row')
+  }
   view.querySelector('#wbs-filter').addEventListener('change', e => { wbsFilter = e.target.value; rerender() })
   view.querySelector('#wbs-sort').addEventListener('change', e => { wbsSort = e.target.value; rerender() })
   view.querySelector('#wbs-open-all').addEventListener('click', () => { closed.clear(); rerender() })

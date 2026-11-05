@@ -1,5 +1,5 @@
 // tadori の画面の入口：/api/state を読み、#名前 で画面を切り替える
-import { api, chip, esc, ICON_INFO, setKindLabels } from './util.js'
+import { api, chip, esc, ICON_INFO, setKindLabels, toast } from './util.js'
 import { renderGates } from './view-gates.js'
 import { renderWbs } from './view-wbs.js'
 import { renderLog, renderRules, renderTrace } from './view-records.js'
@@ -10,7 +10,7 @@ const view = document.getElementById('view')
 let state = null
 
 const VIEWS = {
-  browse: { label: 'プロダクト', render: () => renderWbs(view, state, reload) },
+  browse: { label: 'プロダクト', render: id => renderWbs(view, state, reload, id) },
   phases: { label: 'リリースまでの残課題', render: () => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }) },
   rules: { label: 'ルールセット', render: () => renderRules(view, state) },
   log: { label: 'チェックの記録', render: () => renderLog(view, state) },
@@ -72,10 +72,36 @@ function renderNavBadges(waits) {
 function route() {
   if (!state) return
   const hash = decodeURIComponent(location.hash.slice(1))
-  // #trace-F-02 のように、つながりを辿るは辿り始めの ID を持てる
-  const [key, traceId] = hash.startsWith('trace-') ? ['trace', hash.slice('trace-'.length)] : [VIEWS[hash] ? hash : 'phases', undefined]
+  // #trace-F-02・#browse-W-03 のように、画面の名前のあとに ID を付けて、その行を開ける（会議で URL を渡せるように）
+  const withId = hash.match(/^(trace|browse)-(.+)$/)
+  const key = withId ? withId[1] : (VIEWS[hash] ? hash : 'phases')
+  const id = withId ? withId[2] : undefined
   renderChrome(key)
-  VIEWS[key].render(traceId)
+  VIEWS[key].render(id)
+}
+
+/**
+ * 「ID で開く」：会議で聞いた番号へすぐ飛ぶ。大文字・小文字は区別しない。
+ * タスクはプロダクト（WBS）のその行へ、台帳のほかの行はつながりを辿るで開く。漏れの呼び名（R4·DD-2.3）は行の ID で開く。
+ */
+function jumpTo(raw) {
+  const wanted = raw.trim().split(/[·・]/).at(-1)?.trim().toLowerCase() ?? ''
+  if (!wanted) return
+  const item = state.items.find(i => i.id.toLowerCase() === wanted)
+  if (!item) { toast(`「${raw.trim()}」は台帳にもタスクにもありません`); return }
+  const isTask = state.tasks.some(t => t.id === item.id)
+  location.hash = `${isTask ? 'browse' : 'trace'}-${encodeURIComponent(item.id)}`
+}
+
+function bindJump() {
+  const form = document.getElementById('jump')
+  const input = document.getElementById('jump-input')
+  form.addEventListener('submit', e => { e.preventDefault(); jumpTo(input.value); input.value = ''; input.blur() })
+  // 「/」で ID の欄へ（文字を打っている途中は横取りしない）
+  document.addEventListener('keydown', e => {
+    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName ?? '')
+    if (e.key === '/' && !typing) { e.preventDefault(); input.focus() }
+  })
 }
 
 /** 案件を読み直す（保存のあと・画面に戻ったとき。git pull した内容もここで反映される） */
@@ -92,4 +118,5 @@ async function reload() {
 window.addEventListener('hashchange', route)
 // 別のウィンドウや git pull で台帳が変わっても、画面に戻ったら読み直す
 window.addEventListener('focus', reload)
+bindJump()
 reload()

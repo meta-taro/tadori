@@ -421,3 +421,17 @@
   .pick-head.tone-resolved { border-left-color:var(--ok); }
   .pick-head.tone-finding { border-left-color:var(--wait); }
   .pick-head.tone-search { border-left-color:var(--accent); }
+  /* 会議で番号を言いやすく：ID は太めの等幅で目立たせる */
+  .wbs-task .tid, .pick-row .mono, .rule-id { font-family:var(--mono); font-size:12.5px; font-weight:600; color:var(--ink); letter-spacing:.2px; }
+  .sp-kind .mono { font-weight:600; color:var(--ink); font-size:12.5px; }
+  .big-id { font-family:var(--mono); font-weight:700; color:var(--ink); background:var(--surface-3); border:1px solid var(--hairline-strong); border-radius:6px; padding:1px 8px; margin-right:6px; letter-spacing:.3px; }
+  .leak-id { font-family:var(--mono); font-size:11.5px; font-weight:700; color:var(--hole); background:var(--hole-soft); border-radius:4px; padding:1px 6px; white-space:nowrap; letter-spacing:.2px; }
+  .trace-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  /* ID で開く */
+  .topbar { gap:20px; }
+  .jump { flex:1; display:flex; justify-content:center; }
+  .jump input { width:min(320px, 100%); font:inherit; font-size:12.5px; color:var(--ink); background:var(--surface-2); border:1px solid var(--hairline-strong); border-radius:999px; padding:6px 14px; }
+  .jump input:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  /* 指された行を光らせる */
+  .flash-row { animation:flashrow 2.4s ease-out; }
+  @keyframes flashrow { 0%,40% { background:rgba(130,143,255,.28); } 100% { background:transparent; } }

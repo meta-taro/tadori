@@ -90,7 +90,7 @@ function ruleStatus(state, rule) {
   }
   const leaks = state.leaks.filter(l => l.rule === rule.id)
   if (!leaks.length) return chip('ok', '漏れなし')
-  return leaks.map(l => `<div class="hole-row">${chip('hole', '漏れ')}<span>${esc(l.message)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
+  return leaks.map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
 }
 
 const KIND_NAMES = { covered: '機械', refers: '機械', filled: '機械', approval: '人' }
