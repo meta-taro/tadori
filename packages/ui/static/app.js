@@ -12,7 +12,7 @@ let state = null
 
 const VIEWS = {
   browse: { label: 'プロダクト', render: id => renderWbs(view, state, reload, id) },
-  phases: { label: 'リリースまでの残課題', render: () => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }) },
+  phases: { label: 'リリースまでの残課題', render: phaseId => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }, phaseId) },
   rules: { label: 'ルールセット', render: () => renderRules(view, state) },
   log: { label: 'チェックの記録', render: () => renderLog(view, state) },
   trace: { label: 'つながりを辿る', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
@@ -74,7 +74,7 @@ function route() {
   if (!state) return
   const hash = decodeURIComponent(location.hash.slice(1))
   // #trace-F-02・#browse-W-03 のように、画面の名前のあとに ID を付けて、その行を開ける（会議で URL を渡せるように）
-  const withId = hash.match(/^(trace|browse)-(.+)$/)
+  const withId = hash.match(/^(trace|browse|phases)-(.+)$/)
   const key = withId ? withId[1] : (VIEWS[hash] ? hash : 'phases')
   const id = withId ? withId[2] : undefined
   renderChrome(key)

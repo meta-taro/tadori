@@ -90,17 +90,43 @@ function ruleStatus(state, rule) {
   }
   const leaks = state.leaks.filter(l => l.rule === rule.id)
   if (!leaks.length) return chip('ok', '漏れなし')
-  return leaks.map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
+  // 1 つのルールに漏れが数百あっても読めるよう、最初は 3 件だけ。残りはその場で開く
+  const limit = expandedRules.has(rule.id) ? leaks.length : LEAKS_PER_RULE
+  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
+  const more = leaks.length > limit ? `<button type="button" class="btn-ghost leaks-more" data-expand="${esc(rule.id)}">ほか ${leaks.length - limit} 件を出す</button>` : ''
+  return rows + more
+}
+
+// 残課題の表を大きな案件でも読めるようにする設定（画面を移っても覚えておく）
+const LEAKS_PER_RULE = 3
+const RULES_PAGE = 50
+const expandedRules = new Set()
+let showSatisfied = false
+let rulesShown = RULES_PAGE
+
+/** 残っているルール（漏れがある・承認されていない） */
+function isRemaining(state, rule) {
+  if (rule.kind === 'approval') return !state.approvals.some(a => a.rule === rule.id && a.status === '承認')
+  return state.leaks.some(l => l.rule === rule.id)
 }
 
 const KIND_NAMES = { covered: '機械', refers: '機械', filled: '機械', approval: '人' }
 
-export function renderGates(view, state, onTrace) {
+export function renderGates(view, state, onTrace, phaseId) {
+  // URL の #phases-it のように工程を指されたら、その工程の表を開く（会議で URL を渡せるように）
+  if (phaseId && state.gates.some(g => g.phase.id === phaseId) && phaseId !== selectedPhase) {
+    selectedPhase = phaseId
+    rulesShown = RULES_PAGE
+  }
   const hasSchedule = state.gates.some(g => g.span)
   const shown = hasSchedule ? gateView : 'cards'
   selectedPhase ??= (state.gates.find(g => g.state !== 'clear') ?? state.gates.at(0))?.phase.id ?? null
   const gate = state.gates.find(g => g.phase.id === selectedPhase)
-  const rows = (gate?.rules ?? []).map(r => `
+  // 残課題の画面なので、最初は残っているルール（漏れ・承認待ち）だけ。50 件ずつ出す
+  const allRules = gate?.rules ?? []
+  const remaining = allRules.filter(r => isRemaining(state, r))
+  const listed = showSatisfied ? allRules : remaining
+  const rows = listed.slice(0, rulesShown).map(r => `
     <tr>
       <td class="rule-id">${esc(r.id)}</td>
       <td><div class="pair">${esc(kindLabel(r.from) || r.label)}${r.to ? `<span class="arrow">→</span>${esc(kindLabel(r.to))}` : ''}</div><div class="cond">${esc(r.label)}</div></td>
@@ -115,12 +141,21 @@ export function renderGates(view, state, onTrace) {
       <button type="button" data-gate-view="cards" aria-pressed="${shown === 'cards'}">カード</button>
     </div>
     ${shown === 'timeline' ? timelineHtml(state) : cardsHtml(state)}
-    ${gate ? `<h2>${esc(gate.phase.name)} · ルールと漏れ</h2>
+    ${gate ? `<div class="gate-table-head">
+      <h2>${esc(gate.phase.name)} · 残っているルール ${remaining.length} 件 / 全 ${allRules.length} 件</h2>
+      <label class="cond"><input type="checkbox" id="show-satisfied" ${showSatisfied ? 'checked' : ''}> 満たすルールも出す</label>
+    </div>
     <div class="panel"><table>
-      <thead><tr><th style="width:64px">ルール</th><th>何と何が</th><th style="width:64px">判定</th><th>いまの状態</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="4" class="cond">この工程にはルールがありません</td></tr>'}</tbody>
-    </table></div>` : ''}`
-  view.querySelectorAll('.tl-row, .stage').forEach(b => b.addEventListener('click', () => { selectedPhase = b.dataset.phase; renderGates(view, state, onTrace) }))
+      <thead><tr><th style="width:72px">ルール</th><th>何と何が</th><th style="width:64px">判定</th><th>いまの状態</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="4" class="cond">${allRules.length ? 'この工程に残っているルールはありません' : 'この工程にはルールがありません'}</td></tr>`}</tbody>
+    </table>
+    ${listed.length > rulesShown ? `<button type="button" class="btn-ghost rules-more" id="gate-more">さらに ${Math.min(RULES_PAGE, listed.length - rulesShown)} 件（残り ${listed.length - rulesShown} 件）</button>` : ''}
+    </div>` : ''}`
+  const rerender = () => renderGates(view, state, onTrace)
+  view.querySelector('#show-satisfied')?.addEventListener('change', e => { showSatisfied = e.target.checked; rulesShown = RULES_PAGE; rerender() })
+  view.querySelector('#gate-more')?.addEventListener('click', () => { rulesShown += RULES_PAGE; rerender() })
+  view.querySelectorAll('[data-expand]').forEach(b => b.addEventListener('click', () => { expandedRules.add(b.dataset.expand); rerender() }))
+  view.querySelectorAll('.tl-row, .stage').forEach(b => b.addEventListener('click', () => { selectedPhase = b.dataset.phase; rulesShown = RULES_PAGE; renderGates(view, state, onTrace) }))
   view.querySelectorAll('[data-gate-view]').forEach(b => b.addEventListener('click', () => { gateView = b.dataset.gateView; renderGates(view, state, onTrace) }))
   view.querySelectorAll('[data-trace]').forEach(a => a.addEventListener('click', () => onTrace(a.dataset.trace)))
 }

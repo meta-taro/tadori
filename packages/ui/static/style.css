@@ -451,3 +451,8 @@
   .rules-band-counts { margin-left:auto; display:inline-flex; align-items:center; gap:8px; }
   .rules-group table { table-layout:fixed; }
   .rules-more { margin:10px 14px; }
+  .gate-table-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .gate-table-head label { display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+  .leaks-more { margin-top:6px; }
+  .nav-badge { padding:0 5px; min-width:18px; }
+  nav a { padding-right:8px; }
