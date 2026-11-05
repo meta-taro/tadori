@@ -8,6 +8,19 @@ export interface CommitResult {
   readonly committed: boolean
   /** commit しなかった理由（画面とエージェントにそのまま見せる） */
   readonly reason?: string
+  /** commit したあと、push していない commit の数。push 先が設定されていなければ null */
+  readonly unpushed?: number | null
+}
+
+/** push していない commit の数（push 先が無ければ null）。tadori は push しない。人に知らせるためだけに数える */
+async function unpushedCount(dir: string): Promise<number | null> {
+  try {
+    const { stdout } = await run('git', ['rev-list', '--count', '@{upstream}..HEAD'], { cwd: dir })
+    return Number(stdout.trim())
+  } catch {
+    // push 先（upstream）が設定されていないクローン・ブランチ
+    return null
+  }
 }
 
 /** 案件のフォルダが、それ自身の git リポジトリの最上位か */
@@ -34,7 +47,7 @@ export async function commitFiles(dir: string, files: readonly string[], message
     const { stdout } = await run('git', ['diff', '--cached', '--name-only', '--', ...files], { cwd: dir })
     if (!stdout.trim()) return { committed: false, reason: '変更が無いので commit していません' }
     await run('git', ['commit', '-q', '-m', `chore(tadori): ${message}`, '--', ...files], { cwd: dir })
-    return { committed: true }
+    return { committed: true, unpushed: await unpushedCount(dir) }
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message.split('\n').at(0) : String(error)
     return { committed: false, reason: `git commit に失敗しました：${detail}` }

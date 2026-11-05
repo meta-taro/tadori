@@ -139,6 +139,28 @@ describe('saveSettings', () => {
     expect(await readFile(join(dir, '.tadori/phases.tsv'), 'utf8')).toBe('id\tname\torder\ndd\t詳細設計\t1\n')
   })
 
+  test('commit したら、push していない commit の数を返す（push 先が無ければ null）', async () => {
+    await writeMinimalProject()
+    const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' })
+    git(dir, 'init', '-q')
+    git(dir, 'config', 'user.name', 'test')
+    git(dir, 'config', 'user.email', 'test@example.invalid')
+    git(dir, 'add', '-A')
+    git(dir, 'commit', '-q', '-m', 'init')
+
+    const first = await saveSettings(dir, { phases: [{ id: 'bd', name: '基本', order: 1 }, { id: 'dd', name: '詳細設計', order: 2 }] }, '1 回目')
+    expect(first).toMatchObject({ committed: true, unpushed: null }) // push 先がまだ無い
+
+    // push 先（裸のリポジトリ）を足して、いまの状態を push する
+    const remote = await mkdtemp(join(tmpdir(), 'tadori-remote-'))
+    git(remote, 'init', '-q', '--bare')
+    git(dir, 'remote', 'add', 'origin', remote)
+    git(dir, 'push', '-q', '-u', 'origin', 'HEAD')
+    const second = await saveSettings(dir, { phases: [{ id: 'bd', name: '基本設計', order: 1 }, { id: 'dd', name: '詳細設計', order: 2 }] }, '2 回目')
+    expect(second).toMatchObject({ committed: true, unpushed: 1 })
+    await rm(remote, { recursive: true, force: true })
+  })
+
   test('案件がそれ自身の git リポジトリなら、変えたファイルを commit する', async () => {
     await writeMinimalProject()
     const git = (...args: string[]) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' })

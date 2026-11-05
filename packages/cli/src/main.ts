@@ -72,7 +72,10 @@ async function main(): Promise<void> {
     process.stdout.write(`${formatCheck(state)}\n`)
     if (values.log) {
       const commit = await appendChecks(dir, toRecords(state, dir), `チェックの記録を追加（${values.why ?? 'tadori check'}）`)
-      process.stdout.write(commit.committed ? 'チェックの記録を足して commit しました\n' : `チェックの記録を足しました（${commit.reason}）\n`)
+      const pushNote = commit.unpushed === null || commit.unpushed === undefined
+        ? '（push 先が設定されていません）'
+        : `（push していない commit が ${commit.unpushed} 件。中身を確かめてから push してください）`
+      process.stdout.write(commit.committed ? `チェックの記録を足して commit しました${pushNote}\n` : `チェックの記録を足しました（${commit.reason}）\n`)
     }
     process.exitCode = state.leaks.length ? 1 : 0
     return

@@ -56,15 +56,20 @@ export async function api(path, { method = 'GET', body } = {}) {
 
 let toastTimer = null
 /** 画面の下に短い知らせを出す（alert は使わない） */
-export function toast(message) {
+export function toast(message, durationMs = 4000) {
   const el = document.getElementById('toast')
   el.textContent = message
   el.classList.add('show')
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => el.classList.remove('show'), 4000)
+  toastTimer = setTimeout(() => el.classList.remove('show'), durationMs)
 }
 
 /** 保存の結果（commit したか、しなかった理由）を知らせる */
 export function toastCommit(what, commit) {
-  toast(commit.committed ? `${what}を保存して commit しました（push は確かめてから手で）` : `${what}を保存しました。${commit.reason}`)
+  if (!commit.committed) { toast(`${what}を保存しました。${commit.reason}`); return }
+  // tadori は push しない。push していない commit があることを知らせ、中身を確かめてから人が push する
+  const pushNote = commit.unpushed === null || commit.unpushed === undefined
+    ? 'push 先が設定されていないので、push するときは設定してください'
+    : `push していない commit が ${commit.unpushed} 件あります。中身を確かめてから push してください`
+  toast(`${what}を保存して commit しました。${pushNote}`, 7000)
 }
