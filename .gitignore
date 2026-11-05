@@ -1,0 +1,22 @@
+# Node
+node_modules/
+dist/
+coverage/
+
+# 環境
+.env
+.env.local
+*.log
+.DS_Store
+
+# ローカル秘密控え（🟡 識別子のみ・🔴 token/key は置かない）— commit 禁止
+SECRETS.local.md
+
+# ベースルール完全版（内部事例を含むため公開しない）— commit 禁止
+.claude/rules/product-baseline.full.md
+
+# 実案件の台帳 — commit 禁止
+# このリポジトリが持つのは判定のコード・列の定義・架空の見本だけ（D3 / D7）。
+# 実案件の仕様・指摘・証跡は、その案件のリポジトリに置く。
+ledger.local/
+*.local.tsv

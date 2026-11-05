@@ -1,0 +1,9 @@
+# 既定は LF に正規化する。
+* text=auto eol=lf
+
+# 検証シート TSV は改行コードも仕様のうち（md-business test-spec-tsv/v1 は CRLF）。
+# text 扱いにすると checkout 時に改行が環境ごとに書き換わり、
+# 「パーサは通るが元ファイルと 1 バイト違う」状態になる。テストの前提が壊れるので変換しない。
+#
+# gitattributes は後に書いた行が勝つ。この 2 行の順序を入れ替えないこと。
+*.tsv -text

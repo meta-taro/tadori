@@ -1,0 +1,60 @@
+name: oss-privacy-check
+
+# OSS 公開リポの個人情報混入チェック（product-baseline §32）
+# 実名・個人メールが commit history に入ると、後から消すには history 書き換えと
+# force push が要る＝実質不可逆。push / PR の時点で機械的に止める。
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  # 全履歴を一度に検査する口（公開へ切り替える前に使う）。
+  #
+  # **push ごとの検査は、その push の範囲しか見ない。**
+  # 初回 push は比較の基準が無く commit 検査がスキップされるので、
+  # 最初のあたりが未検査のまま残りうる。
+  #
+  # ここを手で回せば、**禁止語の一覧（secret）を手元へ出さずに**全履歴を見られる。
+  workflow_dispatch:
+    inputs:
+      full_history:
+        description: 最初の commit から全部を検査する
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # commit 範囲を検査するため全履歴が要る
+          fetch-depth: 0
+
+      - name: 個人情報混入チェック
+        env:
+          # 実名などの禁止語は、リポジトリに置くとそれ自体が公開になるため secrets から渡す。
+          # 未設定なら禁止語検査はスキップされ、メール検査だけが走る。
+          OSS_DENY_WORDS: ${{ secrets.OSS_DENY_WORDS }}
+          OSS_ALLOWED_AUTHOR_EMAIL_REGEX: ${{ vars.OSS_ALLOWED_AUTHOR_EMAIL_REGEX }}
+          OSS_ALLOWED_EMAIL_DOMAINS: ${{ vars.OSS_ALLOWED_EMAIL_DOMAINS }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          FULL: ${{ github.event_name == 'workflow_dispatch' && inputs.full_history }}
+        run: |
+          if [ "$FULL" = "true" ]; then
+            # 最初の commit を基準にして、全 commit の author と message を見る。
+            BASE_SHA="$(git rev-list --max-parents=0 HEAD | tail -1)"
+            HEAD_SHA=HEAD
+            # **差分ではなく中身そのもの**も見る。
+            # 差分検査は最初の commit の中身を含まないので、そこだけ素通りする。
+            export OSS_SCAN_ALL_FILES=1
+            echo "全履歴と、追跡中の全ファイルを検査します"
+          fi
+          bash .github/scripts/oss-privacy-check.sh "$BASE_SHA" "$HEAD_SHA"

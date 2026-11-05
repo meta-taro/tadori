@@ -1,0 +1,16 @@
+name: oss-placement-check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  placement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 作業の記録が git に入っていないか
+        run: bash .github/scripts/oss-placement-check.sh
