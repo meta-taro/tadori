@@ -35,7 +35,11 @@ function resultsHtml(state, startId) {
     </button>`).join('')
   const heading = query.trim() ? `「${esc(query.trim())}」に合う行` : '漏れのある行と指摘'
   const rest = found.length > MAX_RESULTS ? `<div class="cond pick-more">ほか ${found.length - MAX_RESULTS} 件。もう少し絞ってください</div>` : ''
-  return `<div class="cond pick-head">${heading} · ${found.length} 件</div>${rows || '<div class="cond pick-more">合う行がありません</div>'}${rest}`
+  // 漏れも指摘も無い案件では、故障に見えないよう、探せば辿れることを伝える
+  const empty = query.trim() || kindFilter !== 'all'
+    ? '合う行がありません'
+    : '漏れのある行も指摘もありません。ID か名前で探すと、どの行からでも辿れます'
+  return `<div class="cond pick-head">${heading} · ${found.length} 件</div>${rows || `<div class="cond pick-more">${empty}</div>`}${rest}`
 }
 
 /** 探す欄を描き、選ばれたら onPick(id) を呼ぶ */
