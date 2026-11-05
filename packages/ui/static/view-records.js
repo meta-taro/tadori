@@ -47,7 +47,7 @@ export function renderLog(view, state) {
 const ICON_OK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 8.5l3 3 6-7"/></svg>'
 const ICON_NG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>'
 
-function storyPath(result) {
+function storyPath(result, resolved = []) {
   // 切れ目として出す漏れは、カードに重ねて出さない（列が空など、つながり以外の漏れだけをカードに出す）
   const shownAsGap = new Set(result.steps.flatMap(s => (s.type === 'missing' ? [`${s.rule}:${s.after ?? s.before}`] : [])))
   const parts = []
@@ -65,9 +65,12 @@ function storyPath(result) {
     const isStart = s.item.id === result.start.id
     const other = (s.leaks ?? []).filter(l => !shownAsGap.has(`${l.rule}:${l.itemId}`))
     const leakHtml = other.map(l => `<div class="sp-leak">漏れ ${esc(l.rule)}：${esc(l.message)}</div>`).join('')
+    // 前のチェックでは漏れだったが、いまは満たす行（チェックの記録から読む）
+    const was = resolved.find(r => r.itemId === s.item.id)
+    const resolvedHtml = was && !other.length ? `<div class="sp-resolved">${esc(was.when.slice(5, 10).replace('-', '/'))} のチェックでは漏れ（${esc(was.rule)}）→ いまは満たす</div>` : ''
     parts.push(`<div class="sp-card ${other.length ? 'ng' : 'ok'} ${isStart ? 'end' : ''}"><div class="sp-phase">${isStart ? '辿り始め' : ''}</div><div class="sp-icon">${other.length ? ICON_NG : ICON_OK}</div>
       <div class="sp-kind">${esc(kindLabel(s.item.kind))} <span class="mono">${esc(s.item.id)}</span></div>
-      <div class="sp-say">${esc(s.item.title)}</div>${leakHtml}<div class="sp-src">${esc(s.item.source)}</div></div>`)
+      <div class="sp-say">${esc(s.item.title)}</div>${leakHtml}${resolvedHtml}<div class="sp-src">${esc(s.item.source)}</div></div>`)
   })
   return parts.join('')
 }
@@ -90,7 +93,7 @@ export async function renderTrace(view, state, startId) {
   if (!startId) return
   try {
     const result = await api(`/api/trace/${encodeURIComponent(startId)}`)
-    view.querySelector('#story').innerHTML = storyPath(result)
+    view.querySelector('#story').innerHTML = storyPath(result, state.resolved)
   } catch (error) {
     view.querySelector('#story').innerHTML = `<div class="note">${ICON_INFO}<span>${esc(error.message)}</span></div>`
   }

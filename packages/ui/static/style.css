@@ -387,3 +387,5 @@
   table.glossary td { font-size:13px; }
   .sp-leak { font-size:11.5px; line-height:1.5; color:var(--late-red); background:rgba(229,72,77,.1); border-radius:4px; padding:4px 6px; }
   .sp-card.ng.end { border-style:solid; }
+  .pick-row .pick-ok { grid-area:chip; padding:0 8px; font-size:11px; color:var(--ink-tertiary); border-color:var(--hairline); }
+  .sp-resolved { font-size:11.5px; line-height:1.5; color:var(--ok); background:var(--ok-soft); border-radius:4px; padding:4px 6px; }

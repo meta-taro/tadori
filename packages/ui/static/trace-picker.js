@@ -12,34 +12,56 @@ function matches(item, words) {
 }
 
 /** 何も打っていないときに出す行：漏れのある行と指摘（辿る意味が大きいもの） */
-function suggestions(state) {
-  const leakIds = new Set(state.leaks.map(l => l.itemId))
-  return state.items.filter(i => leakIds.has(i.id) || i.kind === 'F')
+/** 行のいまの状態：漏れ（いま漏れがある）・対応済み（前のチェックでは漏れ、いまは無い）・漏れなし */
+function statusOf(state, id) {
+  if (state.leaks.some(l => l.itemId === id)) return 'leak'
+  if ((state.resolved ?? []).some(r => r.itemId === id)) return 'resolved'
+  return 'ok'
 }
 
-function candidates(state) {
-  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
-  const pool = words.length ? state.items.filter(i => matches(i, words)) : suggestions(state)
-  return kindFilter === 'all' ? pool : pool.filter(i => i.kind === kindFilter)
+const BADGES = {
+  leak: '<span class="chip hole"><span class="dot"></span>漏れ</span>',
+  resolved: '<span class="chip ok"><span class="dot"></span>対応済み</span>',
+  ok: '<span class="chip pick-ok">✓ 漏れなし</span>',
+}
+
+function rowHtml(state, item, startId) {
+  return `<button type="button" class="pick-row ${item.id === startId ? 'on' : ''}" data-pick="${esc(item.id)}">
+      <span class="mono">${esc(item.id)}</span>
+      <span class="pick-kind">${esc(kindLabel(item.kind))}</span>
+      ${BADGES[statusOf(state, item.id)]}
+      <span class="pick-title">${esc(item.title)}</span>
+    </button>`
+}
+
+/** 何も打っていないときの初期表示：漏れのある行・対応済み・指摘の 3 つに分けて並べる */
+function suggestionGroups(state) {
+  const byKind = i => kindFilter === 'all' || i.kind === kindFilter
+  const leak = state.items.filter(i => byKind(i) && statusOf(state, i.id) === 'leak')
+  const resolved = state.items.filter(i => byKind(i) && statusOf(state, i.id) === 'resolved')
+  const shown = new Set([...leak, ...resolved].map(i => i.id))
+  const findings = state.items.filter(i => byKind(i) && i.kind === 'F' && !shown.has(i.id))
+  return [
+    { heading: '漏れのある行', items: leak },
+    { heading: '対応済み（前のチェックでは漏れ）', items: resolved },
+    { heading: '指摘', items: findings },
+  ].filter(g => g.items.length)
 }
 
 function resultsHtml(state, startId) {
-  const found = candidates(state)
-  const leakIds = new Set(state.leaks.map(l => l.itemId))
-  const rows = found.slice(0, MAX_RESULTS).map(i => `
-    <button type="button" class="pick-row ${i.id === startId ? 'on' : ''}" data-pick="${esc(i.id)}">
-      <span class="mono">${esc(i.id)}</span>
-      <span class="pick-kind">${esc(kindLabel(i.kind))}</span>
-      <span class="pick-title">${esc(i.title)}</span>
-      ${leakIds.has(i.id) ? '<span class="chip hole"><span class="dot"></span>漏れ</span>' : ''}
-    </button>`).join('')
-  const heading = query.trim() ? `「${esc(query.trim())}」に合う行` : '漏れのある行と指摘'
-  const rest = found.length > MAX_RESULTS ? `<div class="cond pick-more">ほか ${found.length - MAX_RESULTS} 件。もう少し絞ってください</div>` : ''
-  // 漏れも指摘も無い案件では、故障に見えないよう、探せば辿れることを伝える
-  const empty = query.trim() || kindFilter !== 'all'
-    ? '合う行がありません'
-    : '漏れのある行も指摘もありません。ID か名前で探すと、どの行からでも辿れます'
-  return `<div class="cond pick-head">${heading} · ${found.length} 件</div>${rows || `<div class="cond pick-more">${empty}</div>`}${rest}`
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const groups = words.length
+    ? [{ heading: `「${esc(query.trim())}」に合う行`, items: state.items.filter(i => matches(i, words) && (kindFilter === 'all' || i.kind === kindFilter)) }]
+    : suggestionGroups(state)
+  if (!groups.some(g => g.items.length)) {
+    // 漏れも指摘も無い案件では、故障に見えないよう、探せば辿れることを伝える
+    const empty = words.length || kindFilter !== 'all' ? '合う行がありません' : '漏れのある行も指摘もありません。ID か名前で探すと、どの行からでも辿れます'
+    return `<div class="cond pick-more">${empty}</div>`
+  }
+  return groups.map(g => {
+    const rest = g.items.length > MAX_RESULTS ? `<div class="cond pick-more">ほか ${g.items.length - MAX_RESULTS} 件。もう少し絞ってください</div>` : ''
+    return `<div class="cond pick-head">${g.heading} · ${g.items.length} 件</div>${g.items.slice(0, MAX_RESULTS).map(i => rowHtml(state, i, startId)).join('')}${rest}`
+  }).join('')
 }
 
 /** 探す欄を描き、選ばれたら onPick(id) を呼ぶ */

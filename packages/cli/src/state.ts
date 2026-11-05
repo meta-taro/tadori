@@ -1,4 +1,4 @@
-import { buildGates, loadProject, readChecks, runChecks, type Gate, type Project } from '@tadori/core'
+import { buildGates, loadProject, readChecks, resolvedItems, runChecks, type Gate, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 画面と MCP に渡す、案件のいまの姿（読むたびに TSV から組み立てる。tadori は控えを持たない） */
 export interface ProjectState {
@@ -14,11 +14,14 @@ export interface ProjectState {
   readonly leaks: ReturnType<typeof runChecks>
   readonly gates: readonly Gate[]
   readonly checks: Awaited<ReturnType<typeof readChecks>>
+  /** 前のチェックでは漏れだったが、いまは漏れの無い行（チェックの記録から読むだけ） */
+  readonly resolved: readonly ResolvedItem[]
 }
 
 export async function loadState(dir: string, today: string): Promise<{ project: Project; state: ProjectState }> {
   const project = await loadProject(dir)
   const leaks = runChecks(project)
+  const checks = await readChecks(dir)
   const state: ProjectState = {
     today,
     project: { name: project.name },
@@ -31,7 +34,8 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     labels: project.labels ?? { kinds: {}, columns: {} },
     leaks,
     gates: buildGates(project, leaks, today),
-    checks: await readChecks(dir),
+    checks,
+    resolved: resolvedItems(checks, leaks),
   }
   return { project, state }
 }

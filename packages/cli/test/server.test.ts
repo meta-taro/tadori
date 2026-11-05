@@ -40,6 +40,15 @@ describe('GET /api/state', () => {
   })
 })
 
+describe('対応済み', () => {
+  test('前のチェックで漏れだったが、いまは漏れの無い行を resolved として返す', async () => {
+    const state = await (await fetch(`${base}/api/state`)).json()
+    const ids = state.resolved.map((r: { itemId: string }) => r.itemId)
+    expect(ids).toEqual(expect.arrayContaining(['DD-3.2', 'TC-04']))
+    expect(ids).not.toContain('DD-2.3') // いまも漏れ
+  })
+})
+
 describe('GET /api/trace/:id', () => {
   test('指摘から辿り、試験の記録が無い所を切れ目として返す', async () => {
     const res = await fetch(`${base}/api/trace/F-02`)
