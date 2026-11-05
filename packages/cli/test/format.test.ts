@@ -28,4 +28,14 @@ describe('formatTrace', () => {
     expect(at('BD-3')).toBeLessThan(at('TC-07'))
     expect(lines.at(at('TC-07') + 1)).toMatch(/✗.*RUN.*R9/)
   })
+
+  test('つながり以外の漏れ（列が空など）がある行は ✗ にして、漏れの中身を下に出す', async () => {
+    const { project } = await loadState(EXAMPLE, '2026-11-05')
+    const result = trace(project, 'DD-2.3')
+    if (!result) throw new Error('DD-2.3 が辿れません')
+    const lines = formatTrace(result).split('\n')
+    const at = lines.findIndex(l => l.includes('DD-2.3'))
+    expect(lines.at(at)).toMatch(/^▶/) // 辿り始めは ▶ のまま
+    expect(lines.at(at + 1)).toMatch(/漏れ R4/)
+  })
 })

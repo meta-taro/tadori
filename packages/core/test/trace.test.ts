@@ -32,6 +32,23 @@ describe('trace', () => {
     expect(ids.at(0)).toBe('BD-1')
   })
 
+  test('refers のルールで上流が無い行には、その手前に切れ目を入れる', () => {
+    const project = {
+      ...sampleProject,
+      rules: [...sampleProject.rules, { id: 'R1', phase: 'bd', kind: 'refers' as const, from: 'BD', to: 'W', field: '', label: '章にタスクが紐づく' }],
+    }
+    const result = must(trace(project, 'BD-1'))
+    const order = result.steps.map(s => (s.type === 'item' ? s.item.id : `${s.type}:${s.rule}`))
+    expect(order.indexOf('missing:R1')).toBe(order.indexOf('BD-1') - 1)
+    expect(result.steps.find(s => s.type === 'missing' && s.rule === 'R1')).toMatchObject({ before: 'BD-1', kind: 'W' })
+  })
+
+  test('辿った行に、その行の漏れ（列が空など、つながり以外も）を付けて返す', () => {
+    const result = must(trace(sampleProject, 'DD-2'))
+    const dd2 = result.steps.find(s => s.type === 'item' && s.item.id === 'DD-2')
+    expect(dd2).toMatchObject({ type: 'item', leaks: [expect.objectContaining({ rule: 'R4' })] })
+  })
+
   test('存在しない ID を渡したら null を返す', () => {
     expect(trace(sampleProject, 'X-1')).toBeNull()
   })

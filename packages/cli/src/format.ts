@@ -26,9 +26,19 @@ export function formatCheck(state: ProjectState): string {
 
 /** tadori why の出力。元から順に並べ、切れ目には ✗ を付ける */
 export function formatTrace(result: TraceResult): string {
-  return result.steps.map(step => {
-    if (step.type === 'missing') return `    ✗ ${step.kind} が無い（${step.rule}）  ← ここで切れている`
-    const mark = step.item.id === result.start.id ? '▶' : '・'
-    return `${mark} ${step.item.kind.padEnd(6)} ${step.item.id}  ${step.item.title}  （${step.item.source}）`
+  // 切れ目として出す漏れは、行の下に重ねて出さない
+  const shownAsGap = new Set(result.steps.flatMap(s => (s.type === 'missing' ? [`${s.rule}:${s.after ?? s.before}`] : [])))
+  return result.steps.flatMap(step => {
+    if (step.type === 'missing') {
+      const where = step.before ? '上流の' : ''
+      return [`    ✗ ${where}${step.kind} が無い（${step.rule}）  ← ここで切れている`]
+    }
+    const other = step.leaks.filter(l => !shownAsGap.has(`${l.rule}:${l.itemId}`))
+    const mark = step.item.id === result.start.id ? '▶' : other.length ? '✗' : '・'
+    return [
+      `${mark} ${step.item.kind.padEnd(6)} ${step.item.id}  ${step.item.title}  （${step.item.source}）`,
+      // つながり以外の漏れ（列が空など）は、その行の下に出す
+      ...other.map(l => `      漏れ ${l.rule}：${l.message}`),
+    ]
   }).join('\n')
 }

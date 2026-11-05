@@ -48,18 +48,26 @@ const ICON_OK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stro
 const ICON_NG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>'
 
 function storyPath(result) {
+  // 切れ目として出す漏れは、カードに重ねて出さない（列が空など、つながり以外の漏れだけをカードに出す）
+  const shownAsGap = new Set(result.steps.flatMap(s => (s.type === 'missing' ? [`${s.rule}:${s.after ?? s.before}`] : [])))
   const parts = []
   result.steps.forEach((s, i) => {
-    if (i > 0) parts.push(`<div class="sp-link ${s.type === 'missing' ? 'broken' : ''}"><span class="sp-line"></span><span class="sp-link-label">${s.type === 'missing' ? 'ここで切れている' : ''}</span></div>`)
+    const prev = result.steps[i - 1]
+    // 切れ目の前後の線を赤くする（上流が無い切れ目は、その後ろの線、下流が無い切れ目は前の線）
+    const broken = s.type === 'missing' || prev?.type === 'missing'
+    if (i > 0) parts.push(`<div class="sp-link ${broken ? 'broken' : ''}"><span class="sp-line"></span><span class="sp-link-label">${s.type === 'missing' ? 'ここで切れている' : ''}</span></div>`)
     if (s.type === 'missing') {
+      const what = s.before ? `元にした${kindLabel(s.kind)}が無い` : `${kindLabel(s.kind)}が無い`
       parts.push(`<div class="sp-card ng"><div class="sp-phase">${esc(s.rule)}</div><div class="sp-icon">${ICON_NG}</div>
-        <div class="sp-kind">${esc(kindLabel(s.kind))}</div><div class="sp-say">${esc(kindLabel(s.kind))}が無い</div><div class="sp-src">台帳に ${esc(s.kind)} の行が無い</div></div>`)
-    } else {
-      const isStart = s.item.id === result.start.id
-      parts.push(`<div class="sp-card ok ${isStart ? 'end' : ''}"><div class="sp-phase">${isStart ? '辿り始め' : ''}</div><div class="sp-icon">${ICON_OK}</div>
-        <div class="sp-kind">${esc(kindLabel(s.item.kind))} <span class="mono">${esc(s.item.id)}</span></div>
-        <div class="sp-say">${esc(s.item.title)}</div><div class="sp-src">${esc(s.item.source)}</div></div>`)
+        <div class="sp-kind">${esc(kindLabel(s.kind))}</div><div class="sp-say">${esc(what)}</div><div class="sp-src">台帳に ${esc(s.kind)} の行が無い</div></div>`)
+      return
     }
+    const isStart = s.item.id === result.start.id
+    const other = (s.leaks ?? []).filter(l => !shownAsGap.has(`${l.rule}:${l.itemId}`))
+    const leakHtml = other.map(l => `<div class="sp-leak">漏れ ${esc(l.rule)}：${esc(l.message)}</div>`).join('')
+    parts.push(`<div class="sp-card ${other.length ? 'ng' : 'ok'} ${isStart ? 'end' : ''}"><div class="sp-phase">${isStart ? '辿り始め' : ''}</div><div class="sp-icon">${other.length ? ICON_NG : ICON_OK}</div>
+      <div class="sp-kind">${esc(kindLabel(s.item.kind))} <span class="mono">${esc(s.item.id)}</span></div>
+      <div class="sp-say">${esc(s.item.title)}</div>${leakHtml}<div class="sp-src">${esc(s.item.source)}</div></div>`)
   })
   return parts.join('')
 }
