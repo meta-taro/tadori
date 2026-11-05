@@ -1,0 +1,8 @@
+{
+  "name": "@tadori/ui",
+  "version": "0.0.1",
+  "private": true,
+  "description": "tadori の画面（tadori serve が static/ をそのまま配る。ビルドは要らない）",
+  "type": "module",
+  "license": "MIT"
+}

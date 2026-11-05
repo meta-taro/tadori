@@ -1,0 +1,3 @@
+id	phase	kind	from	to	field	label
+R12	rel	covered	F	R		指摘に再発防止がある
+R13	rel	approval				リリースを責任者が判断した

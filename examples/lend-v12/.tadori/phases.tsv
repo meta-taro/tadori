@@ -1,0 +1,6 @@
+id	name	order
+bd	基本設計	1
+dd	詳細設計	2
+impl	実装	3
+it	結合テスト	4
+rel	リリース	5

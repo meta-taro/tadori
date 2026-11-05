@@ -1,0 +1,4 @@
+id	phase	kind	from	to	field	label
+R8	it	covered	V	TC		観点ごとに試験ケースがある
+R9	it	covered	TC	RUN		試験ケースに実施の記録がある
+R11	it	approval				試験結果を実物を見た人が記入した

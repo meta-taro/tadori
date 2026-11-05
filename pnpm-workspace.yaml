@@ -1,0 +1,7 @@
+packages:
+  - packages/*
+
+# サプライチェーン対策：install script はホワイトリストに載せたものだけ、
+# 公開から 24 時間たっていない版は入れない。
+onlyBuiltDependencies: []
+minimumReleaseAge: 1440

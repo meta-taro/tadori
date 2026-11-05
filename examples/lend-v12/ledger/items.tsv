@@ -1,0 +1,17 @@
+# 台帳（架空の見本）。refs は「この行が元にしている行の ID」。、か , で区切って複数書ける
+# kind: W=WBS の作業（ledger/wbs.tsv から自動で入る。ここには書かない） / BD=基本設計の章 / DD=詳細設計の節 / Q=未確認の項目 / COMMIT=ソースの変更 / V=観点 / TC=試験ケース / RUN=試験の記録 / F=指摘 / R=再発防止
+id	kind	title	source	refs	change	verifier
+BD-2	BD	2. 貸出上限	docs/basic-design.md §2	W-06		
+BD-3	BD	3. 延滞の扱い	docs/basic-design.md §3	W-07		
+DD-2.3	DD	貸出上限の判定	docs/detail-design.md §2.3	BD-2		
+DD-3.1	DD	返却期限の扱い	docs/detail-design.md §3.1	BD-3	変わらない	
+DD-3.2	DD	延滞中の貸出拒否	docs/detail-design.md §3.2	BD-3	変わる	
+Q-1	Q	返却期限の祝日扱い	docs/detail-design.md §3.1	DD-3.1		
+a1b2c3d	COMMIT	貸出上限を 3 件にする	src/lend/limit.ts	DD-2.3		
+e4f5a6b	COMMIT	延滞中は貸出ボタンを無効にする	src/lend/guard.ts:42	DD-3.2		
+V-03	V	延滞の境界（当日・翌日）	qa/viewpoints.tsv	DD-3.2		
+V-05	V	同時に貸出を押す	qa/viewpoints.tsv	DD-2.3		
+TC-04	TC	貸出上限ちょうどで借りる	qa/test-spec.tsv	V-05		
+TC-07	TC	延滞中の人は借りられない	qa/test-spec.tsv	V-03		
+RUN-0012	RUN	TC-04 の実施	runs/RUN-0012/run.json	TC-04		
+F-02	F	延滞中なのに借りられた（受入）	指摘の台帳	TC-07		

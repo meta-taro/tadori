@@ -1,0 +1,6 @@
+id	name	tone
+todo	未着手	none
+doing	進行中	wait
+review	レビュー中	wait
+hold	保留	hole
+done	完了	ok

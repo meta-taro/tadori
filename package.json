@@ -1,0 +1,22 @@
+{
+  "name": "tadori-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.1.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "verify": "pnpm typecheck && pnpm test",
+    "dev": "pnpm build && node packages/cli/dist/main.js serve examples/lend-v12",
+    "check:example": "node packages/cli/dist/main.js check examples/lend-v12"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

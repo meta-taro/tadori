@@ -1,0 +1,61 @@
+import { describe, expect, test } from 'vitest'
+import { runChecks } from '../src/usecase/check.js'
+import { DANGLING_RULE_ID } from '../src/domain/model.js'
+import { sampleProject } from './fixtures.js'
+
+describe('runChecks', () => {
+  const leaks = runChecks(sampleProject)
+  const of = (rule: string) => leaks.filter(l => l.rule === rule).map(l => l.itemId)
+
+  test('covered：元の行を参照する先の行が無ければ漏れにする', () => {
+    expect(of('R3')).toEqual(['BD-2'])
+  })
+
+  test('covered：先の行が 1 つでもあれば漏れにしない', () => {
+    expect(of('R8')).toEqual([]) // V-1 には TC-1・TC-2 がある
+  })
+
+  test('covered：試験ケースに実施の記録が無ければ漏れにする', () => {
+    expect(of('R9')).toEqual(['TC-2'])
+  })
+
+  test('filled：決められた列が空なら漏れにする', () => {
+    expect(of('R4')).toEqual(['DD-2'])
+  })
+
+  test('存在しない ID を指していれば漏れにする', () => {
+    expect(of(DANGLING_RULE_ID)).toEqual(['TC-2'])
+    const dangling = leaks.find(l => l.rule === DANGLING_RULE_ID)
+    expect(dangling?.message).toContain('V-9')
+  })
+
+  test('refers：元の行が、決めた種類の行を 1 つも refs に持っていなければ漏れにする', () => {
+    const project = {
+      ...sampleProject,
+      rules: [{ id: 'R1', phase: 'bd', kind: 'refers' as const, from: 'DD', to: 'BD', field: '', label: '節が章を元にしている' }],
+      items: [
+        ...sampleProject.items,
+        { id: 'DD-9', kind: 'DD', title: '元の無い節', source: 'x.md', refs: ['V-1'], fields: { change: '変わる' } },
+      ],
+    }
+    expect(runChecks(project).filter(l => l.rule === 'R1').map(l => l.itemId)).toEqual(['DD-9'])
+  })
+
+  test('only：列の値で対象の行を絞る（例：改修後に「変わる」節だけ commit を求める）', () => {
+    const project = {
+      ...sampleProject,
+      rules: [{ id: 'R6', phase: 'dd', kind: 'covered' as const, from: 'DD', to: 'COMMIT', field: '', label: '変わる節は commit がある', only: { field: 'change', value: '変わる' } }],
+    }
+    // DD-1 は「変わる」で commit が無い → 漏れ。DD-2 は change が空なので対象外
+    expect(runChecks(project).filter(l => l.rule === 'R6').map(l => l.itemId)).toEqual(['DD-1'])
+  })
+
+  test('人の承認のルールは漏れにしない（承認待ちは関門で扱う）', () => {
+    expect(of('R2')).toEqual([])
+  })
+
+  test('漏れの文には、どの行がどのルールを満たしていないかが入る', () => {
+    const leak = leaks.find(l => l.rule === 'R3')
+    expect(leak?.message).toContain('BD-2')
+  })
+})

@@ -1,0 +1,4 @@
+id	phase	kind	from	to	field	label
+R3	dd	covered	BD	DD		基本設計の章から詳細設計の節が出ている
+R4	dd	filled	DD		change	詳細設計の節に改修後の対応（変わる／変わらない／未決）が書いてある
+R5	dd	filled	Q		verifier	未確認の項目に確かめる人が書いてある

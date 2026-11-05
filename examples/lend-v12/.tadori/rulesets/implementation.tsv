@@ -1,0 +1,2 @@
+id	phase	kind	from	to	field	only	label
+R6	impl	covered	DD	COMMIT		change=変わる	改修後に「変わる」詳細設計の節が commit から参照されている
