@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises'
 import { createInterface } from 'node:readline'
-import { parseTsv } from '@tadori/core'
+import { parseTsv, trace } from '@tadori/core'
+import { formatCheck, formatTrace } from './format.js'
+import { loadState, localToday } from './state.js'
 
 /**
  * tadori の MCP の口（標準入出力・1 行 1 つの JSON-RPC）。
@@ -36,7 +38,13 @@ export interface McpOptions {
   /** 用語集の正本（packages/ui/static/glossary.tsv）。画面の「用語」と同じものを読む */
   readonly glossaryPath: string
   readonly version: string
+  /** 案件のフォルダ。無ければ、案件を読む道具は断る */
+  readonly projectDir?: string
+  /** 今日（YYYY-MM-DD）。遅れの日数に使う */
+  readonly today?: string
 }
+
+const MAX_FOUND = 30
 
 const text = (body: string, isError = false): ToolResult => ({ content: [{ type: 'text', text: body }], ...(isError ? { isError } : {}) })
 
@@ -54,8 +62,59 @@ async function glossaryText(path: string, query: string): Promise<string> {
   ].join('\n')).join('\n\n')
 }
 
+/** 案件を読む道具。画面・CLI と同じ判定の核を通す（MCP だけの判定を作らない） */
+function buildProjectTools(options: McpOptions): Tool[] {
+  const withState = async <T>(use: (loaded: Awaited<ReturnType<typeof loadState>>) => T): Promise<T | ToolResult> => {
+    if (!options.projectDir) return text('案件のフォルダを指定して起動してください（例：tadori mcp examples/lend-v12）', true)
+    return use(await loadState(options.projectDir, options.today ?? localToday()))
+  }
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  return [
+    {
+      name: 'get_remaining',
+      description: '工程ごとの残課題（漏れと人の承認待ち）・遅れた日数・前の完了判定より前に着手しているかを返す。画面の「リリースまでの残課題」と同じ中身。割合や点数は出さない。',
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+      run: async () => withState(({ state }) => text(formatCheck(state))),
+    },
+    {
+      name: 'list_leaks',
+      description: '漏れ（ルールが求めるつながりや列が無い所）の一覧を返す。phase に工程の ID（例：dd）を渡すと、その工程のルールの漏れだけにする。',
+      inputSchema: { type: 'object', properties: { phase: { type: 'string', description: '工程の ID（例：bd・dd・it）。空なら全部' } }, additionalProperties: false },
+      run: async args => withState(({ state }) => {
+        const phase = str(args.phase)
+        const ruleIds = new Set(state.rules.filter(r => !phase || r.phase === phase).map(r => r.id))
+        const leaks = state.leaks.filter(l => !phase || ruleIds.has(l.rule))
+        return text(leaks.length ? leaks.map(l => `- ${l.rule} ${l.message}`).join('\n') : '漏れはありません')
+      }),
+    },
+    {
+      name: 'trace',
+      description: '台帳の 1 行（指摘・試験ケース・設計書の章など）から上流と下流のつながりを辿り、切れている所（✗）を返す。つながりは台帳の ID だけで判定し、推測でつながない。'
+        + '「確かにそこが漏れていた」と認めるのは人なので、結果は人に見せて判断してもらうこと。',
+      inputSchema: { type: 'object', properties: { id: { type: 'string', description: '辿り始めの行の ID（例：F-02）' } }, required: ['id'], additionalProperties: false },
+      run: async args => withState(({ project }) => {
+        const result = trace(project, str(args.id))
+        return result ? text(formatTrace(result)) : text(`${str(args.id)} は台帳にありません。find_items で探してください`, true)
+      }),
+    },
+    {
+      name: 'find_items',
+      description: '台帳の行を ID か名前で探す（空白で区切ると、全部を含むもの）。trace に渡す ID を見つけるのに使う。',
+      inputSchema: { type: 'object', properties: { query: { type: 'string', description: '探す言葉（例：延滞、TC-07）' } }, required: ['query'], additionalProperties: false },
+      run: async args => withState(({ state }) => {
+        const words = str(args.query).trim().toLowerCase().split(/\s+/).filter(Boolean)
+        const found = state.items.filter(i => words.every(w => `${i.id} ${i.title}`.toLowerCase().includes(w)))
+        if (!found.length) return text(`「${str(args.query)}」に合う行がありません`)
+        const lines = found.slice(0, MAX_FOUND).map(i => `- ${i.id}（${state.labels.kinds[i.kind] ?? i.kind}）${i.title}`)
+        if (found.length > MAX_FOUND) lines.push(`ほか ${found.length - MAX_FOUND} 件。言葉を足して絞ってください`)
+        return text(lines.join('\n'))
+      }),
+    },
+  ]
+}
+
 function buildTools(options: McpOptions): Tool[] {
-  return [{
+  return [...buildProjectTools(options), {
     name: 'glossary',
     description: 'tadori の画面と文書で使う言葉（工程・完了判定・残課題・タスク・漏れ・承認待ち・つながりなど）の意味と、画面のどこに出るかを返す。'
       + '人に画面を説明するときは、ここの言葉を使うこと。query を空にすると全部の言葉を返す。',

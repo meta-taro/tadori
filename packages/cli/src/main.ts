@@ -13,13 +13,13 @@ const USAGE = `使い方:
   tadori check [案件のフォルダ] [--log --who 名前 --why 理由] [--today YYYY-MM-DD]
   tadori why <ID> [案件のフォルダ]
   tadori serve [案件のフォルダ] [--port ${DEFAULT_PORT}] [--today YYYY-MM-DD]
-  tadori mcp
+  tadori mcp [案件のフォルダ]
 
   check  工程ごとの漏れと承認待ちを出す。漏れがあれば終了コード 1（CI でも使える）
          --log を付けると、チェックの記録（.tadori/checks.tsv）に 5W1H で足す
   why    1 件から上下に辿り、線が切れている所を出す
   serve  手元（127.0.0.1）で画面を立ち上げる
-  mcp    MCP の口を標準入出力で開く（エージェントから用語などを引く）`
+  mcp    MCP の口を標準入出力で開く（用語・残課題・漏れ・つながり・台帳の行を探す）`
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -102,7 +102,12 @@ async function main(): Promise<void> {
 
   if (command === 'mcp') {
     // 標準出力は MCP の返事だけに使う。案内は出さない
-    serveMcp({ glossaryPath: fileURLToPath(new URL('../../ui/static/glossary.tsv', import.meta.url)), version: '0.0.1' })
+    serveMcp({
+      glossaryPath: fileURLToPath(new URL('../../ui/static/glossary.tsv', import.meta.url)),
+      version: '0.0.1',
+      today,
+      ...(rest[0] ? { projectDir: resolve(rest[0]) } : {}),
+    })
     return
   }
 

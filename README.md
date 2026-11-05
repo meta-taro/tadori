@@ -40,7 +40,7 @@ git config core.hooksPath .githooks
 | `tadori check [案件]` | 工程ごとの漏れと人の承認待ち。漏れがあれば終了コード 1（CI でも使える）。`--log` でチェックの記録に 5W1H で足す |
 | `tadori why <ID> [案件]` | その 1 件から上下に辿った全部と、線が切れている所 |
 | `tadori serve [案件]` | 手元（127.0.0.1）で画面を開く。リリースまでの残課題（タイムライン／カード）・WBS・ルールセット・チェックの記録・つながりを辿る・設定 |
-| `tadori mcp` | MCP の口（標準入出力）。いまの道具は用語の参照（`glossary`）。エージェントが画面を説明するときに、この言葉を使う |
+| `tadori mcp [案件]` | MCP の口（標準入出力）。道具は用語（`glossary`）・残課題（`get_remaining`）・漏れ（`list_leaks`）・つながり（`trace`）・台帳の行を探す（`find_items`）。どれも読むだけ |
 
 ```bash
 node packages/cli/dist/main.js check examples/lend-v12
@@ -56,7 +56,7 @@ node packages/cli/dist/main.js serve examples/lend-v12 --port 4870
 Claude Code なら、ビルドしたあとに次の 1 行でつなげます（パスは手元に合わせてください）。
 
 ```bash
-claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp
+claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp /path/to/案件のフォルダ
 ```
 
 ## 案件のフォルダの置き方
@@ -105,7 +105,7 @@ pnpm verify       # 型の検査とテスト
 
 ## 次の段
 
-- MCP の口を広げる（いまは用語の参照だけ。画面でできることをエージェントからも。人の承認だけは口を作らない）
+- MCP の口を広げる（いまは読む道具だけ。書く道具・画面を動かす道具はこれから。画面でできることをエージェントからも。人の承認だけは口を作らない）
 - 画面の TypeScript 化、資料の版と差分の画面、デスクトップアプリとして包む
 
 ## ライセンス
