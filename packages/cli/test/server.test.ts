@@ -49,6 +49,30 @@ describe('対応済み', () => {
   })
 })
 
+describe('ほかのアプリでの書き換えを知らせる', () => {
+  test('案件の TSV が書き換わったら、/api/events に changed が届く', async () => {
+    const controller = new AbortController()
+    const res = await fetch(`${base}/api/events`, { signal: controller.signal })
+    expect(res.headers.get('content-type')).toContain('text/event-stream')
+    const reader = (res.body as ReadableStream<Uint8Array>).getReader()
+    const decoder = new TextDecoder()
+    // 少し待ってから、ほかのアプリが保存したつもりで書き換える
+    setTimeout(() => { void readFile(join(dir, 'ledger/wbs.tsv'), 'utf8').then(t => writeFile(join(dir, 'ledger/wbs.tsv'), `${t}`, 'utf8')) }, 200)
+    let received = ''
+    const deadline = Date.now() + 3000
+    while (!received.includes('event: changed') && Date.now() < deadline) {
+      const { value, done } = await Promise.race([
+        reader.read(),
+        new Promise<{ value: undefined; done: true }>(r => setTimeout(() => r({ value: undefined, done: true }), deadline - Date.now())),
+      ])
+      if (done) break
+      received += decoder.decode(value)
+    }
+    controller.abort()
+    expect(received).toContain('event: changed')
+  })
+})
+
 describe('md-business で開くリンク', () => {
   test('links.tsv に雛形があれば、漏れに直す行を開く URL を付ける', async () => {
     await writeFile(join(dir, '.tadori/links.tsv'), 'tool\turl\nmd-business\tmd-business://open?path={path}&line={line}\n', 'utf8')

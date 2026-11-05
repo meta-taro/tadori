@@ -1,5 +1,5 @@
 // tadori の画面の入口：/api/state を読み、#名前 で画面を切り替える
-import { api, chip, esc, ICON_INFO, setKindLabels } from './util.js'
+import { api, chip, esc, ICON_INFO, setKindLabels, toast } from './util.js'
 import { renderGates } from './view-gates.js'
 import { renderWbs } from './view-wbs.js'
 import { renderLog, renderTrace } from './view-records.js'
@@ -96,9 +96,11 @@ function navigate(open) {
 /** 案件を読み直す（保存のあと・画面に戻ったとき。git pull した内容もここで反映される） */
 async function reload() {
   try {
+    const scrollY = window.scrollY // 読み直しても、読んでいた位置から動かさない
     state = await api('/api/state')
     setKindLabels(state.labels?.kinds)
     route()
+    window.scrollTo(0, scrollY)
   } catch (error) {
     view.innerHTML = `<h1>案件を読めませんでした</h1><div class="note">${ICON_INFO}<span>${esc(error.message)}${(error.problems ?? []).map(p => `<br>${esc(p)}`).join('')}</span></div>`
   }
@@ -108,4 +110,17 @@ window.addEventListener('hashchange', route)
 // 別のウィンドウや git pull で台帳が変わっても、画面に戻ったら読み直す
 window.addEventListener('focus', reload)
 initSearch({ getState: () => state, navigate })
+
+/**
+ * ほかのアプリ（md-business など）や git pull で TSV が書き換わったら、その場で読み直す。
+ * 画面の欄に打っている途中なら、その欄から離れたときに読み直す（打っている文字を消さないため）。
+ */
+let reloadPending = false
+function reloadFromElsewhere() {
+  const el = document.activeElement
+  if (el && view.contains(el) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) { reloadPending = true; return }
+  reload().then(() => toast('ほかのアプリでの変更を反映しました', 2000))
+}
+view.addEventListener('focusout', () => { if (reloadPending) { reloadPending = false; setTimeout(reloadFromElsewhere, 0) } })
+if ('EventSource' in window) new EventSource('/api/events').addEventListener('changed', reloadFromElsewhere)
 reload()

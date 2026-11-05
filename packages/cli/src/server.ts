@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { ProjectLoadError, saveSettings, saveTaskStatus, trace, validatePhases, validateStatuses, type Phase, type StatusDef } from '@tadori/core'
 import { loadState } from './state.js'
+import { watchProject, type ChangeNotifier } from './watch.js'
 
 export interface ServerOptions {
   readonly dir: string
@@ -141,10 +142,15 @@ function serialized<T>(work: () => Promise<T>): Promise<T> {
   return run
 }
 
-async function route(options: ServerOptions, port: number, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function route(options: ServerOptions, port: number, notifier: ChangeNotifier, req: IncomingMessage, res: ServerResponse): Promise<void> {
   assertLocalHost(req, port)
   const url = new URL(req.url ?? '/', 'http://localhost')
   const { dir, today } = options
+
+  if (req.method === 'GET' && url.pathname === '/api/events') {
+    notifier.attach(res)
+    return
+  }
 
   if (req.method === 'GET' && url.pathname === '/api/state') {
     return sendJson(res, 200, (await loadState(dir, today)).state)
@@ -209,8 +215,10 @@ async function route(options: ServerOptions, port: number, req: IncomingMessage,
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
   // 実際につないだ番号（--port 0 のときは OS が決める）。Host の検査に使う
   let boundPort = options.port
+  // ほかのアプリ（md-business など）や git pull で TSV が書き換わったら、画面へ知らせる
+  const notifier = watchProject(options.dir)
   const server = createServer((req, res) => {
-    route(options, boundPort, req, res).catch((error: unknown) => {
+    route(options, boundPort, notifier, req, res).catch((error: unknown) => {
       if (error instanceof HttpError) return sendJson(res, error.status, { error: error.message, problems: error.problems })
       if (error instanceof ProjectLoadError) return sendJson(res, 422, { error: '案件を読めませんでした', problems: error.problems })
       process.stderr.write(`tadori serve: ${error instanceof Error ? error.stack : String(error)}\n`)
@@ -222,6 +230,9 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   if (address && typeof address === 'object') boundPort = address.port
   return {
     address: server.address(),
-    close: () => new Promise<void>((done, fail) => server.close(err => (err ? fail(err) : done()))),
+    close: () => {
+      notifier.close() // 開いている知らせの接続を先に閉じる（閉じないとサーバーが止まりきらない）
+      return new Promise<void>((done, fail) => server.close(err => (err ? fail(err) : done())))
+    },
   }
 }
