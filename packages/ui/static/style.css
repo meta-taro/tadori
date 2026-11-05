@@ -476,3 +476,10 @@
   .fix-label { display:inline-block; font-size:10.5px; font-weight:700; color:var(--accent-hover); border:1px solid rgba(130,143,255,.4); border-radius:4px; padding:0 5px; margin-right:6px; }
   .gate-filters { display:inline-flex; gap:14px; align-items:center; flex-wrap:wrap; }
   .copy-place { margin-left:8px; padding:0 8px; font-size:11px; }
+  /* ほかの道具のアイコン：md＝md-business で原本を開く、qa＝git-qa でその場で実施する */
+  .tool-icons { display:inline-flex; gap:6px; margin-left:10px; vertical-align:middle; }
+  .tool-icon { display:inline-grid; place-items:center; width:26px; height:20px; border-radius:5px; font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.3px; text-decoration:none; color:#fff; }
+  .tool-icon.tool-md { background:#2f6f5e; }
+  .tool-icon.tool-qa { background:#6a4fb3; }
+  a.tool-icon:hover { filter:brightness(1.2); }
+  .tool-icon.off { opacity:.35; cursor:not-allowed; }

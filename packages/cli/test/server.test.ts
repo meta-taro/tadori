@@ -81,6 +81,23 @@ describe('md-business で開くリンク', () => {
     expect(leak.openUrl).toBe('md-business://open?path=ledger%2Fitems.tsv&line=6')
     await rm(join(dir, '.tadori/links.tsv'))
   })
+
+  test('試験ケースの漏れには git-qa で実施する URL を付け、ほかの漏れには付けない', async () => {
+    await writeFile(join(dir, '.tadori/links.tsv'), 'tool\turl\ngit-qa\tgit-qa://run?sheet={path}&case={id}\n', 'utf8')
+    const state = await (await fetch(`${base}/api/state`)).json()
+    const find = (rule: string, id: string) => state.leaks.find((l: { rule: string; itemId: string }) => l.rule === rule && l.itemId === id)
+    expect(find('R9', 'TC-07')).toMatchObject({ runnable: true, runUrl: 'git-qa://run?sheet=qa%2Ftest-spec.tsv&case=TC-07' })
+    expect(find('R4', 'DD-2.3')).toMatchObject({ runnable: false })
+    expect(find('R4', 'DD-2.3').runUrl).toBeUndefined()
+    await rm(join(dir, '.tadori/links.tsv'))
+  })
+
+  test('雛形が無くても、試験ケースの漏れには git-qa で実施できる印（runnable）が付く', async () => {
+    const state = await (await fetch(`${base}/api/state`)).json()
+    const tc07 = state.leaks.find((l: { rule: string; itemId: string }) => l.rule === 'R9' && l.itemId === 'TC-07')
+    expect(tc07).toMatchObject({ runnable: true })
+    expect(tc07.runUrl).toBeUndefined()
+  })
 })
 
 describe('GET /api/trace/:id', () => {

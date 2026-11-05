@@ -2,7 +2,14 @@ import { join } from 'node:path'
 import { buildGates, buildLink, loadProject, readChecks, resolvedItems, runChecks, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 漏れに「md-business で開く」の URL を付けたもの（雛形が .tadori/links.tsv にあるとき） */
-export type LeakWithLink = Leak & { readonly openUrl?: string }
+export type LeakWithLink = Leak & {
+  /** 直す行を md-business で開く URL（雛形があるとき） */
+  readonly openUrl?: string
+  /** 試験ケースの漏れか（git-qa で実施できる） */
+  readonly runnable: boolean
+  /** そのケースを git-qa で実施する URL（雛形があるとき） */
+  readonly runUrl?: string
+}
 
 /** 画面と MCP に渡す、案件のいまの姿（読むたびに TSV から組み立てる。tadori は控えを持たない） */
 export interface ProjectState {
@@ -55,9 +62,20 @@ export function localToday(now: Date = new Date()): string {
  * 雛形が無ければ何も付けない（画面には「場所をコピー」だけが出る）。
  */
 function withOpenLinks(project: Project, dir: string, leaks: readonly Leak[]): LeakWithLink[] {
-  const template = project.links?.find(l => l.tool === 'md-business')
-  if (!template) return [...leaks]
-  return leaks.map(l => (l.file
-    ? { ...l, openUrl: buildLink(template.url, { path: l.file, abspath: join(dir, l.file), id: l.itemId, ...(l.line ? { line: l.line } : {}) }) }
-    : l))
+  const mdBusiness = project.links?.find(l => l.tool === 'md-business')
+  const gitQa = project.links?.find(l => l.tool === 'git-qa')
+  const byId = new Map(project.items.map(i => [i.id, i]))
+  return leaks.map(l => {
+    const item = byId.get(l.itemId)
+    // 試験ケースの漏れは git-qa で実施できる。シートの場所は台帳の source 列（例：qa/test-spec.tsv）
+    const runnable = item?.kind === 'TC'
+    const openUrl = mdBusiness && l.file
+      ? buildLink(mdBusiness.url, { path: l.file, abspath: join(dir, l.file), id: l.itemId, ...(l.line ? { line: l.line } : {}) })
+      : undefined
+    const sheet = item?.source.split(/\s/)[0] ?? ''
+    const runUrl = gitQa && runnable
+      ? buildLink(gitQa.url, { path: sheet, abspath: join(dir, sheet), id: l.itemId })
+      : undefined
+    return { ...l, runnable, ...(openUrl ? { openUrl } : {}), ...(runUrl ? { runUrl } : {}) }
+  })
 }
