@@ -24,6 +24,9 @@ export interface Item {
   readonly refs: readonly string[]
   /** 列名 → 値。kind ごとに使う列が違う（例：詳細設計の節の「改修後の対応」） */
   readonly fields: Readonly<Record<string, string>>
+  /** この行が書かれている TSV と、その何行目か（md-business でその行を開くため） */
+  readonly file?: string
+  readonly line?: number
 }
 
 /** WBS のタスク。期間は入っていないこともある */
@@ -34,6 +37,8 @@ export interface Task {
   readonly start?: string
   readonly end?: string
   readonly status: string
+  /** wbs.tsv の何行目か */
+  readonly line?: number
 }
 
 /**
@@ -91,6 +96,9 @@ export interface Leak {
   readonly fix?: string
   /** 直す担当（ルールの owner） */
   readonly owner?: string
+  /** 直す行が書かれている TSV と行番号（分かるとき） */
+  readonly file?: string
+  readonly line?: number
 }
 
 /** 存在しない ID を指している、を表すルール ID（どのルールセットにも属さない） */

@@ -1,5 +1,5 @@
 // リリースまでの残課題：タイムラインとカードの切り替え。割合や点数は出さない
-import { chip, day, esc, fullDate, kindLabel, lateColor, shortDate, isDoneStatus } from './util.js'
+import { chip, day, esc, fullDate, kindLabel, lateColor, shortDate, isDoneStatus, toast } from './util.js'
 
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 let gateView = 'timeline'
@@ -83,7 +83,13 @@ function cardsHtml(state) {
 }
 
 /** どこをどう直せば消えるか（漏れ・承認待ちの下に出す） */
-const fixHtml = fix => (fix ? `<div class="fix-line"><span class="fix-label">直し方</span>${esc(fix)}</div>` : '')
+const fixHtml = (fix, file, line) => {
+  if (!fix) return ''
+  // md-business でその行を開く入口ができるまでは、場所（ファイル:行）をコピーして渡す
+  const place = file ? `${file}${line ? `:${line}` : ''}` : ''
+  const copy = place ? `<button type="button" class="btn-ghost copy-place" data-copy="${esc(place)}" title="${esc(place)} をコピー">場所をコピー</button>` : ''
+  return `<div class="fix-line"><span class="fix-label">直し方</span>${esc(fix)}${copy}</div>`
+}
 
 function ruleStatus(state, rule) {
   if (rule.kind === 'approval') {
@@ -96,7 +102,7 @@ function ruleStatus(state, rule) {
   if (!leaks.length) return chip('ok', '漏れなし')
   // 1 つのルールに漏れが数百あっても読めるよう、最初は 3 件だけ。残りはその場で開く
   const limit = expandedRules.has(rule.id) ? leaks.length : LEAKS_PER_RULE
-  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}${fixHtml(l.fix)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
+  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}${fixHtml(l.fix, l.file, l.line)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
   const more = leaks.length > limit ? `<button type="button" class="btn-ghost leaks-more" data-expand="${esc(rule.id)}">ほか ${leaks.length - limit} 件を出す</button>` : ''
   return rows + more
 }
@@ -170,5 +176,13 @@ export function renderGates(view, state, onTrace, phaseId) {
   view.querySelectorAll('.tl-row, .stage').forEach(b => b.addEventListener('click', () => { selectedPhase = b.dataset.phase; rulesShown = RULES_PAGE; renderGates(view, state, onTrace) }))
   view.querySelectorAll('[data-gate-view]').forEach(b => b.addEventListener('click', () => { gateView = b.dataset.gateView; renderGates(view, state, onTrace) }))
   view.querySelectorAll('[data-trace]').forEach(a => a.addEventListener('click', () => onTrace(a.dataset.trace)))
+  view.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(b.dataset.copy)
+      toast(`${b.dataset.copy} をコピーしました`)
+    } catch {
+      toast(`コピーできませんでした：${b.dataset.copy}`)
+    }
+  }))
 }
 

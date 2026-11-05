@@ -43,6 +43,14 @@ describe('loadProject', () => {
     expect(project.items.find(i => i.id === 'W-1')).toMatchObject({ kind: 'W', title: '作成', refs: [] })
   })
 
+  test('台帳と WBS の行は、どのファイルの何行目かを覚える（# の行も数える）', async () => {
+    await writeMinimalProject()
+    await put('ledger/items.tsv', '# 説明\nid\tkind\ttitle\tsource\trefs\tchange\nBD-1\tBD\t章\ta.md\t\t\nDD-1\tDD\t節\tb.md\tBD-1\t変わる\n')
+    const project = await loadProject(dir)
+    expect(project.items.find(i => i.id === 'DD-1')).toMatchObject({ file: 'ledger/items.tsv', line: 4 })
+    expect(project.items.find(i => i.id === 'W-1')).toMatchObject({ file: 'ledger/wbs.tsv', line: 2 })
+  })
+
   test('refs は 、 か , で区切って複数書ける', async () => {
     await writeMinimalProject()
     await put('ledger/items.tsv', 'id\tkind\ttitle\tsource\trefs\nA\tBD\t章\ta.md\t\nB\tBD\t章\tb.md\t\nC\tDD\t節\tc.md\tA、B\nD\tDD\t節\td.md\tA, B\n')

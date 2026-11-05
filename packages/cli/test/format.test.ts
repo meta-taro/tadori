@@ -22,7 +22,7 @@ describe('formatCheck の直し方', () => {
   test('漏れと承認待ちに、担当と直し方を出す', async () => {
     const { state } = await loadState(EXAMPLE, '2026-11-05')
     const text = formatCheck(state)
-    expect(text).toContain('担当：設計担当　直し方：ledger/items.tsv の DD-2.3 の行の「改修後の対応」列に書く')
+    expect(text).toContain('担当：設計担当　直し方：ledger/items.tsv の DD-2.3 の行（6 行目）の「改修後の対応」列に書く')
     expect(text).toContain('R2 承認待ち（差し戻し）　直し方：レビュー担当が ledger/approvals.tsv の R2 の行の状態を「承認」にする')
   })
 })

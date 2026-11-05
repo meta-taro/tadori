@@ -5,6 +5,8 @@
 export interface Tsv {
   readonly header: readonly string[]
   readonly rows: readonly Record<string, string>[]
+  /** rows と同じ並びで、その行がファイルの何行目か（1 から。# の行や空行も数える。md-business でその行を開くため） */
+  readonly lineNumbers: readonly number[]
 }
 
 /** 表計算やメモ帳が先頭に付ける BOM。読むときは外し、書き戻すときは元のまま残す */
@@ -14,16 +16,18 @@ const stripBom = (text: string): string => (text.startsWith(BOM) ? text.slice(1)
 const isSkipped = (line: string): boolean => line.trim() === '' || line.startsWith('#')
 
 export function parseTsv(text: string): Tsv {
-  const lines = stripBom(text).split(/\r?\n/).filter(line => !isSkipped(line))
+  const lines = stripBom(text).split(/\r?\n/)
+    .map((line, index) => ({ line, number: index + 1 }))
+    .filter(({ line }) => !isSkipped(line))
   const [headerLine, ...bodyLines] = lines
-  if (headerLine === undefined) return { header: [], rows: [] }
+  if (headerLine === undefined) return { header: [], rows: [], lineNumbers: [] }
 
-  const header = headerLine.split('\t')
-  const rows = bodyLines.map(line => {
+  const header = headerLine.line.split('\t')
+  const rows = bodyLines.map(({ line }) => {
     const cells = line.split('\t')
     return Object.fromEntries(header.map((name, i) => [name, cells[i] ?? '']))
   })
-  return { header, rows }
+  return { header, rows, lineNumbers: bodyLines.map(b => b.number) }
 }
 
 /**

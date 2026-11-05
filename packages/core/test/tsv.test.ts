@@ -41,6 +41,6 @@ describe('parseTsv', () => {
   })
 
   test('見出しが無ければ、空の結果を返す', () => {
-    expect(parseTsv('# だけ\n\n')).toEqual({ header: [], rows: [] })
+    expect(parseTsv('# だけ\n\n')).toEqual({ header: [], rows: [], lineNumbers: [] })
   })
 })

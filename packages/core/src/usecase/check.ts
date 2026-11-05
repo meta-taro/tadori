@@ -7,7 +7,13 @@ const kindPhrase = (labels: Labels | undefined, code: string): string => {
 }
 
 /** その行が書かれているファイル（WBS のタスクは wbs.tsv、ほかは台帳） */
-const fileOf = (item: Item): string => (item.source === LEDGER_FILES.wbs ? LEDGER_FILES.wbs : LEDGER_FILES.items)
+const fileOf = (item: Item): string => item.file ?? (item.source === LEDGER_FILES.wbs ? LEDGER_FILES.wbs : LEDGER_FILES.items)
+
+/** 直し方の文で行を指す：「ledger/items.tsv の DD-2.3 の行（12 行目）」 */
+const rowOf = (item: Item): string => `${fileOf(item)} の ${item.id} の行${item.line ? `（${item.line} 行目）` : ''}`
+
+/** 漏れに、直す行のファイルと行番号を付ける（分かるとき） */
+const at = (item: Item): Pick<Leak, 'file' | 'line'> => ({ file: fileOf(item), ...(item.line ? { line: item.line } : {}) })
 
 /** 漏れに、担当（ルールの owner）を付ける */
 const withOwner = (rule: Rule, leak: Leak): Leak => (rule.owner ? { ...leak, owner: rule.owner } : leak)
@@ -22,6 +28,7 @@ function checkCovered(rule: Rule, items: readonly Item[], labels?: Labels): Leak
       itemId: i.id,
       message: `${i.id}「${i.title}」に${labelOf(labels?.kinds, rule.to)}が紐づいていない（${rule.label}）`,
       fix: `${LEDGER_FILES.items} に${kindPhrase(labels, rule.to)}の行を足し、その refs に ${i.id} を書く`,
+      ...at(i),
     }))
 }
 
@@ -34,7 +41,8 @@ function checkRefers(rule: Rule, items: readonly Item[], labels?: Labels): Leak[
       rule: rule.id,
       itemId: i.id,
       message: `${i.id}「${i.title}」が元にしている${labelOf(labels?.kinds, rule.to)}が書かれていない（${rule.label}）`,
-      fix: `${fileOf(i)} の ${i.id} の行の refs に、元にした${kindPhrase(labels, rule.to)}の ID を書く`,
+      fix: `${rowOf(i)}の refs に、元にした${kindPhrase(labels, rule.to)}の ID を書く`,
+      ...at(i),
     }))
 }
 
@@ -47,7 +55,8 @@ function checkFilled(rule: Rule, items: readonly Item[], labels?: Labels): Leak[
       rule: rule.id,
       itemId: i.id,
       message: `${i.id}「${i.title}」の${labelOf(labels?.columns, rule.field)}が空（${rule.label}）`,
-      fix: `${fileOf(i)} の ${i.id} の行の「${column}」列に書く`,
+      fix: `${rowOf(i)}の「${column}」列に書く`,
+      ...at(i),
     }))
 }
 
@@ -62,7 +71,8 @@ function checkDangling(items: readonly Item[]): Leak[] {
       rule: DANGLING_RULE_ID,
       itemId: i.id,
       message: `${i.id} が存在しない ID を指している：${list}`,
-      fix: `${fileOf(i)} の ${i.id} の行の refs から ${list} を消すか、${list} の行を台帳に足す`,
+      fix: `${rowOf(i)}の refs から ${list} を消すか、${list} の行を台帳に足す`,
+      ...at(i),
     }]
   })
 }

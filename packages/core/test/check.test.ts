@@ -84,6 +84,16 @@ describe('runChecks', () => {
     expect(dangling?.fix).toContain('TC-2 の行の refs')
   })
 
+  test('行番号が分かる行の漏れには、ファイルと行番号を付け、直し方にも行番号を書く', () => {
+    const project = {
+      ...sampleProject,
+      items: sampleProject.items.map(i => (i.id === 'DD-2' ? { ...i, file: 'ledger/items.tsv', line: 12 } : i)),
+    }
+    const r4 = runChecks(project).find(l => l.rule === 'R4')
+    expect(r4).toMatchObject({ file: 'ledger/items.tsv', line: 12 })
+    expect(r4?.fix).toBe('ledger/items.tsv の DD-2 の行（12 行目）の「change」列に書く')
+  })
+
   test('漏れの文には、どの行がどのルールを満たしていないかが入る', () => {
     const leak = leaks.find(l => l.rule === 'R3')
     expect(leak?.message).toContain('BD-2')

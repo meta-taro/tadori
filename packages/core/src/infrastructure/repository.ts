@@ -56,23 +56,39 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-/** 無くてもよいファイル（承認の記録など）を読む。無ければ空 */
-async function readRows(dir: string, path: string): Promise<readonly Record<string, string>[]> {
+/** 行と、その行がファイルの何行目か */
+interface NumberedRow {
+  readonly row: Record<string, string>
+  readonly line: number
+}
+
+/** 無くてもよいファイルを、行番号つきで読む。無ければ空 */
+async function readNumberedRows(dir: string, path: string): Promise<readonly NumberedRow[]> {
   const full = join(dir, path)
   if (!(await exists(full))) return []
-  return parseTsv(await readFile(full, 'utf8')).rows
+  const tsv = parseTsv(await readFile(full, 'utf8'))
+  return tsv.rows.map((row, i) => ({ row, line: tsv.lineNumbers[i] ?? 0 }))
+}
+
+/** 無くてもよいファイル（承認の記録など）を読む。無ければ空 */
+async function readRows(dir: string, path: string): Promise<readonly Record<string, string>[]> {
+  return (await readNumberedRows(dir, path)).map(r => r.row)
 }
 
 /**
- * 無いと困るファイルを読む。無ければ問題として記録する
+ * 無いと困るファイルを、行番号つきで読む。無ければ問題として記録する
  * （無いまま空として扱うと、漏れが 0 件に見えて「通過」と出てしまうため）
  */
-async function readRequiredRows(dir: string, path: string, problems: string[]): Promise<readonly Record<string, string>[]> {
+async function readRequiredNumberedRows(dir: string, path: string, problems: string[]): Promise<readonly NumberedRow[]> {
   if (!(await exists(join(dir, path)))) {
     problems.push(`${path} がありません`)
     return []
   }
-  return readRows(dir, path)
+  return readNumberedRows(dir, path)
+}
+
+async function readRequiredRows(dir: string, path: string, problems: string[]): Promise<readonly Record<string, string>[]> {
+  return (await readRequiredNumberedRows(dir, path, problems)).map(r => r.row)
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
@@ -81,7 +97,7 @@ const isValidDate = (value: string): boolean => DATE_PATTERN.test(value) && !Num
 const splitRefs = (value: string): string[] =>
   value.split(/[、,]/).map(s => s.trim()).filter(Boolean)
 
-function toItem(row: Record<string, string>): Item {
+function toItem({ row, line }: NumberedRow): Item {
   const fields = Object.fromEntries(Object.entries(row).filter(([k]) => !ITEM_BASE_COLUMNS.has(k)))
   return {
     id: row.id ?? '',
@@ -90,10 +106,12 @@ function toItem(row: Record<string, string>): Item {
     source: row.source ?? '',
     refs: splitRefs(row.refs ?? ''),
     fields,
+    file: PATHS.items,
+    line,
   }
 }
 
-function toTask(row: Record<string, string>, problems: string[]): Task {
+function toTask({ row, line }: NumberedRow, problems: string[]): Task {
   const start = row.start ?? ''
   const end = row.end ?? ''
   // 日付は画面に埋め込まれ、遅れの計算にも使うので形を確かめる
@@ -106,6 +124,7 @@ function toTask(row: Record<string, string>, problems: string[]): Task {
     name: row.name ?? '',
     status: row.status ?? '',
     ...(start && end ? { start, end } : {}),
+    line,
   }
 }
 
@@ -191,8 +210,8 @@ export async function loadProject(dir: string): Promise<Project> {
     readRequiredRows(dir, PATHS.phases, problems),
     readRequiredRows(dir, PATHS.statuses, problems),
     loadRules(dir, problems),
-    readRequiredRows(dir, PATHS.items, problems),
-    readRows(dir, PATHS.wbs),
+    readRequiredNumberedRows(dir, PATHS.items, problems),
+    readNumberedRows(dir, PATHS.wbs),
     readRows(dir, PATHS.approvals),
     readRows(dir, PATHS.kinds),
     readRows(dir, PATHS.columns),
@@ -204,7 +223,7 @@ export async function loadProject(dir: string): Promise<Project> {
   })
   const tasks = wbsRows.map(row => toTask(row, problems))
   // WBS のタスクは台帳の行（種類 W）としても辿れるようにする。台帳へ書き写すと正本が 2 つになるため
-  const taskItems: Item[] = tasks.map(t => ({ id: t.id, kind: 'W', title: t.name, source: PATHS.wbs, refs: [], fields: {} }))
+  const taskItems: Item[] = tasks.map(t => ({ id: t.id, kind: 'W', title: t.name, source: PATHS.wbs, refs: [], fields: {}, file: PATHS.wbs, ...(t.line ? { line: t.line } : {}) }))
   const items = [...taskItems, ...itemRows.map(toItem)]
   problems.push(...duplicateIdProblems(items))
   const project: Project = {
