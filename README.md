@@ -51,6 +51,14 @@ node packages/cli/dist/main.js serve examples/lend-v12 --port 4870
 画面で設定や WBS のステータスを変えると、TSV に書き戻します。案件のフォルダがそれ自身の git リポジトリなら commit します。
 **push はしません。**各担当が自分のクローンで中身を確かめてから push してください。
 
+### エージェントから使う（MCP）
+
+Claude Code なら、ビルドしたあとに次の 1 行でつなげます（パスは手元に合わせてください）。
+
+```bash
+claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp
+```
+
 ## 案件のフォルダの置き方
 
 台帳はすべて git 上の TSV です。tadori が無くても人が読めます。
@@ -95,7 +103,7 @@ pnpm verify       # 型の検査とテスト
 
 ## 次の段
 
-- MCP の口（画面でできることをエージェントからも。人の承認だけは口を作らない）
+- MCP の口を広げる（いまは用語の参照だけ。画面でできることをエージェントからも。人の承認だけは口を作らない）
 - 画面の TypeScript 化、資料の版と差分の画面、デスクトップアプリとして包む
 
 ## ライセンス
