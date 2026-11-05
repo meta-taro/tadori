@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { cp, mkdtemp, readFile, rm } from 'node:fs/promises'
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { AddressInfo } from 'node:net'
@@ -46,6 +46,16 @@ describe('対応済み', () => {
     const ids = state.resolved.map((r: { itemId: string }) => r.itemId)
     expect(ids).toEqual(expect.arrayContaining(['DD-3.2', 'TC-04']))
     expect(ids).not.toContain('DD-2.3') // いまも漏れ
+  })
+})
+
+describe('md-business で開くリンク', () => {
+  test('links.tsv に雛形があれば、漏れに直す行を開く URL を付ける', async () => {
+    await writeFile(join(dir, '.tadori/links.tsv'), 'tool\turl\nmd-business\tmd-business://open?path={path}&line={line}\n', 'utf8')
+    const state = await (await fetch(`${base}/api/state`)).json()
+    const leak = state.leaks.find((l: { rule: string; itemId: string }) => l.rule === 'R4' && l.itemId === 'DD-2.3')
+    expect(leak.openUrl).toBe('md-business://open?path=ledger%2Fitems.tsv&line=6')
+    await rm(join(dir, '.tadori/links.tsv'))
   })
 })
 

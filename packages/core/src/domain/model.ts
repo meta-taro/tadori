@@ -127,6 +127,8 @@ export function labelOf(names: Readonly<Record<string, string>> | undefined, cod
 export interface Project {
   /** 種類と列の読み方。無ければ記号のまま出す */
   readonly labels?: Labels
+  /** ほかの道具を開くリンクの雛形（.tadori/links.tsv） */
+  readonly links?: readonly import('./links.js').LinkTemplate[]
   readonly name: string
   readonly phases: readonly Phase[]
   readonly rules: readonly Rule[]

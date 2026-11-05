@@ -1,0 +1,32 @@
+import { describe, expect, test } from 'vitest'
+import { buildLink, validateLinkTemplate } from '../src/domain/links.js'
+
+describe('buildLink', () => {
+  test('雛形の {path} {line} {id} {abspath} に、URL で崩れない形にして差し込む', () => {
+    const url = buildLink('md-business://open?path={path}&line={line}&id={id}&abs={abspath}', {
+      path: 'ledger/items.tsv', line: 6, id: 'DD-2.3', abspath: 'C:/work/案件 A/ledger/items.tsv',
+    })
+    expect(url).toBe('md-business://open?path=ledger%2Fitems.tsv&line=6&id=DD-2.3&abs=C%3A%2Fwork%2F%E6%A1%88%E4%BB%B6%20A%2Fledger%2Fitems.tsv')
+  })
+
+  test('値の無い差し込みは空にする', () => {
+    expect(buildLink('x://open?path={path}&line={line}', { path: 'a.tsv' })).toBe('x://open?path=a.tsv&line=')
+  })
+})
+
+describe('validateLinkTemplate', () => {
+  test('独自の URL スキームと http(s) は通す', () => {
+    expect(validateLinkTemplate('md-business://open?path={path}')).toBeNull()
+    expect(validateLinkTemplate('https://example.invalid/open?path={path}')).toBeNull()
+  })
+
+  test('押すと画面の中で命令が動く形（javascript: など）は断る', () => {
+    for (const bad of ['javascript:alert(1)', 'JavaScript:alert(1)', ' data:text/html,x', 'vbscript:x', 'file:///etc/passwd']) {
+      expect(validateLinkTemplate(bad)).toMatch(/使えません/)
+    }
+  })
+
+  test('スキームの無いものは断る', () => {
+    expect(validateLinkTemplate('open?path={path}')).toMatch(/スキーム/)
+  })
+})

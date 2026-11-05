@@ -83,12 +83,14 @@ function cardsHtml(state) {
 }
 
 /** どこをどう直せば消えるか（漏れ・承認待ちの下に出す） */
-const fixHtml = (fix, file, line) => {
+const fixHtml = (fix, file, line, openUrl) => {
   if (!fix) return ''
   // md-business でその行を開く入口ができるまでは、場所（ファイル:行）をコピーして渡す
   const place = file ? `${file}${line ? `:${line}` : ''}` : ''
   const copy = place ? `<button type="button" class="btn-ghost copy-place" data-copy="${esc(place)}" title="${esc(place)} をコピー">場所をコピー</button>` : ''
-  return `<div class="fix-line"><span class="fix-label">直し方</span>${esc(fix)}${copy}</div>`
+  // 雛形（.tadori/links.tsv）があれば md-business で開く。開いたあとの動きは md-business に任せる
+  const open = openUrl ? `<a class="btn-ghost copy-place" href="${esc(openUrl)}">md-business で開く ↗</a>` : ''
+  return `<div class="fix-line"><span class="fix-label">直し方</span>${esc(fix)}${open}${copy}</div>`
 }
 
 function ruleStatus(state, rule) {
@@ -102,7 +104,7 @@ function ruleStatus(state, rule) {
   if (!leaks.length) return chip('ok', '漏れなし')
   // 1 つのルールに漏れが数百あっても読めるよう、最初は 3 件だけ。残りはその場で開く
   const limit = expandedRules.has(rule.id) ? leaks.length : LEAKS_PER_RULE
-  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}${fixHtml(l.fix, l.file, l.line)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
+  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}${fixHtml(l.fix, l.file, l.line, l.openUrl)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
   const more = leaks.length > limit ? `<button type="button" class="btn-ghost leaks-more" data-expand="${esc(rule.id)}">ほか ${leaks.length - limit} 件を出す</button>` : ''
   return rows + more
 }

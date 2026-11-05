@@ -1,5 +1,6 @@
 export * from './domain/model.js'
 export { lateDays, toDay } from './domain/schedule.js'
+export { buildLink, validateLinkTemplate, type LinkTemplate, type LinkValues } from './domain/links.js'
 export { runChecks } from './usecase/check.js'
 export { buildGates, type Gate, type GateState, type PendingApproval } from './usecase/gates.js'
 export { trace, type TraceResult, type TraceStep } from './usecase/trace.js'

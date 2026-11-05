@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Approval, ApprovalStatus, Item, Phase, Project, Rule, RuleKind, StatusDef, Task } from '../domain/model.js'
+import { validateLinkTemplate, type LinkTemplate } from '../domain/links.js'
 import { parseTsv } from './tsv.js'
 
 /**
@@ -27,6 +28,7 @@ export const PATHS = {
   wbs: 'ledger/wbs.tsv',
   approvals: 'ledger/approvals.tsv',
   kinds: '.tadori/kinds.tsv',
+  links: '.tadori/links.tsv',
   columns: '.tadori/columns.tsv',
 } as const
 
@@ -184,6 +186,18 @@ function toStatuses(rows: readonly Record<string, string>[], problems: string[])
   })
 }
 
+/** ほかの道具を開くリンクの雛形を読む。使えない形（javascript: など）は問題として止める */
+function toLinks(rows: readonly Record<string, string>[], problems: string[]): LinkTemplate[] {
+  return rows.flatMap(row => {
+    const tool = (row.tool ?? '').trim()
+    const url = (row.url ?? '').trim()
+    if (!tool || !url) return []
+    const problem = validateLinkTemplate(url)
+    if (problem) { problems.push(`${PATHS.links} の ${tool}：${problem}`); return [] }
+    return [{ tool, url }]
+  })
+}
+
 /** id と name の 2 列から、読み方の表を作る */
 const toNameMap = (rows: readonly Record<string, string>[]): Record<string, string> =>
   Object.fromEntries(rows.filter(r => r.id && r.name).map(r => [r.id as string, r.name as string]))
@@ -205,7 +219,7 @@ export async function loadProject(dir: string): Promise<Project> {
     throw new ProjectLoadError([`${dir} に .tadori フォルダがありません。tadori の案件のフォルダを指定してください`])
   }
   const problems: string[] = []
-  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows] = await Promise.all([
+  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows] = await Promise.all([
     readRows(dir, PATHS.project),
     readRequiredRows(dir, PATHS.phases, problems),
     readRequiredRows(dir, PATHS.statuses, problems),
@@ -215,6 +229,7 @@ export async function loadProject(dir: string): Promise<Project> {
     readRows(dir, PATHS.approvals),
     readRows(dir, PATHS.kinds),
     readRows(dir, PATHS.columns),
+    readRows(dir, PATHS.links),
   ])
   const phases: Phase[] = phaseRows.map(row => {
     const order = Number(row.order)
@@ -235,6 +250,7 @@ export async function loadProject(dir: string): Promise<Project> {
     approvals: toApprovals(approvalRows, problems),
     statuses: toStatuses(statusRows, problems),
     labels: { kinds: toNameMap(kindRows), columns: toNameMap(columnRows) },
+    links: toLinks(linkRows, problems),
   }
   if (problems.length) throw new ProjectLoadError(problems)
   return project

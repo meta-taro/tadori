@@ -113,6 +113,14 @@ describe('loadProject', () => {
     expect((await loadProject(dir)).labels).toEqual({ kinds: { DD: '詳細設計の節' }, columns: { change: '改修後の対応' } })
   })
 
+  test('リンクの雛形（links.tsv）を読む。javascript: などは止める', async () => {
+    await writeMinimalProject()
+    await put('.tadori/links.tsv', 'tool\turl\nmd-business\tmd-business://open?path={path}&line={line}\n')
+    expect((await loadProject(dir)).links).toEqual([{ tool: 'md-business', url: 'md-business://open?path={path}&line={line}' }])
+    await put('.tadori/links.tsv', 'tool\turl\nmd-business\tjavascript:alert(1)\n')
+    await expect(loadProject(dir)).rejects.toThrow(/links\.tsv.*md-business.*使えません/)
+  })
+
   test('案件のフォルダでなければ（.tadori が無ければ）分かる言葉で止める', async () => {
     await expect(loadProject(dir)).rejects.toThrow(/\.tadori/)
   })
