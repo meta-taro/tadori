@@ -1,5 +1,5 @@
 // tadori の画面の入口：/api/state を読み、#名前 で画面を切り替える
-import { api, chip, esc, ICON_INFO } from './util.js'
+import { api, chip, esc, ICON_INFO, setKindLabels } from './util.js'
 import { renderGates } from './view-gates.js'
 import { renderWbs } from './view-wbs.js'
 import { renderLog, renderRules, renderTrace } from './view-records.js'
@@ -53,6 +53,7 @@ function route() {
 async function reload() {
   try {
     state = await api('/api/state')
+    setKindLabels(state.labels?.kinds)
     route()
   } catch (error) {
     view.innerHTML = `<h1>案件を読めませんでした</h1><div class="note">${ICON_INFO}<span>${esc(error.message)}${(error.problems ?? []).map(p => `<br>${esc(p)}`).join('')}</span></div>`

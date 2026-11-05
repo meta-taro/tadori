@@ -97,6 +97,14 @@ describe('loadProject', () => {
     await expect(loadProject(dir)).rejects.toThrow(/bd.*order/)
   })
 
+  test('種類と列の読み方（kinds.tsv・columns.tsv）を読む。無くてもよい', async () => {
+    await writeMinimalProject()
+    expect((await loadProject(dir)).labels).toEqual({ kinds: {}, columns: {} })
+    await put('.tadori/kinds.tsv', 'id\tname\nDD\t詳細設計の節\n')
+    await put('.tadori/columns.tsv', 'id\tname\nchange\t改修後の対応\n')
+    expect((await loadProject(dir)).labels).toEqual({ kinds: { DD: '詳細設計の節' }, columns: { change: '改修後の対応' } })
+  })
+
   test('案件のフォルダでなければ（.tadori が無ければ）分かる言葉で止める', async () => {
     await expect(loadProject(dir)).rejects.toThrow(/\.tadori/)
   })

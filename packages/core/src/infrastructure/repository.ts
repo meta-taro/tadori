@@ -14,6 +14,8 @@ import { parseTsv } from './tsv.js'
  *   ledger/items.tsv             台帳（設計書の章・節、commit、観点、試験ケース、試験の記録、指摘…）
  *   ledger/wbs.tsv               WBS のタスク
  *   ledger/approvals.tsv         人の承認の記録（人が書く）
+ *   .tadori/kinds.tsv            種類の読み方（無くてもよい）
+ *   .tadori/columns.tsv          列の読み方（無くてもよい）
  */
 export const PATHS = {
   project: '.tadori/project.tsv',
@@ -24,6 +26,8 @@ export const PATHS = {
   items: 'ledger/items.tsv',
   wbs: 'ledger/wbs.tsv',
   approvals: 'ledger/approvals.tsv',
+  kinds: '.tadori/kinds.tsv',
+  columns: '.tadori/columns.tsv',
 } as const
 
 /** 読み込みで見つかった問題をまとめて返す（1 つずつ直させない） */
@@ -159,6 +163,10 @@ function toStatuses(rows: readonly Record<string, string>[], problems: string[])
   })
 }
 
+/** id と name の 2 列から、読み方の表を作る */
+const toNameMap = (rows: readonly Record<string, string>[]): Record<string, string> =>
+  Object.fromEntries(rows.filter(r => r.id && r.name).map(r => [r.id as string, r.name as string]))
+
 /** 同じ ID の行が 2 つあると、辿るときにどちらか一方が黙って消えるので止める */
 function duplicateIdProblems(items: readonly Item[]): string[] {
   const seen = new Set<string>()
@@ -176,7 +184,7 @@ export async function loadProject(dir: string): Promise<Project> {
     throw new ProjectLoadError([`${dir} に .tadori フォルダがありません。tadori の案件のフォルダを指定してください`])
   }
   const problems: string[] = []
-  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows] = await Promise.all([
+  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows] = await Promise.all([
     readRows(dir, PATHS.project),
     readRequiredRows(dir, PATHS.phases, problems),
     readRequiredRows(dir, PATHS.statuses, problems),
@@ -184,6 +192,8 @@ export async function loadProject(dir: string): Promise<Project> {
     readRequiredRows(dir, PATHS.items, problems),
     readRows(dir, PATHS.wbs),
     readRows(dir, PATHS.approvals),
+    readRows(dir, PATHS.kinds),
+    readRows(dir, PATHS.columns),
   ])
   const phases: Phase[] = phaseRows.map(row => {
     const order = Number(row.order)
@@ -203,6 +213,7 @@ export async function loadProject(dir: string): Promise<Project> {
     tasks,
     approvals: toApprovals(approvalRows, problems),
     statuses: toStatuses(statusRows, problems),
+    labels: { kinds: toNameMap(kindRows), columns: toNameMap(columnRows) },
   }
   if (problems.length) throw new ProjectLoadError(problems)
   return project

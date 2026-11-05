@@ -10,6 +10,7 @@ export interface ProjectState {
   readonly tasks: Project['tasks']
   readonly items: Project['items']
   readonly approvals: Project['approvals']
+  readonly labels: NonNullable<Project['labels']>
   readonly leaks: ReturnType<typeof runChecks>
   readonly gates: readonly Gate[]
   readonly checks: Awaited<ReturnType<typeof readChecks>>
@@ -27,6 +28,7 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     tasks: project.tasks,
     items: project.items,
     approvals: project.approvals,
+    labels: project.labels ?? { kinds: {}, columns: {} },
     leaks,
     gates: buildGates(project, leaks, today),
     checks: await readChecks(dir),

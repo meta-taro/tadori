@@ -54,6 +54,17 @@ describe('runChecks', () => {
     expect(of('R2')).toEqual([])
   })
 
+  test('漏れの文は、種類と列の読み方（設定）を使う。設定に無ければ記号のまま', () => {
+    const project = {
+      ...sampleProject,
+      labels: { kinds: { RUN: '試験の記録' }, columns: { change: '改修後の対応' } },
+    }
+    const messages = runChecks(project).map(l => l.message).join('\n')
+    expect(messages).toContain('TC-2「TC-2 の題」に試験の記録が紐づいていない')
+    expect(messages).toContain('DD-2「DD-2 の題」の改修後の対応が空')
+    expect(messages).toContain('に DD が紐づいていない') // 読み方の無い種類は記号のまま
+  })
+
   test('漏れの文には、どの行がどのルールを満たしていないかが入る', () => {
     const leak = leaks.find(l => l.rule === 'R3')
     expect(leak?.message).toContain('BD-2')

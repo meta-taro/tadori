@@ -90,8 +90,22 @@ export interface StatusDef {
   readonly tone: 'none' | 'wait' | 'hole' | 'ok'
 }
 
+/** 種類（kind）と列の読み方。企業・案件ごとに違うので設定で持つ（.tadori/kinds.tsv・columns.tsv） */
+export interface Labels {
+  readonly kinds: Readonly<Record<string, string>>
+  readonly columns: Readonly<Record<string, string>>
+}
+
+/** 読み方があればそれを、無ければ記号を前後に空白を付けて返す（文の中で記号だと分かるように） */
+export function labelOf(names: Readonly<Record<string, string>> | undefined, code: string): string {
+  const name = names?.[code]
+  return name ? name : ` ${code} `
+}
+
 /** 読み込んだ案件の全体 */
 export interface Project {
+  /** 種類と列の読み方。無ければ記号のまま出す */
+  readonly labels?: Labels
   readonly name: string
   readonly phases: readonly Phase[]
   readonly rules: readonly Rule[]

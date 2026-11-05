@@ -67,6 +67,8 @@ claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp
 .tadori/project.tsv        案件の名前
 .tadori/phases.tsv         工程の並び（企業・プロダクトごとに違う）
 .tadori/statuses.tsv       WBS のステータスの設定
+.tadori/kinds.tsv          台帳の種類の読み方（無くてもよい。例：TC → 試験ケース）
+.tadori/columns.tsv        台帳の列の読み方（無くてもよい。例：change → 改修後の対応）
 .tadori/rulesets/*.tsv     工程ごとのルールセット（判定は covered / refers / filled / approval）
 .tadori/checks.tsv         チェックの記録（5W1H）
 ledger/items.tsv           台帳（設計書の章・節、commit、観点、試験ケース、試験の記録、指摘、再発防止）

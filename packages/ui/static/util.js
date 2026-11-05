@@ -17,7 +17,10 @@ export const KIND_LABELS = {
   W: 'WBS のタスク', BD: '基本設計の章', DD: '詳細設計の節', Q: '未確認の項目', COMMIT: 'ソースの変更',
   V: '観点', TC: '試験ケース', RUN: '試験の記録', F: '指摘', R: '再発防止',
 }
-export const kindLabel = kind => KIND_LABELS[kind] ?? kind
+// 案件の設定（.tadori/kinds.tsv）の読み方を先に使い、無ければ既定の読み方、それも無ければ記号のまま
+let projectKinds = {}
+export const setKindLabels = kinds => { projectKinds = kinds ?? {} }
+export const kindLabel = kind => projectKinds[kind] ?? KIND_LABELS[kind] ?? kind
 
 /** 遅れの色：予定どおりは青、終了予定を過ぎた日数に応じて赤へ（14 日で真っ赤） */
 const RED_AT_LATE_DAYS = 14
