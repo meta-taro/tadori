@@ -38,6 +38,35 @@ function renderChrome(key) {
   document.querySelectorAll('nav a').forEach(a => {
     if (a.dataset.view === key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current')
   })
+  renderNavBadges(waits)
+}
+
+/**
+ * 左メニューに件数のバッジを出す。0 のときは出さない（全部直せば消える）。
+ * 件数は事実として出すだけで、割合や点数にはしない。
+ */
+function renderNavBadges(waits) {
+  const leakRows = new Set(state.leaks.map(l => l.itemId)).size
+  const badges = {
+    phases: [[state.leaks.length, 'hole', `漏れ ${state.leaks.length} 件`], [waits, 'wait', `承認待ち ${waits} 件`]],
+    trace: [[leakRows, 'hole', `漏れのある行 ${leakRows} 件`]],
+  }
+  document.querySelectorAll('nav a[data-view]').forEach(a => {
+    a.querySelector('.nav-badges')?.remove()
+    const shown = (badges[a.dataset.view] ?? []).filter(([n]) => n > 0)
+    if (!shown.length) return
+    const holder = document.createElement('span')
+    holder.className = 'nav-badges'
+    for (const [n, tone, label] of shown) {
+      const b = document.createElement('span')
+      b.className = `nav-badge ${tone}`
+      b.textContent = String(n)
+      b.title = label
+      b.setAttribute('aria-label', label)
+      holder.appendChild(b)
+    }
+    a.appendChild(holder)
+  })
 }
 
 function route() {

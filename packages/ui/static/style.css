@@ -404,3 +404,11 @@
   .trace-summary { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-2px 0 12px; }
   /* 自分の漏れが切れ目として出ている行：カードは普通の枠のまま、バッジと ✗ で示す */
   .sp-card.ng-gap .sp-icon { color:var(--late-red); }
+  /* 左メニューの件数のバッジ（0 なら出さない） */
+  .nav-badges { margin-left:auto; display:inline-flex; gap:4px; }
+  .nav-badge { min-width:20px; height:18px; padding:0 6px; border-radius:999px; font-size:11px; font-weight:600; display:inline-grid; place-items:center; font-variant-numeric:tabular-nums; }
+  .nav-badge.hole { background:var(--hole-soft); color:var(--hole); }
+  .nav-badge.wait { background:var(--wait-soft); color:var(--wait); }
+  /* 件数のバッジが付いてもメニューの名前が折り返さないよう、左の列を少し広げる */
+  .app { grid-template-columns:252px 1fr; }
+  nav a { white-space:nowrap; }
