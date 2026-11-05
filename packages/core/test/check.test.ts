@@ -50,7 +50,7 @@ describe('runChecks', () => {
     expect(runChecks(project).filter(l => l.rule === 'R6').map(l => l.itemId)).toEqual(['DD-1'])
   })
 
-  test('人の承認のルールは漏れにしない（承認待ちは関門で扱う）', () => {
+  test('人の承認のルールは漏れにしない（承認待ちは完了判定で扱う）', () => {
     expect(of('R2')).toEqual([])
   })
 

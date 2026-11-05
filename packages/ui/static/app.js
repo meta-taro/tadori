@@ -11,7 +11,7 @@ let state = null
 
 const VIEWS = {
   browse: { label: 'プロダクト', render: () => renderWbs(view, state, reload) },
-  phases: { label: 'リリースまでの関門', render: () => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }) },
+  phases: { label: 'リリースまでの残課題', render: () => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }) },
   rules: { label: 'ルールセット', render: () => renderRules(view, state) },
   log: { label: 'チェックの記録', render: () => renderLog(view, state) },
   trace: { label: 'つながりを辿る', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },

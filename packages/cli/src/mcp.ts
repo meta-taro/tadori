@@ -57,7 +57,7 @@ async function glossaryText(path: string, query: string): Promise<string> {
 function buildTools(options: McpOptions): Tool[] {
   return [{
     name: 'glossary',
-    description: 'tadori の画面と文書で使う言葉（工程・関門・タスク・漏れ・承認待ち・つながりなど）の意味と、画面のどこに出るかを返す。'
+    description: 'tadori の画面と文書で使う言葉（工程・完了判定・残課題・タスク・漏れ・承認待ち・つながりなど）の意味と、画面のどこに出るかを返す。'
       + '人に画面を説明するときは、ここの言葉を使うこと。query を空にすると全部の言葉を返す。',
     inputSchema: {
       type: 'object',

@@ -3,7 +3,7 @@ import { lateDays } from '../domain/schedule.js'
 
 export type GateState = 'blocked' | 'waiting' | 'clear'
 
-/** 工程の関門。割合や点数は持たない。漏れと承認待ちの中身だけを持つ */
+/** 工程の完了判定。割合や点数は持たない。漏れと承認待ちの中身だけを持つ */
 export interface Gate {
   readonly phase: Phase
   readonly rules: readonly Rule[]
@@ -15,7 +15,7 @@ export interface Gate {
   readonly tasks: readonly Task[]
   /** 終わっていないタスクのうち、WBS 番号がいちばん若いもの */
   readonly currentTask?: Task
-  /** 前の工程の関門が閉じていないのに、この工程のタスクが動いているとき、その前の工程 */
+  /** 前の工程の完了判定を通っていないのに、この工程のタスクが動いているとき、その前の工程 */
   readonly startedBefore?: Phase
   readonly maxLateDays: number
 }
@@ -44,7 +44,7 @@ function stateOf(leaks: readonly Leak[], pending: readonly Rule[]): GateState {
   return 'clear'
 }
 
-/** 工程ごとに、漏れ・承認待ち・期間・いまのタスク・前の関門の前に着手・遅れを組み立てる */
+/** 工程ごとに、漏れ・承認待ち・期間・いまのタスク・前の完了判定より前に着手・遅れを組み立てる */
 export function buildGates(project: Project, leaks: readonly Leak[], today: string): Gate[] {
   const isDone = doneChecker(project)
   const notStarted = notStartedStatus(project)

@@ -107,7 +107,7 @@ describe('appendChecks', () => {
 
   test('末尾に改行の無いファイルでも、前の行にくっつけずに足す', async () => {
     await writeMinimalProject()
-    await put('.tadori/checks.tsv', '# 記録\nwhen\twho\twhat\twhere\twhy\thow\tresult\n2026-11-01 09:00\t人\tR2\t.\t関門\t目視\t承認')
+    await put('.tadori/checks.tsv', '# 記録\nwhen\twho\twhat\twhere\twhy\thow\tresult\n2026-11-01 09:00\t人\tR2\t.\t完了判定\t目視\t承認')
     await appendChecks(dir, [record], '記録')
     const lines = (await readFile(join(dir, '.tadori/checks.tsv'), 'utf8')).trimEnd().split('\n')
     expect(lines).toHaveLength(4)

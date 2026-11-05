@@ -11,7 +11,7 @@ describe('formatCheck', () => {
     const { state } = await loadState(EXAMPLE, '2026-11-05')
     const text = formatCheck(state)
     expect(text).toMatch(/基本設計.*承認待ち 1/)
-    expect(text).toMatch(/詳細設計.*基本設計の関門の前に着手/)
+    expect(text).toMatch(/詳細設計.*基本設計の完了判定より前に着手/)
     expect(text).toMatch(/R9 .*TC-07/)
     expect(text).toMatch(/漏れ \d+ 件 \/ 承認待ち \d+ 件/)
     expect(text).not.toMatch(/%/)

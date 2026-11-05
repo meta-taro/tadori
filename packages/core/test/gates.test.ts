@@ -38,7 +38,7 @@ describe('buildGates', () => {
     expect(gate('bd').currentTask?.id).toBe('W-2')
   })
 
-  test('前の工程の関門が閉じていないのにタスクが動いていれば、前の関門の前に着手とする', () => {
+  test('前の工程の完了判定を通っていないのにタスクが動いていれば、前の完了判定より前に着手とする', () => {
     expect(gate('dd').startedBefore?.id).toBe('bd')
     expect(gate('it').startedBefore).toBeUndefined() // 結合テストはまだ未着手
   })

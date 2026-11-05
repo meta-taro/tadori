@@ -66,7 +66,7 @@ export function renderWbs(view, state, reload) {
       </div>
       <div class="col wide"><div class="col-head">WBS · おおまかな骨組み</div>
         <div class="wbs"><div class="wbs-head"><div><h3>${esc(state.project.name)}</h3><div class="meta">${period}</div></div>
-          <a class="btn-primary" href="#phases" style="text-decoration:none;white-space:nowrap">関門を開く →</a></div>
+          <a class="btn-primary" href="#phases" style="text-decoration:none;white-space:nowrap">残課題を開く →</a></div>
           ${wbsHtml(state)}
         </div>
       </div>

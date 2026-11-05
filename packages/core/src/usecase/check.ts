@@ -36,7 +36,7 @@ function checkDangling(items: readonly Item[]): Leak[] {
 
 /**
  * ルールセットで台帳を見て、漏れの一覧を返す。
- * 人の承認のルールはここでは見ない（承認待ちは関門で扱う。tadori は代わりに承認しない）。
+ * 人の承認のルールはここでは見ない（承認待ちは完了判定で扱う。tadori は代わりに承認しない）。
  */
 export function runChecks(project: Project): Leak[] {
   const byRule = project.rules.flatMap(rule => {

@@ -1,4 +1,4 @@
-// リリースまでの関門：タイムラインとカードの切り替え。割合や点数は出さない
+// リリースまでの残課題：タイムラインとカードの切り替え。割合や点数は出さない
 import { chip, day, esc, fullDate, kindLabel, lateColor, shortDate, isDoneStatus } from './util.js'
 
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -40,14 +40,14 @@ function timelineHtml(state) {
     const hatchEnd = day(state.today) < day(gate.span.end) ? state.today : gate.span.end
     const hatch = gate.startedBefore && day(hatchEnd) > day(gate.span.start)
       ? `<span class="tl-hatch" style="left:${pos(gate.span.start)};width:calc(${pos(hatchEnd)} - ${pos(gate.span.start)})"></span>` : ''
-    const early = gate.startedBefore ? `<span class="tl-early">${esc(gate.startedBefore.name)}の関門の前に着手</span>` : ''
+    const early = gate.startedBefore ? `<span class="tl-early">${esc(gate.startedBefore.name)}の完了判定より前に着手</span>` : ''
     const late = gate.maxLateDays ? `<span class="late" style="color:${barColor}">${gate.maxLateDays} 日遅れ</span>` : ''
     return `<button type="button" class="tl-row ${gate.phase.id === selectedPhase ? 'on' : ''}" data-phase="${esc(gate.phase.id)}" aria-pressed="${gate.phase.id === selectedPhase}">
       <span class="tl-label"><span class="step">${String(i + 1).padStart(2, '0')}</span><span class="tl-name">${esc(gate.phase.name)}${early}</span>${late}</span>
       <span class="tl-track">
         <span class="tl-bar" style="left:${pos(gate.span.start)};width:calc(${pos(gate.span.end)} - ${pos(gate.span.start)});--bar:${barColor}"></span>
         ${hatch}${steps}${runner}
-        <span class="tl-gate ${gate.state} ${overdue ? 'overdue' : ''}" style="left:${pos(gate.span.end)}" title="関門 ${fullDate(gate.span.end)}"></span>
+        <span class="tl-gate ${gate.state} ${overdue ? 'overdue' : ''}" style="left:${pos(gate.span.end)}" title="完了判定 ${fullDate(gate.span.end)}"></span>
         <span class="tl-badges" style="left:${pos(gate.span.end)}">${badgesOf(gate)}<span class="tl-date">${shortDate(gate.span.end)}</span></span>
       </span>
     </button>`
@@ -108,7 +108,7 @@ export function renderGates(view, state, onTrace) {
       <td>${ruleStatus(state, r)}</td>
     </tr>`).join('')
   view.innerHTML = `
-    <h1>リリースまでの関門</h1>
+    <h1>リリースまでの残課題</h1>
     <p class="lede">工程ごとに、ルールで見つかった漏れと、人の承認待ちを並べます。割合や点数は出しません。</p>
     <div class="seg" role="group" aria-label="表示">
       <button type="button" data-gate-view="timeline" aria-pressed="${shown === 'timeline'}" ${hasSchedule ? '' : 'disabled title="予定の期間が入っていないので使えません"'}>タイムライン</button>

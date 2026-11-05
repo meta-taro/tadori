@@ -9,7 +9,7 @@ export function formatCheck(state: ProjectState): string {
       gate.leaks.length ? `漏れ ${gate.leaks.length}` : '',
       gate.pendingApprovals.length ? `承認待ち ${gate.pendingApprovals.length}（${gate.pendingApprovals.map(r => r.id).join('・')}）` : '',
     ].filter(Boolean).join(' / ') || '残りなし'
-    const early = gate.startedBefore ? `  ← ${gate.startedBefore.name}の関門の前に着手` : ''
+    const early = gate.startedBefore ? `  ← ${gate.startedBefore.name}の完了判定より前に着手` : ''
     const late = gate.maxLateDays ? `  ${gate.maxLateDays} 日遅れ` : ''
     lines.push(`■ ${gate.phase.name}  ${counts}${late}${early}`)
     for (const leak of gate.leaks) lines.push(`    ${leak.rule} ${leak.message}`)

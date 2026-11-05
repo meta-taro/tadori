@@ -27,14 +27,14 @@ afterAll(async () => {
 })
 
 describe('GET /api/state', () => {
-  test('工程の関門・漏れ・WBS を返す', async () => {
+  test('工程の完了判定・漏れ・WBS を返す', async () => {
     const res = await fetch(`${base}/api/state`)
     expect(res.status).toBe(200)
     const state = await res.json()
     expect(state.project.name).toContain('備品貸出アプリ')
     expect(state.gates.map((g: { phase: { id: string } }) => g.phase.id)).toEqual(['bd', 'dd', 'impl', 'it', 'rel'])
     expect(state.today).toBe('2026-11-05')
-    // 基本設計は差し戻しのまま → 詳細設計は前の関門の前に着手
+    // 基本設計は差し戻しのまま → 詳細設計は前の完了判定より前に着手
     const dd = state.gates.find((g: { phase: { id: string } }) => g.phase.id === 'dd')
     expect(dd.startedBefore.id).toBe('bd')
   })
