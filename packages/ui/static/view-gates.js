@@ -103,7 +103,9 @@ function fixHtml(fix, leak) {
   const qa = leak?.runnable
     ? toolIcon('qa', 'qa', leak.runUrl, `git-qa で ${leak.itemId} を実施する`, `git-qa で ${leak.itemId} を実施する（git-qa から URL の形が届いたら押せます）`)
     : ''
-  return `<div class="fix-line"><span class="fix-label">直し方</span>${esc(fix)}<span class="tool-icons">${md}${qa}</span></div>`
+  // アイコンは直し方の文の下に 1 段で並べる（文が折り返しても重ならないように）
+  const icons = md || qa ? `<div class="tool-icons">${md}${qa}</div>` : ''
+  return `<div class="fix-line"><span class="fix-label">直し方</span>${esc(fix)}</div>${icons}`
 }
 
 function ruleStatus(state, rule) {

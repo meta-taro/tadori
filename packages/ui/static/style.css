@@ -477,7 +477,7 @@
   .gate-filters { display:inline-flex; gap:14px; align-items:center; flex-wrap:wrap; }
   .copy-place { margin-left:8px; padding:0 8px; font-size:11px; }
   /* ほかの道具のアイコン：md＝md-business で原本を開く、qa＝git-qa でその場で実施する */
-  .tool-icons { display:inline-flex; gap:6px; margin-left:10px; vertical-align:middle; }
+  .tool-icons { display:flex; gap:8px; margin-top:8px; margin-bottom:2px; }
   .tool-icon { display:inline-grid; place-items:center; width:26px; height:20px; border-radius:5px; font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.3px; text-decoration:none; color:#fff; }
   .tool-icon.tool-md { background:#2f6f5e; }
   .tool-icon.tool-qa { background:#6a4fb3; }
