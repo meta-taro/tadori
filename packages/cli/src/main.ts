@@ -119,8 +119,10 @@ async function main(): Promise<void> {
     const port = Number(values.port ?? DEFAULT_PORT)
     if (!Number.isInteger(port) || port < 0 || port > 65535) fail(`--port が正しくありません：${values.port}`)
     const uiDir = fileURLToPath(new URL('../../ui/static', import.meta.url))
-    await startServer({ dir, port, today, uiDir })
-    process.stdout.write(`tadori を立ち上げました：http://127.0.0.1:${port}/\n案件：${dir}\n止めるときは Ctrl+C\n`)
+    const server = await startServer({ dir, port, today, uiDir })
+    // --port 0 のときは OS が空いている番号を選ぶので、実際につないだ番号を出す（デスクトップアプリはこの行から URL を読む）
+    const bound = typeof server.address === 'object' && server.address ? server.address.port : port
+    process.stdout.write(`tadori を立ち上げました：http://127.0.0.1:${bound}/\n案件：${dir}\n止めるときは Ctrl+C\n`)
     return
   }
 

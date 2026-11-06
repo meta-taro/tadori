@@ -25,7 +25,16 @@ pnpm install
 pnpm dev          # ビルドして、架空の見本の案件で画面を開く → http://127.0.0.1:4870/
 ```
 
-commit の前に型の検査・テスト・置き場所の検査を走らせるには（このリポジトリで 1 回だけ）:
+デスクトップアプリ（Tauri）として開くには、Rust も要ります。
+
+```bash
+pnpm --filter @tadori/desktop dev   # 窓が開き、案件のフォルダ（.tadori のあるフォルダ）を選ぶ。次からは前回の案件を開く
+```
+
+窓は裏で `tadori serve` を起こし、その画面を映すだけです（判定は CLI と同じ核）。
+
+commit の前に型の検査・テスト・置き場所の検査、個人や委託先の名前の検査を走らせるには（このリポジトリで 1 回だけ）。
+名前の一覧は公開できないので、リポジトリの外の `~/.config/oss-guard/deny-words.txt` に 1 行 1 語で書きます:
 
 ```bash
 git config core.hooksPath .githooks
@@ -88,6 +97,7 @@ ledger/approvals.tsv       人の承認の記録（人が書く）
 packages/core   判定の核（台帳を読み、漏れ・完了判定・つながりの辿りを出す）。実行時の依存なし
 packages/cli    tadori コマンドと、手元のサーバー
 packages/ui     画面（tadori serve がそのまま配る）
+packages/desktop デスクトップアプリ（Tauri 2）。裏で tadori serve を起こし、その画面を窓に映す
 examples/       架空の見本の案件
 ```
 

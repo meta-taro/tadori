@@ -1,0 +1,181 @@
+//! tadori のデスクトップアプリ。
+//! 窓を出し、裏で `tadori serve` を起こして、その画面を窓に映す。判定は TypeScript の核のまま（CLI・CI と食い違わないように）。
+
+mod sidecar;
+
+use std::io::{BufRead, BufReader, Read};
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
+
+use tauri::{AppHandle, Manager, RunEvent, Url};
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+
+/// 裏で起こした `tadori serve`。窓を閉じたら止める
+struct Sidecar(Mutex<Option<Child>>);
+
+const LAST_PROJECT_FILE: &str = "last-project.txt";
+
+pub fn run() {
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .manage(Sidecar(Mutex::new(None)))
+        .setup(|app| {
+            let handle = app.handle().clone();
+            // フォルダ選びと起動を待つ間も窓が固まらないよう、別のスレッドで進める
+            std::thread::spawn(move || open_project(handle));
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("tadori の窓を作れませんでした");
+
+    app.run(|handle, event| {
+        if let RunEvent::Exit = event {
+            stop_sidecar(handle);
+        }
+    });
+}
+
+/// 開く案件を決め、`tadori serve` を起こして窓に映す。うまくいかなければ理由を見せて閉じる
+fn open_project(handle: AppHandle) {
+    let Some(project) = choose_project(&handle) else {
+        handle.exit(0);
+        return;
+    };
+    remember_project(&handle, &project);
+    if let Err(message) = start_and_show(&handle, &project) {
+        show_error(&handle, &message);
+        handle.exit(1);
+    }
+}
+
+/// 起動の引数 → 前回の案件 → フォルダ選び、の順で決める
+fn choose_project(handle: &AppHandle) -> Option<PathBuf> {
+    if let Some(arg) = std::env::args().nth(1).map(PathBuf::from).filter(|p| sidecar::is_project(p)) {
+        return Some(arg);
+    }
+    let saved = config_file(handle).and_then(|f| std::fs::read_to_string(f).ok());
+    if let Some(last) = sidecar::remembered_project(saved) {
+        return Some(last);
+    }
+    pick_project(handle)
+}
+
+/// .tadori のあるフォルダを選んでもらう。やめたら None
+fn pick_project(handle: &AppHandle) -> Option<PathBuf> {
+    loop {
+        let picked = handle.dialog().file().set_title("tadori で開く案件のフォルダを選ぶ").blocking_pick_folder()?;
+        let path = picked.into_path().ok()?;
+        if sidecar::is_project(&path) {
+            return Some(path);
+        }
+        show_error(
+            handle,
+            &format!(
+                "{} には .tadori フォルダがありません。\n新しく始めるときは、いまは `tadori init <フォルダ>` で置いてから選んでください。",
+                path.display()
+            ),
+        );
+    }
+}
+
+fn start_and_show(handle: &AppHandle, project: &Path) -> Result<(), String> {
+    let cli = find_cli()?;
+    let mut command = Command::new("node");
+    command
+        .args(sidecar::serve_args(&cli, project))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    hide_console(&mut command);
+    let mut child = command.spawn().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            "Node.js が見つかりません。Node.js 22 以上を入れてから、もう一度開いてください。".to_string()
+        } else {
+            format!("tadori を起こせませんでした：{e}")
+        }
+    })?;
+    let stdout = child.stdout.take().ok_or("tadori の出力を読めませんでした")?;
+    let errors = collect_stderr(&mut child);
+    *handle.state::<Sidecar>().0.lock().unwrap() = Some(child);
+
+    let mut lines = BufReader::new(stdout).lines();
+    for line in lines.by_ref().map_while(Result::ok) {
+        if let Some(url) = sidecar::ready_url(&line) {
+            show_in_window(handle, &url, project)?;
+            // 残りの出力も読み続ける（読まないと、出力が詰まって tadori が止まる）
+            for _ in lines.by_ref() {}
+            return Ok(());
+        }
+    }
+    // 立ち上がる前に終わった：案件を読めなかったなど。tadori の言葉をそのまま見せる
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    let detail = errors.lock().map(|e| e.trim().to_string()).unwrap_or_default();
+    Err(format!("tadori が立ち上がりませんでした。\n{detail}"))
+}
+
+fn show_in_window(handle: &AppHandle, url: &str, project: &Path) -> Result<(), String> {
+    let window = handle.get_webview_window("main").ok_or("tadori の窓が見つかりません")?;
+    let url = Url::parse(url).map_err(|e| format!("URL を読めませんでした：{e}"))?;
+    let name = project.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let _ = window.set_title(&format!("tadori — {name}"));
+    window.navigate(url).map_err(|e| format!("画面を開けませんでした：{e}"))
+}
+
+fn find_cli() -> Result<PathBuf, String> {
+    let candidates = sidecar::cli_candidates(std::env::var("TADORI_CLI").ok(), Path::new(env!("CARGO_MANIFEST_DIR")));
+    candidates.iter().find(|p| p.is_file()).cloned().ok_or_else(|| {
+        let tried: Vec<String> = candidates.iter().map(|p| p.display().to_string()).collect();
+        format!("tadori の本体（main.js）が見つかりません。`pnpm build` をしてから開いてください。\n探した所：\n{}", tried.join("\n"))
+    })
+}
+
+/// 立ち上がる前に終わったときの理由を見せるため、エラーの出力をためておく
+fn collect_stderr(child: &mut Child) -> Arc<Mutex<String>> {
+    let buffer = Arc::new(Mutex::new(String::new()));
+    if let Some(mut stderr) = child.stderr.take() {
+        let target = Arc::clone(&buffer);
+        std::thread::spawn(move || {
+            let mut text = String::new();
+            let _ = stderr.read_to_string(&mut text);
+            if let Ok(mut b) = target.lock() {
+                b.push_str(&text);
+            }
+        });
+    }
+    buffer
+}
+
+fn stop_sidecar(handle: &AppHandle) {
+    if let Some(mut child) = handle.state::<Sidecar>().0.lock().unwrap().take() {
+        // 止められなくても（すでに終わっているなど）、窓は閉じてよい
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+}
+
+fn config_file(handle: &AppHandle) -> Option<PathBuf> {
+    handle.path().app_config_dir().ok().map(|d| d.join(LAST_PROJECT_FILE))
+}
+
+fn remember_project(handle: &AppHandle, project: &Path) {
+    let Some(file) = config_file(handle) else { return };
+    // 覚えられなくても開くのは続ける（次回フォルダを選び直すだけ）
+    if let Some(dir) = file.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let _ = std::fs::write(file, project.to_string_lossy().as_bytes());
+}
+
+fn show_error(handle: &AppHandle, message: &str) {
+    handle.dialog().message(message).title("tadori").kind(MessageDialogKind::Error).blocking_show();
+}
+
+#[cfg(windows)]
+fn hide_console(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    // 裏の node に黒いコンソール窓を出させない（CREATE_NO_WINDOW）
+    command.creation_flags(0x0800_0000);
+}
+
+#[cfg(not(windows))]
+fn hide_console(_command: &mut Command) {}
