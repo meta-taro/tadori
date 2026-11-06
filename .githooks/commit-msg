@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# commit message に、手元の禁止語（委託先・顧客・人の名前など）が入っていないかを見る。
+# 見つけても語そのものは出さない（画面の記録や CI のログに残さないため）
+set -uo pipefail
+words="${OSS_DENY_WORDS:-$(bash .githooks/deny-words.sh)}"
+[ -z "$words" ] && exit 0
+message="$(grep -v '^#' "$1")"
+i=0
+while IFS= read -r word; do
+  i=$((i + 1))
+  [ -z "$word" ] && continue
+  if printf '%s' "$message" | grep -qiF -- "$word"; then
+    printf 'NG commit message が禁止語 #%d に一致しました。書き直してください\n' "$i" >&2
+    exit 1
+  fi
+done <<< "$words"
+exit 0

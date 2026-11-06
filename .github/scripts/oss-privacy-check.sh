@@ -30,7 +30,7 @@ ALLOWED_AUTHOR_RE="${OSS_ALLOWED_AUTHOR_EMAIL_REGEX:-(@users\.noreply\.github\.c
 # noreply@anthropic.com は AI エージェントの Co-Authored-By 用の no-reply アドレスで、
 # 個人ではない（§32 が止めたいのは実在の個人の名前とメール）。
 # ドメイン全体ではなく、このアドレス 1 個だけを許可する。
-ALLOWED_DOMAINS="${OSS_ALLOWED_EMAIL_DOMAINS:-example.com example.org example.net users.noreply.github.com noreply@anthropic.com}"
+ALLOWED_DOMAINS="${OSS_ALLOWED_EMAIL_DOMAINS:-example.com example.org example.net example.invalid users.noreply.github.com noreply@anthropic.com}"
 DENY_WORDS="${OSS_DENY_WORDS:-}"
 SCAN_ALL="${OSS_SCAN_ALL_FILES:-}"
 
