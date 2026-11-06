@@ -5,6 +5,7 @@ import { renderWbs } from './view-wbs.js'
 import { renderLog, renderTrace } from './view-records.js'
 import { renderRules, setRulesQuery } from './view-rules.js'
 import { initSearch } from './search.js'
+import { initDesktop } from './desktop.js'
 import { renderSettings } from './view-settings.js'
 import { renderGlossary, setGlossaryQuery } from './view-glossary.js'
 
@@ -110,6 +111,7 @@ window.addEventListener('hashchange', route)
 // 別のウィンドウや git pull で台帳が変わっても、画面に戻ったら読み直す
 window.addEventListener('focus', reload)
 initSearch({ getState: () => state, navigate })
+initDesktop()
 
 /**
  * ほかのアプリ（md-business など）や git pull で TSV が書き換わったら、その場で読み直す。

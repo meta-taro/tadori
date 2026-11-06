@@ -54,13 +54,28 @@ pub fn is_project(dir: &Path) -> bool {
     dir.join(".tadori").is_dir()
 }
 
-/// 前回開いた案件を覚えておくファイルの中身から、まだ開ける案件だけを返す
-pub fn remembered_project(saved: Option<String>) -> Option<PathBuf> {
-    let path = PathBuf::from(saved?.trim());
-    if path.as_os_str().is_empty() || !is_project(&path) {
-        return None;
-    }
-    Some(path)
+/// 最近の案件として覚えておく数
+pub const RECENT_LIMIT: usize = 8;
+
+/// 覚えておいたファイルの中身（1 行 1 案件・新しい順）から、まだ開ける案件だけを返す
+pub fn parse_recent(saved: &str) -> Vec<PathBuf> {
+    // 先頭の BOM は飛ばす（メモ帳や PowerShell で書くと付くことがある）
+    saved
+        .trim_start_matches('﻿')
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(PathBuf::from)
+        .filter(|p| is_project(p))
+        .collect()
+}
+
+/// 開いた案件を先頭にし、同じものは 1 つにまとめ、多すぎる分は捨てる（元の一覧は変えない）
+pub fn with_recent(list: &[PathBuf], opened: &Path, limit: usize) -> Vec<PathBuf> {
+    std::iter::once(opened.to_path_buf())
+        .chain(list.iter().filter(|p| p.as_path() != opened).cloned())
+        .take(limit)
+        .collect()
 }
 
 #[cfg(test)]
@@ -108,13 +123,24 @@ mod tests {
     }
 
     #[test]
-    fn 前回の案件は_tadori_フォルダが残っているときだけ使う() {
-        let dir = std::env::temp_dir().join(format!("tadori-desktop-test-{}", std::process::id()));
+    fn 最近の案件は開いたものを先頭にし_重ねず_数を絞る() {
+        let a = PathBuf::from("/a");
+        let b = PathBuf::from("/b");
+        let c = PathBuf::from("/c");
+        assert_eq!(with_recent(&[a.clone(), b.clone()], &b, 8), vec![b.clone(), a.clone()]);
+        assert_eq!(with_recent(&[a.clone(), b.clone()], &c, 2), vec![c, a]);
+    }
+
+    #[test]
+    fn 最近の案件の一覧からは_開けなくなった案件を外す() {
+        let dir = std::env::temp_dir().join(format!("tadori-recent-test-{}", std::process::id()));
         fs::create_dir_all(dir.join(".tadori")).unwrap();
-        assert_eq!(remembered_project(Some(dir.to_string_lossy().into_owned())), Some(dir.clone()));
-        fs::remove_dir_all(dir.join(".tadori")).unwrap();
-        assert_eq!(remembered_project(Some(dir.to_string_lossy().into_owned())), None);
-        assert_eq!(remembered_project(None), None);
+        let text = format!("{}
+
+/nowhere/x
+", dir.display());
+        assert_eq!(parse_recent(&text), vec![dir.clone()]);
+        assert_eq!(parse_recent(&format!("﻿{}", dir.display())), vec![dir.clone()]);
         fs::remove_dir_all(&dir).unwrap();
     }
 }

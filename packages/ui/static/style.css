@@ -507,3 +507,22 @@
   .tool-icon.tool-qa { background:#6a4fb3; }
   a.tool-icon:hover { filter:brightness(1.2); }
   .tool-icon.off { opacity:.35; cursor:not-allowed; }
+
+  /* ---- デスクトップアプリ（Tauri）の窓：上の帯を自作のタイトルバーにする（desktop.js） ---- */
+  .desktop .topbar { padding-top:0; padding-bottom:0; padding-right:0; min-height:46px; flex-wrap:nowrap; user-select:none; }
+  .desktop .topbar .crumb { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .desktop aside .brand { cursor:default; user-select:none; }
+  .win-menu { position:relative; display:flex; gap:2px; margin-left:-12px; }
+  .win-menu > button { font:inherit; font-size:13px; color:var(--ink-subtle); background:none; border:none; border-radius:var(--r-sm); padding:5px 10px; cursor:pointer; }
+  .win-menu > button:hover, .win-menu > button[aria-expanded="true"] { background:var(--surface-3); color:var(--ink); }
+  .menu-panel { position:absolute; top:calc(100% + 6px); min-width:240px; max-width:420px; padding:6px; background:var(--surface-1); border:1px solid var(--hairline-strong); border-radius:var(--r-md); box-shadow:0 12px 32px var(--shadow); z-index:40; }
+  .menu-panel button { display:flex; align-items:center; gap:8px; width:100%; text-align:left; font:inherit; font-size:13px; color:var(--ink-muted); background:none; border:none; border-radius:var(--r-sm); padding:6px 10px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .menu-panel button:hover { background:var(--accent-soft); color:var(--ink); }
+  .menu-panel .check { display:inline-block; width:14px; color:var(--accent); flex:none; }
+  .menu-sep { height:1px; margin:6px 4px; background:var(--hairline); }
+  .menu-head { padding:4px 10px 2px 32px; font-size:11px; color:var(--ink-tertiary); }
+  .win-controls { display:flex; align-self:stretch; margin-left:8px; }
+  .win-controls button { width:46px; display:grid; place-items:center; background:none; border:none; color:var(--ink-subtle); cursor:pointer; }
+  .win-controls button:hover { background:var(--surface-3); color:var(--ink); }
+  .win-controls button.close:hover { background:#c42b1c; color:#fff; }
+  .win-controls svg { width:10px; height:10px; fill:none; stroke:currentColor; stroke-width:1; }
