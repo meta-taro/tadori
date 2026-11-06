@@ -4,6 +4,17 @@ import { api, chip, esc, ICON_INFO, toast, toastCommit } from './util.js'
 const TONES = { none: '色なし', wait: '青灰（途中）', hole: '琥珀（止まっている）', ok: '緑（済み）' }
 let problems = []
 
+/** 見た目の選び方。案件の設定ではなく、この PC のこの人の好みなので TSV には書かない（theme.js が覚える） */
+const THEMES = { light: 'ライト', dark: 'ダーク', system: 'OS に合わせる' }
+
+function themeHtml() {
+  const current = window.tadoriTheme?.choice() ?? 'light'
+  return `<h2>見た目</h2>
+    <div class="seg" role="group" aria-label="配色">${Object.entries(THEMES).map(([k, v]) =>
+      `<button type="button" data-theme-choice="${k}" aria-pressed="${k === current}">${v}</button>`).join('')}</div>
+    <p class="cond">この PC で開く tadori だけに効きます（案件の設定には書きません）。</p>`
+}
+
 /** 一覧の行を並べ替える（元の配列は変えない） */
 const moved = (list, index, dir) => {
   const next = [...list]
@@ -59,6 +70,7 @@ export function renderSettings(view, state, reload) {
     <h1>設定</h1>
     <p class="lede">工程の並びとステータスは、企業やプロダクトごとに違います。保存すると <span class="mono">.tadori/</span> の TSV に書き戻し、案件が git リポジトリなら commit します（push は人が確かめてから）。</p>
     ${problems.length ? `<div class="note">${ICON_INFO}<span>${problems.map(esc).join('<br>')}</span></div>` : ''}
+    ${themeHtml()}
     <h2>工程 · ${state.phases.length} 件</h2>
     <div class="panel"><table>
       <thead><tr><th style="width:48px">順</th><th>名前</th><th style="width:90px">ID</th><th>使っているルール・タスク</th><th style="width:170px"></th></tr></thead>
@@ -78,6 +90,11 @@ export function renderSettings(view, state, reload) {
         <label>色の意味<select name="tone">${Object.entries(TONES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
         <div class="actions"><button type="submit" class="btn-primary">ステータスを足す</button></div>
       </form></div>`
+
+  view.querySelectorAll('[data-theme-choice]').forEach(b => b.addEventListener('click', () => {
+    window.tadoriTheme?.set(b.dataset.themeChoice)
+    view.querySelectorAll('[data-theme-choice]').forEach(x => x.setAttribute('aria-pressed', String(x === b)))
+  }))
 
   const savePhases = list => save('/api/settings/phases', list.map((p, i) => ({ ...p, order: i + 1 })), '工程の設定', reload)
   const saveStatuses = list => save('/api/settings/statuses', list, 'ステータスの設定', reload)

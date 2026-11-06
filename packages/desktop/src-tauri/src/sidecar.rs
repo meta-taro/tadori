@@ -15,14 +15,25 @@ pub fn ready_url(line: &str) -> Option<String> {
     Some(url)
 }
 
-/// `node <cli> serve <案件> --port 0` の引数。番号は OS に空いているものを選ばせる
-pub fn serve_args(cli: &Path, project: &Path) -> Vec<String> {
+/// 窓で使う決まった番号。画面の好み（配色など）はブラウザが「番号ごと」に覚えるので、毎回同じ番号で開く
+pub const PREFERRED_PORT: u16 = 4873;
+
+/// 決まった番号が空いていればそれを、ふさがっていれば 0（OS に空いている番号を選ばせる）を返す
+pub fn choose_port(preferred: u16) -> u16 {
+    match std::net::TcpListener::bind(("127.0.0.1", preferred)) {
+        Ok(_listener) => preferred, // ここで手放す。すぐ tadori serve がつなぐ
+        Err(_) => 0,
+    }
+}
+
+/// `node <cli> serve <案件> --port <番号>` の引数
+pub fn serve_args(cli: &Path, project: &Path, port: u16) -> Vec<String> {
     vec![
         cli.to_string_lossy().into_owned(),
         "serve".into(),
         project.to_string_lossy().into_owned(),
         "--port".into(),
-        "0".into(),
+        port.to_string(),
     ]
 }
 
@@ -74,9 +85,18 @@ mod tests {
     }
 
     #[test]
-    fn serve_の引数は空いている番号を_os_に選ばせる() {
-        let args = serve_args(Path::new("/t/main.js"), Path::new("/work/a"));
-        assert_eq!(args[1..], ["serve", "/work/a", "--port", "0"]);
+    fn serve_の引数に番号を渡す() {
+        let args = serve_args(Path::new("/t/main.js"), Path::new("/work/a"), 4873);
+        assert_eq!(args[1..], ["serve", "/work/a", "--port", "4873"]);
+    }
+
+    #[test]
+    fn 決まった番号がふさがっていれば_0_にする() {
+        let busy = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = busy.local_addr().unwrap().port();
+        assert_eq!(choose_port(port), 0);
+        drop(busy);
+        assert_eq!(choose_port(port), port);
     }
 
     #[test]

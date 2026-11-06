@@ -83,7 +83,7 @@ fn start_and_show(handle: &AppHandle, project: &Path) -> Result<(), String> {
     let cli = find_cli()?;
     let mut command = Command::new("node");
     command
-        .args(sidecar::serve_args(&cli, project))
+        .args(sidecar::serve_args(&cli, project, sidecar::choose_port(sidecar::PREFERRED_PORT)))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     hide_console(&mut command);
