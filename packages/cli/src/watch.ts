@@ -9,6 +9,8 @@ const HEARTBEAT_MS = 25_000
 export interface ChangeNotifier {
   /** 画面を 1 つつなぐ（/api/events） */
   attach(res: ServerResponse): void
+  /** つないでいる画面へ知らせを流す。流した画面の数を返す */
+  send(event: string, data: unknown): number
   close(): void
 }
 
@@ -51,6 +53,11 @@ export function watchProject(dir: string): ChangeNotifier {
       res.write(': つながりました\n\n')
       clients.add(res)
       res.on('close', () => clients.delete(res))
+    },
+    send(event, data) {
+      const line = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+      for (const res of clients) res.write(line)
+      return clients.size
     },
     close() {
       if (timer) clearTimeout(timer)

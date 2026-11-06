@@ -526,3 +526,6 @@
   .win-controls button:hover { background:var(--surface-3); color:var(--ink); }
   .win-controls button.close:hover { background:#c42b1c; color:#fff; }
   .win-controls svg { width:10px; height:10px; fill:none; stroke:currentColor; stroke-width:1; }
+  /* エージェントの専用カーソルは、メニューより手前に出す */
+  .agent-cursor { z-index:60; }
+  .hl-box { z-index:55; }

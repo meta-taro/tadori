@@ -6,6 +6,7 @@ import { renderLog, renderTrace } from './view-records.js'
 import { renderRules, setRulesQuery } from './view-rules.js'
 import { initSearch } from './search.js'
 import { initDesktop } from './desktop.js'
+import { initAgent } from './agent.js'
 import { renderSettings } from './view-settings.js'
 import { renderGlossary, setGlossaryQuery } from './view-glossary.js'
 
@@ -124,5 +125,9 @@ function reloadFromElsewhere() {
   reload().then(() => toast('ほかのアプリでの変更を反映しました', 2000))
 }
 view.addEventListener('focusout', () => { if (reloadPending) { reloadPending = false; setTimeout(reloadFromElsewhere, 0) } })
-if ('EventSource' in window) new EventSource('/api/events').addEventListener('changed', reloadFromElsewhere)
+if ('EventSource' in window) {
+  const events = new EventSource('/api/events')
+  events.addEventListener('changed', reloadFromElsewhere)
+  initAgent(events, toast) // エージェントの専用カーソル（人のマウスは使わない）
+}
 reload()

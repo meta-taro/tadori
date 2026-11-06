@@ -81,6 +81,7 @@ async function menuHtml(key) {
     const items = recent.map(([path, name], i) =>
       `<button type="button" role="menuitem" data-action="open" data-value="${esc(path)}" title="${esc(path)}">${i === 0 ? '<span class="check">✓</span>' : '<span class="check"></span>'}${esc(name)}</button>`).join('')
     return `<button type="button" role="menuitem" data-action="pick"><span class="check"></span>案件を開く…</button>
+      <button type="button" role="menuitem" data-action="pick"><span class="check"></span>新しく始める…</button>
       ${items ? `<div class="menu-sep"></div><div class="menu-head">最近の案件</div>${items}` : ''}`
   }
   if (key === 'view') {

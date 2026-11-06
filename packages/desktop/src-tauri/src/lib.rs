@@ -12,7 +12,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Manager, RunEvent, Url};
-use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
 /// 裏で起こした `tadori serve`。案件を切り替えるときと、窓を閉じたときに止める
 struct Sidecar(Mutex<Option<Child>>);
@@ -115,22 +115,53 @@ fn switch_project(handle: &AppHandle, project: &Path) -> Result<(), String> {
     }
 }
 
-/// .tadori のあるフォルダを選んでもらう。やめたら None
+/// 案件のフォルダを選んでもらう。.tadori が無ければ、そこで始めるかを聞く。やめたら None
 fn ask_for_project(handle: &AppHandle) -> Option<PathBuf> {
     loop {
-        let picked = handle.dialog().file().set_title("tadori で開く案件のフォルダを選ぶ").blocking_pick_folder()?;
+        let picked = handle
+            .dialog()
+            .file()
+            .set_title("tadori で開く案件のフォルダを選ぶ（新しく始めるフォルダでもよい）")
+            .blocking_pick_folder()?;
         let path = picked.into_path().ok()?;
         if sidecar::is_project(&path) {
             return Some(path);
         }
-        show_error(
-            handle,
-            &format!(
-                "{} には .tadori フォルダがありません。\n新しく始めるときは、いまは `tadori init <フォルダ>` で置いてから選んでください。",
-                path.display()
-            ),
-        );
+        if !confirm_start(handle, &path) {
+            continue;
+        }
+        match init_project(&path) {
+            Ok(()) => return Some(path),
+            Err(message) => show_error(handle, &message),
+        }
     }
+}
+
+/// .tadori の無いフォルダで、tadori を始めてよいかを聞く
+fn confirm_start(handle: &AppHandle, dir: &Path) -> bool {
+    handle
+        .dialog()
+        .message(format!(
+            "{} には、まだ tadori の設定がありません。\n\nここで始めますか？\n.tadori（工程・ステータス・ルール）と ledger（台帳・WBS・承認の記録）を置きます。すでにあるファイルは書き換えません。commit はしません。",
+            dir.display()
+        ))
+        .title("tadori を始める")
+        .kind(MessageDialogKind::Info)
+        .buttons(MessageDialogButtons::OkCancelCustom("始める".into(), "やめる".into()))
+        .blocking_show()
+}
+
+/// `tadori init` で、最小の設定と台帳を置く。案件の名前はフォルダの名前（あとで .tadori/project.tsv で変えられる）
+fn init_project(dir: &Path) -> Result<(), String> {
+    let cli = find_cli()?;
+    let mut command = Command::new("node");
+    command.args(sidecar::init_args(&cli, dir, &folder_name(dir)));
+    hide_console(&mut command);
+    let output = command.output().map_err(|e| format!("tadori を始められませんでした：{e}"))?;
+    if output.status.success() {
+        return Ok(());
+    }
+    Err(format!("tadori を始められませんでした。\n{}", String::from_utf8_lossy(&output.stderr).trim()))
 }
 
 /// `tadori serve` を起こし、立ち上がったら窓に映して戻る（出力は別のスレッドで読み続ける）

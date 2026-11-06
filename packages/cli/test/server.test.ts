@@ -200,3 +200,33 @@ describe('書き込み', () => {
     expect(res.status).toBe(400)
   })
 })
+
+describe('エージェントの専用カーソル（POST /api/agent）', () => {
+  test('画面がつながっていれば、指示を /api/events に agent として流す', async () => {
+    const controller = new AbortController()
+    const events = await fetch(`${base}/api/events`, { signal: controller.signal })
+    const reader = (events.body as ReadableStream<Uint8Array>).getReader()
+    const res = await fetch(`${base}/api/agent`, { method: 'POST', headers: WRITE_HEADERS, body: JSON.stringify({ action: 'click', target: 'ルールセット' }) })
+    expect(res.status).toBe(200)
+    let received = ''
+    const deadline = Date.now() + 2000
+    while (!received.includes('event: agent') && Date.now() < deadline) {
+      const { value, done } = await reader.read()
+      if (done) break
+      received += new TextDecoder().decode(value)
+    }
+    controller.abort()
+    expect(received).toContain('event: agent')
+    expect(received).toContain('"target":"ルールセット"')
+  })
+
+  test('x-tadori の無い指示は断る（ほかのサイトから画面を操作させない）', async () => {
+    const res = await fetch(`${base}/api/agent`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'say', message: 'x' }) })
+    expect(res.status).toBe(403)
+  })
+
+  test('おかしな指示は 400', async () => {
+    const res = await fetch(`${base}/api/agent`, { method: 'POST', headers: WRITE_HEADERS, body: JSON.stringify({ action: 'drag' }) })
+    expect(res.status).toBe(400)
+  })
+})

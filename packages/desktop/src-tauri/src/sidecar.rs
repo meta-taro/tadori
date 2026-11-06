@@ -37,6 +37,17 @@ pub fn serve_args(cli: &Path, project: &Path, port: u16) -> Vec<String> {
     ]
 }
 
+/// `node <cli> init <フォルダ> --name <名前>` の引数（最小の設定と台帳を置く。あるファイルは書き換えない）
+pub fn init_args(cli: &Path, dir: &Path, name: &str) -> Vec<String> {
+    vec![
+        cli.to_string_lossy().into_owned(),
+        "init".into(),
+        dir.to_string_lossy().into_owned(),
+        "--name".into(),
+        name.to_string(),
+    ]
+}
+
 /// tadori の CLI（packages/cli/dist/main.js）を探す場所。上から順に、在るものを使う。
 /// 1. 環境変数 TADORI_CLI（手元で別の版を試すとき）
 /// 2. このリポジトリの中の packages/cli/dist/main.js（開発中）
@@ -112,6 +123,12 @@ mod tests {
         assert_eq!(choose_port(port), 0);
         drop(busy);
         assert_eq!(choose_port(port), port);
+    }
+
+    #[test]
+    fn init_の引数はフォルダと案件の名前() {
+        let args = init_args(Path::new("/t/main.js"), Path::new("/work/新しい案件"), "新しい案件");
+        assert_eq!(args[1..], ["init", "/work/新しい案件", "--name", "新しい案件"]);
     }
 
     #[test]

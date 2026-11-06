@@ -4,6 +4,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path'
 import { ProjectLoadError, saveSettings, saveTaskStatus, trace, validatePhases, validateStatuses, type Phase, type StatusDef } from '@tadori/core'
 import { loadState } from './state.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
+import { AgentActionError, parseAgentAction } from './agent.js'
 
 export interface ServerOptions {
   readonly dir: string
@@ -150,6 +151,21 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
   if (req.method === 'GET' && url.pathname === '/api/events') {
     notifier.attach(res)
     return
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/agent') {
+    // エージェントの専用カーソル：人のマウスを使わず、画面の中で指す・押す・打つ
+    assertWriteAllowed(req)
+    let action
+    try {
+      action = parseAgentAction(await readJson(req))
+    } catch (error: unknown) {
+      if (error instanceof AgentActionError) throw new HttpError(400, error.message)
+      throw error
+    }
+    const screens = notifier.send('agent', action)
+    if (!screens) throw new HttpError(409, 'tadori の画面が開いていません。画面を開いてから送ってください')
+    return sendJson(res, 200, { screens })
   }
 
   if (req.method === 'GET' && url.pathname === '/api/state') {
