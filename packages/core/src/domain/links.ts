@@ -12,6 +12,8 @@ export interface LinkTemplate {
 export interface LinkValues {
   /** 案件のフォルダの中の場所（例：ledger/items.tsv） */
   readonly path?: string
+  /** git リポジトリの最上位からの場所（例：examples/lend-v12/ledger/items.tsv）。案件が最上位なら path と同じ */
+  readonly repopath?: string
   /** 手元の絶対パス */
   readonly abspath?: string
   /** 行番号 */
@@ -22,7 +24,7 @@ export interface LinkValues {
 
 /** 雛形の差し込み（{path} など）に、URL で崩れない形にした値を入れる。値が無ければ空 */
 export function buildLink(template: string, values: LinkValues): string {
-  return template.replace(/\{(path|abspath|line|id)\}/g, (_, key: keyof LinkValues) => {
+  return template.replace(/\{(path|repopath|abspath|line|id)\}/g, (_, key: keyof LinkValues) => {
     const value = values[key]
     return value === undefined ? '' : encodeURIComponent(String(value))
   })

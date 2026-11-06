@@ -69,7 +69,7 @@ claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp /pat
 .tadori/statuses.tsv       WBS のステータスの設定
 .tadori/kinds.tsv          台帳の種類の読み方（無くてもよい。例：TC → 試験ケース）
 .tadori/columns.tsv        台帳の列の読み方（無くてもよい。例：change → 改修後の対応）
-.tadori/links.tsv          ほかの道具を開く URL の雛形（無くてもよい。例：md-business → md-business://open?path={path}&line={line}）
+.tadori/links.tsv          ほかの道具を開く URL の雛形（無くてもよい。差し込み：{path}・{repopath}・{abspath}・{line}・{id}。例は examples/lend-v12/.tadori/links.tsv）
                            差し込み：{path} 案件の中の場所 / {abspath} 手元の絶対パス / {line} 行番号 / {id} 行の ID。javascript: などは使えない
 .tadori/rulesets/*.tsv     工程ごとのルールセット（判定は covered / refers / filled / approval。owner 列に担当の役割）
 .tadori/checks.tsv         チェックの記録（5W1H）

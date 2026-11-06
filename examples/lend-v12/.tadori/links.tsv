@@ -1,0 +1,5 @@
+# ほかの道具を開く URL の雛形。差し込める値：{path}（案件のフォルダからの場所）・{repopath}（git リポジトリの最上位からの場所）・{abspath}・{line}・{id}
+# md-business は、その PC で一度開いたことのあるフォルダの中だけを開く。行へ移る line= は md-business 0.38.0 から効く
+# git-qa の口（git-qa://run?sheet={abspath}&case={id}）は、git-qa の配布版に入ってから足す
+tool	url
+md-business	md-business://open?repo=github.com/meta-taro/tadori&path={repopath}&line={line}

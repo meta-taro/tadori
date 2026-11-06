@@ -23,6 +23,20 @@ async function unpushedCount(dir: string): Promise<number | null> {
   }
 }
 
+/**
+ * 案件のフォルダが git リポジトリの最上位から見てどこにあるか（例：`examples/lend/`）。
+ * 最上位そのもの・git の外なら空。ほかの道具に「リポジトリの中のどのファイルか」を渡すために使う。
+ */
+export async function repositoryPrefix(dir: string): Promise<string> {
+  try {
+    const { stdout } = await run('git', ['rev-parse', '--show-prefix'], { cwd: dir })
+    return stdout.trim()
+  } catch {
+    // git が無い・git 管理外：案件のフォルダを最上位とみなす
+    return ''
+  }
+}
+
 /** 案件のフォルダが、それ自身の git リポジトリの最上位か */
 async function isOwnRepository(dir: string): Promise<boolean> {
   try {

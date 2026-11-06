@@ -82,6 +82,14 @@ describe('md-business で開くリンク', () => {
     await rm(join(dir, '.tadori/links.tsv'))
   })
 
+  test('{repopath} は git リポジトリの最上位からの場所（案件が git の外なら案件のフォルダからの場所）', async () => {
+    await writeFile(join(dir, '.tadori/links.tsv'), 'tool\turl\nmd-business\tmd-business://open?repo=github.com/o/r&path={repopath}&line={line}\n', 'utf8')
+    const state = await (await fetch(`${base}/api/state`)).json()
+    const leak = state.leaks.find((l: { rule: string; itemId: string }) => l.rule === 'R4' && l.itemId === 'DD-2.3')
+    expect(leak.openUrl).toBe('md-business://open?repo=github.com/o/r&path=ledger%2Fitems.tsv&line=6')
+    await rm(join(dir, '.tadori/links.tsv'))
+  })
+
   test('試験ケースの漏れには git-qa で実施する URL を付け、ほかの漏れには付けない', async () => {
     await writeFile(join(dir, '.tadori/links.tsv'), 'tool\turl\ngit-qa\tgit-qa://run?sheet={path}&case={id}\n', 'utf8')
     const state = await (await fetch(`${base}/api/state`)).json()

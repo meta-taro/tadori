@@ -9,6 +9,11 @@ describe('buildLink', () => {
     expect(url).toBe('md-business://open?path=ledger%2Fitems.tsv&line=6&id=DD-2.3&abs=C%3A%2Fwork%2F%E6%A1%88%E4%BB%B6%20A%2Fledger%2Fitems.tsv')
   })
 
+  test('{repopath} には、git リポジトリの最上位からの場所を差し込む', () => {
+    expect(buildLink('md-business://open?repo=github.com/o/r&path={repopath}', { repopath: 'examples/lend-v12/ledger/items.tsv' }))
+      .toBe('md-business://open?repo=github.com/o/r&path=examples%2Flend-v12%2Fledger%2Fitems.tsv')
+  })
+
   test('値の無い差し込みは空にする', () => {
     expect(buildLink('x://open?path={path}&line={line}', { path: 'a.tsv' })).toBe('x://open?path=a.tsv&line=')
   })
