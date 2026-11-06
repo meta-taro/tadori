@@ -5,10 +5,14 @@ const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', 
 let gateView = 'timeline'
 let selectedPhase = null
 
+/** 見た目の状態。ルールが無い工程は「通過」の緑にしない（まだ判定していないだけ） */
+const shownState = gate => (gate.state === 'clear' && !gate.rules.length ? 'unjudged' : gate.state)
+
 const badgesOf = gate => [
   gate.leaks.length ? chip('hole', `漏れ ${gate.leaks.length}`) : '',
   gate.pendingApprovals.length ? chip('wait', `承認待ち ${gate.pendingApprovals.length}`) : '',
-  !gate.leaks.length && !gate.pendingApprovals.length ? chip('ok', '通過') : '',
+  // ルールが無い工程は、まだ判定していないだけなので「通過」と出さない
+  !gate.leaks.length && !gate.pendingApprovals.length ? (gate.rules.length ? chip('ok', '通過') : chip('none', 'ルールなし')) : '',
 ].join('')
 
 function timelineHtml(state) {
@@ -47,7 +51,7 @@ function timelineHtml(state) {
       <span class="tl-track">
         <span class="tl-bar" style="left:${pos(gate.span.start)};width:calc(${pos(gate.span.end)} - ${pos(gate.span.start)});--bar:${barColor}"></span>
         ${hatch}${steps}${runner}
-        <span class="tl-gate ${gate.state} ${overdue ? 'overdue' : ''}" style="left:${pos(gate.span.end)}" title="完了判定 ${fullDate(gate.span.end)}"></span>
+        <span class="tl-gate ${shownState(gate)} ${overdue ? 'overdue' : ''}" style="left:${pos(gate.span.end)}" title="完了判定 ${fullDate(gate.span.end)}"></span>
         <span class="tl-badges" style="left:${pos(gate.span.end)}">${badgesOf(gate)}<span class="tl-date">${shortDate(gate.span.end)}</span></span>
       </span>
     </button>`
@@ -72,7 +76,7 @@ function rulePip(state, rule) {
 
 function cardsHtml(state) {
   const cards = state.gates.map((gate, i) => `
-    <button type="button" class="stage ${gate.state}" data-phase="${esc(gate.phase.id)}" aria-pressed="${gate.phase.id === selectedPhase}">
+    <button type="button" class="stage ${shownState(gate)}" data-phase="${esc(gate.phase.id)}" aria-pressed="${gate.phase.id === selectedPhase}">
       <div class="gate" aria-hidden="true"></div>
       <div class="step">${String(i + 1).padStart(2, '0')}</div>
       <div class="name">${esc(gate.phase.name)}</div>

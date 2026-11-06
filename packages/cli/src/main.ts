@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util'
-import { relative, resolve } from 'node:path'
+import { basename, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { appendChecks, ProjectLoadError, trace, type CheckRecord } from '@tadori/core'
+import { appendChecks, initProject, ProjectLoadError, trace, type CheckRecord } from '@tadori/core'
 import { formatCheck, formatTrace } from './format.js'
 import { loadState, localToday } from './state.js'
 import { startServer } from './server.js'
@@ -10,11 +10,13 @@ import { serveMcp } from './mcp.js'
 
 const DEFAULT_PORT = 4870
 const USAGE = `使い方:
+  tadori init [案件のフォルダ] [--name 案件の名前]
   tadori check [案件のフォルダ] [--log --who 名前 --why 理由] [--today YYYY-MM-DD]
   tadori why <ID> [案件のフォルダ]
   tadori serve [案件のフォルダ] [--port ${DEFAULT_PORT}] [--today YYYY-MM-DD]
   tadori mcp [案件のフォルダ]
 
+  init   試す案件のフォルダに、最小の設定（.tadori/）と台帳（ledger/）を置く。あるファイルは書き換えない
   check  工程ごとの漏れと承認待ちを出す。漏れがあれば終了コード 1（CI でも使える）
          --log を付けると、チェックの記録（.tadori/checks.tsv）に 5W1H で足す
   why    1 件から上下に辿り、線が切れている所を出す
@@ -29,6 +31,7 @@ const { values, positionals } = parseArgs({
     log: { type: 'boolean' },
     who: { type: 'string' },
     why: { type: 'string' },
+    name: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
   },
 })
@@ -63,6 +66,24 @@ function toRecords(state: Awaited<ReturnType<typeof loadState>>['state'], dir: s
 async function main(): Promise<void> {
   if (values.help || !command) {
     process.stdout.write(`${USAGE}\n`)
+    return
+  }
+
+  if (command === 'init') {
+    const dir = resolve(rest[0] ?? '.')
+    const result = await initProject(dir, values.name ?? basename(dir))
+    const lines = [
+      dir,
+      ...result.created.map(p => `  置いた　　　　　${p}`),
+      ...result.skipped.map(p => `  あるので触らない　${p}`),
+      '',
+      '次にすること：',
+      '  1. .tadori/phases.tsv の工程を、この案件に合わせて書き換える',
+      '  2. .tadori/rulesets/ にルールを書く（ルールが無いうちは、漏れは出ません）',
+      `  3. ledger/ に台帳の行と WBS を書き、tadori serve ${rest[0] ?? '.'} で画面を開く`,
+      'commit はしていません。中身を確かめてから commit してください',
+    ]
+    process.stdout.write(`${lines.join('\n')}\n`)
     return
   }
 

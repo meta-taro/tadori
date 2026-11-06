@@ -8,7 +8,7 @@ export function formatCheck(state: ProjectState): string {
     const counts = [
       gate.leaks.length ? `漏れ ${gate.leaks.length}` : '',
       gate.pendingApprovals.length ? `承認待ち ${gate.pendingApprovals.length}（${gate.pendingApprovals.map(r => r.id).join('・')}）` : '',
-    ].filter(Boolean).join(' / ') || '残りなし'
+    ].filter(Boolean).join(' / ') || (gate.rules.length ? '残りなし' : 'ルールなし（まだ判定していません）')
     const early = gate.startedBefore ? `  ← ${gate.startedBefore.name}の完了判定より前に着手` : ''
     const late = gate.maxLateDays ? `  ${gate.maxLateDays} 日遅れ` : ''
     lines.push(`■ ${gate.phase.name}  ${counts}${late}${early}`)

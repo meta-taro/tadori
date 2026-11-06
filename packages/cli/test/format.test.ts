@@ -18,6 +18,14 @@ describe('formatCheck', () => {
   })
 })
 
+describe('formatCheck のルールが無い工程', () => {
+  test('ルールが 1 つも無い工程は「残りなし」ではなく「ルールなし」と出す（通ったように見せない）', async () => {
+    const { state } = await loadState(EXAMPLE, '2026-11-05')
+    const noRules = { ...state, gates: state.gates.map(g => (g.phase.id === 'rel' ? { ...g, rules: [], leaks: [], pendingApprovals: [] } : g)) }
+    expect(formatCheck(noRules)).toMatch(/■ リリース  ルールなし（まだ判定していません）/)
+  })
+})
+
 describe('formatCheck の直し方', () => {
   test('漏れと承認待ちに、担当と直し方を出す', async () => {
     const { state } = await loadState(EXAMPLE, '2026-11-05')
