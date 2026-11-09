@@ -549,15 +549,26 @@
   /* ---- 1 日の進行 ---- */
   .daily-bar { display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin:8px 0 16px; }
   .daily-sheet { padding:8px 24px 16px; }
-  .daily-section h2 { font-size:15px; color:var(--ink); margin:18px 0 8px; padding-left:10px; border-left:3px solid var(--accent); }
+  .daily-section h2 { font-size:18px; font-weight:700; color:var(--ink); margin:24px 0 10px; padding:0 0 6px 10px; border-left:3px solid var(--accent); border-bottom:1px solid var(--hairline-strong); }
   .daily-section ol { margin:0; padding-left:28px; color:var(--ink); line-height:1.9; }
   .daily-section.note-section ol { color:var(--ink-subtle); font-size:13px; }
-  .daily-list { list-style:none; padding-left:0 !important; }
+  .daily-list { list-style:none; padding-left:16px !important; }
   .daily-entry { display:flex; align-items:center; gap:10px; padding:4px 0; }
   .daily-no { width:24px; color:var(--ink-subtle); font-variant-numeric:tabular-nums; flex:none; }
   .daily-text { flex:1; min-width:200px; }
   .daily-meta { display:flex; align-items:center; gap:8px; flex:none; max-width:40%; overflow:hidden; white-space:nowrap; }
-  .daily-preview { white-space:pre-wrap; font-family:var(--sans); font-size:13px; line-height:1.8; padding:16px 20px; color:var(--ink-muted); }
+  /* 文の形：Markdown を描いたときのように、見出し・字下げした番号付きの一覧・札で見せる */
+  .daily-preview { font-size:14px; line-height:1.8; padding:8px 24px 16px; color:var(--ink); }
+  .daily-preview-block h3 { font-size:18px; font-weight:700; margin:18px 0 6px; padding-bottom:4px; border-bottom:1px solid var(--hairline-strong); }
+  .daily-preview-block h4 { font-size:14px; font-weight:700; margin:10px 0 2px; color:var(--ink-muted); }
+  .daily-preview-list { margin:0; padding-left:2.2em; }
+  .daily-preview-list li { padding:1px 0; }
+  .daily-preview-list li::marker { color:var(--ink-subtle); font-variant-numeric:tabular-nums; }
+  .daily-pill { display:inline-block; padding:0 7px; margin-right:4px; border-radius:999px; font-size:11px; line-height:18px; vertical-align:1px; background:var(--accent-soft); color:var(--accent); font-weight:600; }
+  .daily-ref { color:var(--accent); text-decoration:none; }
+  .daily-ref:hover, .daily-preview .origin-link:hover { text-decoration:underline; }
+  /* 行の印の選択は、小さな札の見た目にする */
+  .daily-tag { height:24px !important; padding:0 8px !important; border-radius:999px !important; font-size:11px !important; font-weight:600; background:var(--accent-soft) !important; color:var(--accent) !important; border-color:transparent !important; flex:none; }
   .add .grow { flex:1; min-width:240px; }
   /* 上の帯の「担当」：どの画面もこの人の分だけに絞る */
   .who-filter { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-subtle); white-space:nowrap; }

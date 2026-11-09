@@ -68,7 +68,7 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
 }
 
 /** 行の頭に付ける印（言葉が空なら付けない） */
-function tagText(tag: string | undefined, format: DailyFormat): string {
+export function tagText(tag: string | undefined, format: DailyFormat): string {
   if (!tag) return ''
   const word = (format as unknown as Record<string, string>)[`tag_${tag}`]
   return word ? fill(format.tag_format, { tag: word }) : ''
@@ -88,7 +88,7 @@ const mdWeekday = (day: string) => `${md(day)} ${WEEKDAYS[new Date(`${day}T00:00
 const fill = (template: string, values: Readonly<Record<string, string>>) =>
   template.replace(/\{(\w+)\}/g, (all, key: string) => values[key] ?? all)
 
-const wbsLabel = (id: string, format: DailyFormat) => fill(format.wbs, { id, num: id.replace(/^W[-_ ]?/i, '') })
+export const wbsLabel = (id: string, format: DailyFormat): string => fill(format.wbs, { id, num: id.replace(/^W[-_ ]?/i, '') })
 
 function statusName(project: Project, id: string): string {
   return project.statuses.find(s => s.id === id)?.name ?? id

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { buildDaily, type Project, type StatusChange, type Task } from '@tadori/core'
 import { formatDaily, formatEntries, DEFAULT_DAILY_FORMAT } from '../src/daily-format.js'
+import { linksOf } from '../src/daily.js'
 import { entriesFromSheet } from '@tadori/core'
 
 // 架空の案件。担当は役割の名前だけ
@@ -133,5 +134,13 @@ describe('formatEntries の印', () => {
 
   test('印の言葉を空にすると、その印は出さない', () => {
     expect(formatEntries(tagged, project, '2026-11-09', { ...DEFAULT_DAILY_FORMAT, tag_plan: '' })).toContain('2. API の設計')
+  })
+})
+
+describe('linksOf（文の中の WBS・課題の書き方 → 画面の飛び先）', () => {
+  test('WBS は案件の書き方（例：WBS{num}）のまま、課題は ID のまま、飛び先を付ける', () => {
+    const entries = entriesFromSheet(sheet, DEFAULT_DAILY_FORMAT.continued)
+    const links = linksOf(entries, { ...DEFAULT_DAILY_FORMAT, wbs: 'WBS{num}' })
+    expect(links).toEqual(expect.arrayContaining([{ text: 'WBS01', href: '#browse-W-01' }, { text: 'Q-12', href: '#trace-Q-12' }]))
   })
 })

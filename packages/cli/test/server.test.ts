@@ -253,6 +253,13 @@ describe('GET /api/daily（人単位の 1 日の進行）', () => {
     expect(mine.text).not.toContain('基本設計レビュー')
   })
 
+  test('文の中の WBS・課題の書き方と、画面での飛び先（links）を返す（文には URL を足さない）', async () => {
+    const all = await (await fetch(`${base}/api/daily?date=2026-11-05`)).json()
+    expect(all.links).toEqual(expect.arrayContaining([{ text: 'W-03', href: '#browse-W-03' }]))
+    expect(all.text).not.toContain('#browse-')
+    expect(all.tags).toEqual(expect.arrayContaining(['［済］', '［予定］']))
+  })
+
   test('日付の形がおかしければ 400', async () => {
     expect((await fetch(`${base}/api/daily?date=11-05`)).status).toBe(400)
   })
