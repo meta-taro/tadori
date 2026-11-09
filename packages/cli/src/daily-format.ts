@@ -17,8 +17,16 @@ export interface DailyFormat {
   readonly notes: string
   /** WBS の番号の書き方。{id}＝ID そのまま、{num}＝ID の先頭の W と区切りを外したもの */
   readonly wbs: string
-  /** 次の作業日も続く作業の頭に付ける印（空なら付けない） */
+  /** 次の作業日も続く作業の頭に付ける印（空なら付けない。区切りが無ければ空白を 1 つ入れる） */
   readonly continued: string
+  /** 番号の振り方：continuous＝見出しをまたいで通し / per-section＝見出しごとに 1 から */
+  readonly numbering: string
+  /** per-section のとき、補足を分ける名前 */
+  readonly today_label: string
+  readonly next_label: string
+  readonly consult_label: string
+  /** 台帳の同じ種類の行をこの数より多く足した・直した日は、種類ごとに 1 件にまとめる */
+  readonly group_after: string
 }
 
 export const DEFAULT_DAILY_FORMAT: DailyFormat = {
@@ -28,6 +36,11 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   notes: '補足',
   wbs: '{id}',
   continued: '',
+  numbering: 'continuous',
+  today_label: '今日',
+  next_label: '次の作業日',
+  consult_label: '相談',
+  group_after: '3',
 }
 
 /** 案件の設定（key と value）を、既定の形に重ねる。知らない key は使わない */
@@ -76,18 +89,27 @@ function noteLine(project: Project, entry: DailyEntry, no: number, format: Daily
 }
 
 export function formatEntries(entries: readonly DailyEntry[], project: Project, date: string, format: DailyFormat = DEFAULT_DAILY_FORMAT): string {
-  const today = entries.filter(e => e.section === 'today')
-  const next = entries.filter(e => e.section === 'next')
-  const consult = entries.filter(e => e.section === 'consult')
-  // 番号は 今日 → 次の作業日 → 相談 の通し（補足と同じ番号にするため）
-  const numbered = [...today, ...next, ...consult].map((entry, i) => ({ entry, no: i + 1 }))
-  const lines = (list: readonly DailyEntry[]) =>
-    numbered.filter(n => list.includes(n.entry)).map(({ entry, no }) => `${no}. ${entry.text}${wbsTail(project, entry.wbs, format)}`)
+  const sections = [
+    { id: 'today', label: format.today_label, list: entries.filter(e => e.section === 'today') },
+    { id: 'next', label: format.next_label, list: entries.filter(e => e.section === 'next') },
+    { id: 'consult', label: format.consult_label, list: entries.filter(e => e.section === 'consult') },
+  ]
+  // 番号：既定は 今日 → 次の作業日 → 相談 の通し。per-section なら見出しごとに 1 から。補足は同じ番号を使う
+  const perSection = format.numbering === 'per-section'
+  let running = 0
+  const numbered = sections.map(s => ({ ...s, items: s.list.map((entry, i) => ({ entry, no: perSection ? i + 1 : ++running })) }))
+  const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${entry.text}${wbsTail(project, entry.wbs, format)}`)
+  const notes = numbered.flatMap(s => {
+    const rows = s.items.flatMap(({ entry, no }) => noteLine(project, entry, no, format) ?? [])
+    // 見出しごとに番号を振り直すときは、どの見出しの番号か分かるよう、補足を見出しの名前で分ける
+    return perSection && rows.length ? [s.label, ...rows] : rows
+  })
+  const today = numbered[0]?.items.length ?? 0
   return [
-    [fill(format.today, { date: mdWeekday(date), count: String(today.length) }), ...lines(today)].join('\n'),
-    [fill(format.next, { date: mdWeekday(nextWorkday(date)) }), ...lines(next)].join('\n'),
-    [format.consult, ...lines(consult)].join('\n'),
-    [format.notes, ...numbered.flatMap(({ entry, no }) => noteLine(project, entry, no, format) ?? [])].join('\n'),
+    [fill(format.today, { date: mdWeekday(date), count: String(today) }), ...lines('today')].join('\n'),
+    [fill(format.next, { date: mdWeekday(nextWorkday(date)) }), ...lines('next')].join('\n'),
+    [format.consult, ...lines('consult')].join('\n'),
+    [format.notes, ...notes].join('\n'),
   ].join('\n\n')
 }
 

@@ -75,3 +75,13 @@ describe('entriesFromSheet の既定', () => {
     expect(entriesFromSheet(buildDaily(project, [], '2026-11-09'))[0]?.text).toBe('API の設計')
   })
 })
+
+describe('entriesFromSheet の続く印の区切り', () => {
+  test('印のあとに区切りが無ければ、空白を 1 つ入れる', () => {
+    const statuses = [{ id: 'doing', name: '進行中', tone: 'wait' as const }]
+    const project = { name: 'x', phases: [], rules: [], approvals: [], statuses, items: [], tasks: [{ id: 'W-02', phase: 'dd', name: 'API の設計', status: 'doing', start: '2026-11-09', end: '2026-11-12' }] } as unknown as Project
+    const sheet = buildDaily(project, [], '2026-11-09')
+    expect(entriesFromSheet(sheet, '続き')[0]?.text).toBe('続き API の設計')
+    expect(entriesFromSheet(sheet, '続き：')[0]?.text).toBe('続き：API の設計')
+  })
+})

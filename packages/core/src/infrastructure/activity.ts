@@ -22,19 +22,48 @@ async function show(dir: string, rev: string): Promise<Rows> {
   }
 }
 
+export interface ActivityOptions {
+  /** 同じ種類の行をこの数より多く足した・直した日は、種類ごとに 1 件にまとめる（台帳を最初に書いた日に、数十件並ばないように） */
+  readonly groupAfter?: number
+  /** 種類の読み方（.tadori/kinds.tsv） */
+  readonly kindLabels?: Readonly<Record<string, string>>
+}
+const DEFAULT_GROUP_AFTER = 3
+
 /** 台帳の 2 つの版を比べ、足した行と直した行を、文にする */
 function ledgerEntries(before: Rows, after: Rows, who: string): DailyEntry[] {
-  const entry = (key: string, text: string): DailyEntry => ({ id: '', who, section: 'today', text, wbs: [], origin: 'auto', key })
+  const entry = (key: string, text: string, kind: string, id: string): DailyEntry & { kind: string; rowId: string } =>
+    ({ id: '', who, section: 'today', text, wbs: [], origin: 'auto', key, kind, rowId: id })
   return [...after].flatMap(([id, row]) => {
     const old = before.get(id)
-    if (!old) return [entry(`ledger:add:${id}`, `台帳に ${id}（${row.title ?? ''}）を足した`)]
+    const kind = row.kind ?? ''
+    if (!old) return [entry(`ledger:add:${id}`, `台帳に ${id}（${row.title ?? ''}）を足した`, kind, id)]
     const changed = Object.keys(row).filter(col => col !== 'id' && (row[col] ?? '') !== (old[col] ?? ''))
-    return changed.length ? [entry(`ledger:edit:${id}`, `台帳の ${id}（${row.title ?? ''}）の ${changed.join('・')} を直した`)] : []
+    return changed.length ? [entry(`ledger:edit:${id}`, `台帳の ${id}（${row.title ?? ''}）の ${changed.join('・')} を直した`, kind, id)] : []
+  })
+}
+
+/** 同じ担当・同じ種類・同じしたこと（足した／直した）が多い分を、1 件にまとめる。ID は補足に回す */
+function grouped(entries: Array<DailyEntry & { kind?: string; rowId?: string }>, options: ActivityOptions): DailyEntry[] {
+  const limit = options.groupAfter ?? DEFAULT_GROUP_AFTER
+  const groupKey = (e: DailyEntry & { kind?: string }) => [e.who, e.kind, (e.key ?? '').startsWith('ledger:add:') ? 'add' : 'edit'].join('|')
+  const counts = new Map<string, number>()
+  for (const e of entries) counts.set(groupKey(e), (counts.get(groupKey(e)) ?? 0) + 1)
+  const done = new Set<string>()
+  return entries.flatMap(({ kind = '', rowId = '', ...e }) => {
+    const k = groupKey({ ...e, kind })
+    if ((counts.get(k) ?? 0) <= limit) return [e]
+    if (done.has(k)) return []
+    done.add(k)
+    const same = entries.filter(x => groupKey(x) === k)
+    const isAdd = k.endsWith('|add')
+    const label = options.kindLabels?.[kind] ?? kind
+    return [{ ...e, text: `台帳に ${label} を ${same.length} 行${isAdd ? '足した' : '直した'}`, note: same.map(x => x.rowId).join('・'), key: `ledger:${isAdd ? 'add' : 'edit'}-kind:${kind}` }]
   })
 }
 
 /** その日の commit で、台帳に何をしたか（だれの commit かを担当にする） */
-async function ledgerActivity(dir: string, date: string, today: string, members: readonly Member[]): Promise<DailyEntry[]> {
+async function ledgerActivity(dir: string, date: string, today: string, members: readonly Member[], options: ActivityOptions): Promise<DailyEntry[]> {
   let log: string
   try {
     ;({ stdout: log } = await run('git', ['log', '--reverse', '--format=%H%x09%an%x09%cs', '--', PATHS.items], { cwd: dir, maxBuffer: MAX_BUFFER }))
@@ -42,7 +71,7 @@ async function ledgerActivity(dir: string, date: string, today: string, members:
     // git の外：台帳の差分は読めない
     return []
   }
-  const entries: DailyEntry[] = []
+  const entries: Array<DailyEntry & { kind?: string; rowId?: string }> = []
   for (const line of log.split('\n').filter(Boolean)) {
     const [hash = '', author = '', day = ''] = line.split('\t')
     if (day !== date) continue
@@ -57,8 +86,8 @@ async function ledgerActivity(dir: string, date: string, today: string, members:
       // 台帳が無い案件
     }
   }
-  // 同じ行を 1 日に何度も直したら、1 件にまとめる（最後の言い方を使う）
-  return [...new Map(entries.map(e => [e.key, e])).values()]
+  // 同じ行を 1 日に何度も直したら、1 件にまとめる（最後の言い方を使う）。そのうえで多い種類をまとめる
+  return grouped([...new Map(entries.map(e => [e.key, e])).values()], options)
 }
 
 /** その日のチェックの記録（5W1H）を、だれが何を確かめたかの文にする */
@@ -83,6 +112,6 @@ async function checkActivity(dir: string, date: string): Promise<DailyEntry[]> {
  * その日に、台帳とチェックの記録で何をしたか。材料は案件のリポジトリの中の記録だけ（外の道具とは同期しない）。
  * today は手元の今日（まだ commit していない書き換えを、その日の分として数えるため）。
  */
-export async function readActivity(dir: string, date: string, today: string, members: readonly Member[]): Promise<DailyEntry[]> {
-  return [...(await ledgerActivity(dir, date, today, members)), ...(await checkActivity(dir, date))]
+export async function readActivity(dir: string, date: string, today: string, members: readonly Member[], options: ActivityOptions = {}): Promise<DailyEntry[]> {
+  return [...(await ledgerActivity(dir, date, today, members, options)), ...(await checkActivity(dir, date))]
 }

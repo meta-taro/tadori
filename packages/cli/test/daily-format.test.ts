@@ -71,3 +71,17 @@ describe('formatEntries の形は案件ごとに変えられる（.tadori/daily-
     expect(section(/^Next/, out)).toContain('2. Q-12 並び順 [cont] 画面の設計レビュー（#02 進行中 11/11）')
   })
 })
+
+describe('formatEntries の番号の振り方', () => {
+  const perSection = formatEntries(entriesFromSheet(sheet), project, '2026-11-09', { ...DEFAULT_DAILY_FORMAT, numbering: 'per-section' })
+
+  test('per-section なら見出しごとに 1 から振り直し、補足は見出しの名前で分けて同じ番号を使う', () => {
+    expect(section(/^次の作業日/, perSection)).toMatch(/^次の作業日（11\/10 火）\n1\. /)
+    expect(section(/^補足/, perSection)).toMatch(/^補足\n今日\n1\. 課題 Q-12/)
+    expect(section(/^補足/, perSection)).toMatch(/\n次の作業日\n1\. 課題 Q-12/)
+  })
+
+  test('既定は通し番号', () => {
+    expect(section(/^次の作業日/)).toMatch(/\n2\. /)
+  })
+})

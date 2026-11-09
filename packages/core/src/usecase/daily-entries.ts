@@ -85,6 +85,8 @@ export function memberOf(author: string, members: readonly Member[]): string {
  * continued は、次の作業日も続く作業の頭に付ける印（案件の設定。既定は付けない）。
  */
 export function entriesFromSheet(sheet: DailySheet, continued = ''): DailyEntry[] {
+  // 印のあとに区切りが無ければ空白を入れる（印が後ろの作業すべてにかかって見えないように）
+  const mark = continued && !/[\s:：・、)）\]］]$/.test(continued) ? `${continued} ` : continued
   const toEntry = (section: DailySection) => (line: DailyLine): DailyEntry => {
     const issue = line.issue ? `${line.issue.id} ${line.issue.short ?? line.issue.title} ` : ''
     const who = [...new Set(line.tasks.flatMap(t => ownersOf(t.owner)))].join('・')
@@ -93,7 +95,7 @@ export function entriesFromSheet(sheet: DailySheet, continued = ''): DailyEntry[
       id: '',
       who,
       section,
-      text: `${issue}${line.continued ? continued : ''}${line.tasks.map(t => t.name).join('・')}`,
+      text: `${issue}${line.continued ? mark : ''}${line.tasks.map(t => t.name).join('・')}`,
       wbs: ids,
       ...(line.issue ? { issue: line.issue.id } : {}),
       origin: 'auto',

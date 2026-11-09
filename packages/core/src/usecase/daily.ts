@@ -59,16 +59,22 @@ function issueOf(project: Project, task: Task): DailyLine['issue'] {
 /** 並べたタスクを、続けて同じ課題のものは 1 件にまとめる（並びは崩さない） */
 function group(project: Project, tasks: readonly Task[], changes: readonly StatusChange[], continuedIds: ReadonlySet<string>): Array<Omit<DailyLine, 'no'>> {
   const lines: Array<Omit<DailyLine, 'no'> & { tasks: Task[]; changes: StatusChange[] }> = []
+  // 1 件にまとめるのは、同じ課題・同じ担当・同じ続き方（続く作業か、始まる作業か）が並んだときだけ。
+  // 担当が違うものをまとめると、担当で絞ったときにほかの人の作業が混ざり、続く印が始まる作業にもかかって見える
+  const ownersKey = (t: Task) => ownersOf(t.owner).sort().join('・')
   for (const task of tasks) {
     const issue = issueOf(project, task)
     const last = lines.at(-1)
     const own = changes.filter(c => c.taskId === task.id)
-    if (issue && last?.issue?.id === issue.id) {
+    const continued = continuedIds.has(task.id)
+    const sameGroup = last !== undefined && issue !== undefined && last.issue?.id === issue.id
+      && ownersKey(last.tasks[0] as Task) === ownersKey(task) && last.continued === continued
+    if (sameGroup) {
       last.tasks.push(task)
       last.changes.push(...own)
       continue
     }
-    lines.push({ ...(issue ? { issue } : {}), tasks: [task], changes: [...own], continued: continuedIds.has(task.id) })
+    lines.push({ ...(issue ? { issue } : {}), tasks: [task], changes: [...own], continued })
   }
   return lines
 }

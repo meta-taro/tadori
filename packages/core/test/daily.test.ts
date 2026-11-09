@@ -86,3 +86,26 @@ describe('buildDaily の担当が 2 人', () => {
     }
   })
 })
+
+describe('buildDaily のまとめ方', () => {
+  const mixed = {
+    ...project,
+    tasks: [
+      { ...task('W-11', '一覧の設計', 'doing', '設計担当', '2026-11-05', '2026-11-12'), issue: 'BUG-012' },
+      { ...task('W-12', '一覧の試験', 'doing', '検証担当', '2026-11-05', '2026-11-12'), issue: 'BUG-012' },
+      { ...task('W-13', '一覧の文言', 'todo', '設計担当', '2026-11-10', '2026-11-12'), issue: 'BUG-012' },
+    ],
+  } as unknown as Project
+  const sheet = buildDaily(mixed, [], '2026-11-09')
+  const linesWith = (id: string) => sheet.next.filter(l => l.tasks.some(t => t.id === id))
+
+  test('同じ課題でも、担当が違う作業は 1 件にまとめない（担当で絞ったとき、ほかの人の作業が混ざらない）', () => {
+    expect(linesWith('W-11')[0]?.tasks.map(t => t.id)).toEqual(['W-11'])
+  })
+
+  test('同じ課題・同じ担当でも、続く作業と次の作業日に始まる作業は分ける（続く印は続く作業だけに付く）', () => {
+    expect(linesWith('W-11')[0]?.continued).toBe(true)
+    expect(linesWith('W-13')[0]?.continued).toBe(false)
+    expect(linesWith('W-13')[0]?.tasks.map(t => t.id)).toEqual(['W-13'])
+  })
+})

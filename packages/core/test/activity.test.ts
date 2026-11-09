@@ -40,3 +40,20 @@ describe('readActivity（その日に台帳とチェックの記録で何をし�
     expect(await readActivity(dir, '2026-11-09', '2026-11-09', [])).toHaveLength(1)
   })
 })
+
+describe('readActivity のまとめ', () => {
+  test('同じ種類の行をたくさん足した日は、種類ごとに「N 行足した」の 1 件にまとめ、ID は補足に回す', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tadori-act3-'))
+    made.push(dir)
+    await mkdir(join(dir, 'ledger'), { recursive: true })
+    git(dir, '2026-11-09', 'x', 'init', '-q')
+    const rows = Array.from({ length: 5 }, (_, i) => `TC-${i + 1}\tTC\t試験 ${i + 1}\tqa.tsv\t\t\n`).join('')
+    await writeFile(join(dir, 'ledger/items.tsv'), `${ITEMS}V-1\tV\t観点\tqa.tsv\t\t\n${rows}`, 'utf8')
+    git(dir, '2026-11-09', '検証担当', 'add', '-A'); git(dir, '2026-11-09', '検証担当', 'commit', '-q', '-m', 'a')
+
+    const entries = await readActivity(dir, '2026-11-09', '2026-11-09', [], { groupAfter: 3, kindLabels: { TC: '試験ケース' } })
+    expect(entries).toContainEqual(expect.objectContaining({ who: '検証担当', text: '台帳に 試験ケース を 5 行足した', note: 'TC-1・TC-2・TC-3・TC-4・TC-5', key: 'ledger:add-kind:TC' }))
+    expect(entries).toContainEqual(expect.objectContaining({ text: '台帳に V-1（観点）を足した' })) // 少ない種類は 1 行ずつ
+    expect(entries.filter(e => e.text.includes('TC-'))).toHaveLength(0)
+  })
+})
