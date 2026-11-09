@@ -302,6 +302,24 @@ describe('1 日の進行を作る・足す・直す・消す', () => {
     expect(after.text).toMatch(/相談\n\d+\. (\S+：)?試験の環境はいつ空くか確かめたい/)
   })
 
+  test('前の作業日の「次の作業日」に足した行は、次の作業日の「今日」に予定として出る（前の日の行は残る。今日に直せる）', async () => {
+    const next = '2026-11-06'
+    const key = (id: string) => `carry:${day}:${id}`
+    const added = await (await send('POST', `/api/daily/${day}/entries`, { who: '設計担当', section: 'next', text: 'API の設計を始める' })).json()
+    const carried = (await (await fetch(`${base}/api/daily?date=${next}`)).json()).entries.find((e: { text: string }) => e.text === 'API の設計を始める')
+    expect(carried).toMatchObject({ section: 'today', origin: 'auto', tag: 'plan', key: key(added.entry.id) })
+    // 前の日の行はそのまま
+    const previous = (await (await fetch(`${base}/api/daily?date=${day}`)).json()).entries
+    expect(previous.find((e: { id: string }) => e.id === added.entry.id)).toMatchObject({ section: 'next', origin: 'manual' })
+    // 今日に置いて直すと、作り直しても直したまま
+    await send('POST', `/api/daily/${next}/generate`)
+    const saved = (await (await fetch(`${base}/api/daily?date=${next}`)).json()).entries.find((e: { key?: string }) => e.key === key(added.entry.id))
+    expect((await send('PUT', `/api/daily/${next}/entries/${saved.id}`, { text: 'API の設計を半分まで' })).status).toBe(200)
+    await send('POST', `/api/daily/${next}/generate`)
+    const after = (await (await fetch(`${base}/api/daily?date=${next}`)).json()).entries.filter((e: { key?: string }) => e.key === key(added.entry.id))
+    expect(after.map((e: { text: string }) => e.text)).toEqual(['API の設計を半分まで'])
+  })
+
   test('おかしな見出し・長すぎる文・無い行は断る', async () => {
     expect((await send('POST', `/api/daily/${day}/entries`, { who: 'x', section: 'nope', text: 'a' })).status).toBe(400)
     expect((await send('POST', `/api/daily/${day}/entries`, { who: 'x', section: 'today', text: 'あ'.repeat(501) })).status).toBe(400)

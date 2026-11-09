@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'vitest'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { readDaily, readMembers, writeDaily } from '../src/infrastructure/daily-store.js'
+import { previousDailyDate, readDaily, readMembers, writeDaily } from '../src/infrastructure/daily-store.js'
 import type { DailyEntry } from '../src/usecase/daily-entries.js'
 
 const made: string[] = []
@@ -10,6 +10,14 @@ afterAll(async () => { for (const d of made) await rm(d, { recursive: true, forc
 const dirOf = async () => { const d = await mkdtemp(join(tmpdir(), 'tadori-daily-')); made.push(d); return d }
 
 describe('日ごとの「1 日の進行」のファイル', () => {
+  test('前の作業日は、その日より前でファイルがいちばん新しい日（休みの日は飛ばす）', async () => {
+    const dir = await dirOf()
+    expect(await previousDailyDate(dir, '2026-11-09')).toBeUndefined()
+    for (const d of ['2026-11-05', '2026-11-06', '2026-11-10']) await writeDaily(dir, d, [], 'x')
+    expect(await previousDailyDate(dir, '2026-11-09')).toBe('2026-11-06')
+    expect(await previousDailyDate(dir, '2026-11-05')).toBeUndefined()
+  })
+
   test('書いて読むと同じ行に戻る（WBS は複数、文のタブや改行は空白にする）', async () => {
     const dir = await dirOf()
     const entries: DailyEntry[] = [

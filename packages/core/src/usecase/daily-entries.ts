@@ -122,3 +122,28 @@ export function entriesFromSheet(sheet: DailySheet, continued = ''): DailyEntry[
   }
   return [...sheet.today.map(toEntry('today')), ...sheet.next.map(toEntry('next'))]
 }
+
+/**
+ * 前の作業日の「次の作業日」に、人が足した行・直した行を、今日の「今日」の予定として持ち越す。
+ * 自動の行（WBS から作ったもの）は今日の WBS から作り直されるので持ち越さない（二重に出さない）。
+ * 前の日の行は書き換えない。持ち越した行は自動の行と同じ扱いで、今日に直す・消すと、それが残る
+ * （鍵は「carry:前の日:行の ID」）。
+ */
+export function carriedOver(previous: readonly DailyEntry[], previousDate: string): DailyEntry[] {
+  return previous
+    .filter(e => e.section === 'next' && (e.origin === 'manual' || e.origin === 'edited'))
+    .map(e => {
+      const { note, links, issue, ...rest } = e
+      return {
+        ...rest,
+        id: '',
+        section: 'today' as const,
+        origin: 'auto' as const,
+        tag: e.tag || 'plan',
+        key: `carry:${previousDate}:${e.id}`,
+        ...(issue ? { issue } : {}),
+        ...(note ? { note } : {}),
+        ...(links?.length ? { links } : {}),
+      }
+    })
+}

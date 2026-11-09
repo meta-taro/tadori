@@ -1,6 +1,6 @@
 import './i18n.js'
 import {
-  buildDaily, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, readActivity, readDaily, readDailyFormat, readMembers,
+  buildDaily, carriedOver, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
   readStatusChanges, t, writeDaily, type CommitResult, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
 import { dailyFormatOf, formatEntries, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
@@ -54,12 +54,18 @@ const MAX_TEXT = 500
 /** 案件の文の形（.tadori/daily-format.tsv。書かなければ既定の形） */
 const formatOf = async (dir: string): Promise<DailyFormat> => dailyFormatOf(await readDailyFormat(dir))
 
+/** 前の作業日の「次の作業日」に人が足した・直した行（今日の予定として出す。前の日のファイルは書き換えない） */
+async function carriedFromPreviousDay(dir: string, date: string): Promise<DailyEntry[]> {
+  const previous = await previousDailyDate(dir, date)
+  return previous ? carriedOver(await readDaily(dir, previous), previous) : []
+}
+
 /** いまの材料から作った、自動の行 */
 async function freshEntries(dir: string, date: string): Promise<DailyEntry[]> {
   const project = await loadProject(dir)
   const today = localToday()
   const [changes, members, format] = await Promise.all([readStatusChanges(dir, today), readMembers(dir), formatOf(dir)])
-  return [...entriesFromSheet(buildDaily(project, changes, date), format.continued), ...(await readActivity(dir, date, today, members, { groupAfter: Number(format.group_after) || 3, kindLabels: project.labels?.kinds ?? {}, workKinds: project.labels?.workKinds ?? [] }))]
+  return [...entriesFromSheet(buildDaily(project, changes, date), format.continued), ...(await carriedFromPreviousDay(dir, date)), ...(await readActivity(dir, date, today, members, { groupAfter: Number(format.group_after) || 3, kindLabels: project.labels?.kinds ?? {}, workKinds: project.labels?.workKinds ?? [] }))]
 }
 
 /** 置いてある行と、いまの材料を合わせた行（保存はしない） */

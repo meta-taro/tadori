@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { entriesFromSheet, memberOf, mergeDaily, type DailyEntry } from '../src/usecase/daily-entries.js'
+import { carriedOver, entriesFromSheet, memberOf, mergeDaily, type DailyEntry } from '../src/usecase/daily-entries.js'
 import { buildDaily, type StatusChange } from '../src/usecase/daily.js'
 import type { Project, Task } from '../src/domain/model.js'
 
@@ -97,5 +97,28 @@ describe('entriesFromSheet の印（tag）', () => {
     expect(tagOf('today', 'W-1')).toBe('done')
     expect(tagOf('today', 'W-2')).toBe('doing')
     expect(tagOf('next', 'W-3')).toBe('plan')
+  })
+})
+
+describe('carriedOver（前の作業日の「次の作業日」に人が足した行を、今日の予定に持ち越す）', () => {
+  const previous: DailyEntry[] = [
+    { id: 'm1', who: '設計担当', section: 'next', text: 'API の設計を始める', wbs: ['W-03'], origin: 'manual', tag: 'plan' },
+    { id: 'a2', who: '設計担当', section: 'next', text: '画面の設計レビュー（直した）', wbs: [], origin: 'edited', key: 'wbs:next:W-02' },
+    { id: 'a3', who: '設計担当', section: 'next', text: '自動のまま', wbs: [], origin: 'auto', key: 'wbs:next:W-04' },
+    { id: 'm2', who: '設計担当', section: 'next', text: '消した行', wbs: [], origin: 'removed' },
+    { id: 'm3', who: '設計担当', section: 'consult', text: '相談', wbs: [], origin: 'manual' },
+  ]
+
+  test('人が足した行・直した行だけを、今日の予定（自動の行と同じ扱い）にする。自動のまま・消した・ほかの見出しは持ち越さない', () => {
+    const carried = carriedOver(previous, '2026-11-09')
+    expect(carried.map(e => e.text)).toEqual(['API の設計を始める', '画面の設計レビュー（直した）'])
+    expect(carried[0]).toMatchObject({ section: 'today', origin: 'auto', tag: 'plan', wbs: ['W-03'], key: 'carry:2026-11-09:m1' })
+  })
+
+  test('今日に置いた行を直したり消したりしても、作り直しで戻らない（鍵で見分ける）', () => {
+    const carried = carriedOver(previous, '2026-11-09')
+    const todayFile: DailyEntry[] = [{ ...(carried[0] as DailyEntry), id: 'a1', text: '直した', origin: 'edited' }]
+    const merged = mergeDaily(todayFile, carried)
+    expect(merged.filter(e => e.key === 'carry:2026-11-09:m1').map(e => e.text)).toEqual(['直した'])
   })
 })

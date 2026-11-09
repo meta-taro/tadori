@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { DAILY_SECTIONS, type DailyEntry, type DailyLink, type DailyOrigin, type DailySection, type Member } from '../usecase/daily-entries.js'
 import { commitFiles, type CommitResult } from './git.js'
@@ -73,6 +73,22 @@ export async function readDaily(dir: string, date: string): Promise<DailyEntry[]
   const text = await readIfExists(join(dir, dailyPath(date)))
   if (text === null) return []
   return parseTsv(text).rows.filter(r => r.id).map(r => toEntry(r, dailyPath(date)))
+}
+
+const DAILY_FILE = /^(\d{4}-\d{2}-\d{2})\.tsv$/
+
+/** その日より前で、1 日の進行のファイルがいちばん新しい日（前の作業日）。無ければ undefined */
+export async function previousDailyDate(dir: string, date: string): Promise<string | undefined> {
+  let names: string[]
+  try {
+    names = await readdir(join(dir, DAILY_DIR))
+  } catch (error: unknown) {
+    // フォルダが無いのは「まだ 1 日も作っていない」だけ。ほかの失敗は隠さない
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    throw error
+  }
+  const dates = names.flatMap(n => DAILY_FILE.exec(n)?.[1] ?? []).filter(d => d < date).sort()
+  return dates.at(-1)
 }
 
 /** その日の行を書き、案件が git リポジトリなら commit する（push はしない） */

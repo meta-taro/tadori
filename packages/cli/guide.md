@@ -105,6 +105,8 @@ For ledger diffs, the commit author is taken as the owner. If the WBS owners and
 **They are stored** in one file per day, `.tadori/daily/YYYY-MM-DD.tsv` (committed on every save; a person pushes).
 Lines that a person or an agent edited, added or removed are not overwritten when the draft is made again. Only automatic lines nobody touched are rebuilt from new material.
 
+Lines a person added or edited under "Next workday" on the previous workday (the latest earlier day that has a daily file) also appear under "Today" as plans. The previous day keeps its own lines. On the new day these lines behave like automatic lines: edit or remove them and the change stays.
+
 The WBS (`ledger/wbs.tsv`) and the ledger have optional columns.
 - WBS `owner`: the owner. For 2 or more people, separate them (any of ・、, /. You can filter by either name)
 - WBS `issue`: the ID of the issue this work is for (a ledger row). Work for the same issue is merged into one line. Nothing is merged by guessing
