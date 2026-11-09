@@ -20,6 +20,9 @@ struct Sidecar(Mutex<Option<Child>>);
 /// 最近開いた案件（1 行 1 案件・新しい順）
 const RECENT_FILE: &str = "recent-projects.txt";
 
+/// アプリの中に入れた tadori の本体（resources）を探すために、起動したときに覚えておく
+static APP: std::sync::OnceLock<AppHandle> = std::sync::OnceLock::new();
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -27,6 +30,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![pick_project, recent_projects, open_project])
         .setup(|app| {
             let handle = app.handle().clone();
+            let _ = APP.set(handle.clone());
             // フォルダ選びと起動を待つ間も窓が固まらないよう、別のスレッドで進める
             std::thread::spawn(move || open_first_project(handle));
             Ok(())
@@ -206,7 +210,8 @@ fn show_in_window(handle: &AppHandle, url: &str, project: &Path) -> Result<(), S
 }
 
 fn find_cli() -> Result<PathBuf, String> {
-    let candidates = sidecar::cli_candidates(std::env::var("TADORI_CLI").ok(), Path::new(env!("CARGO_MANIFEST_DIR")));
+    let resources = APP.get().and_then(|h| h.path().resource_dir().ok());
+    let candidates = sidecar::cli_candidates(std::env::var("TADORI_CLI").ok(), resources.as_deref(), Path::new(env!("CARGO_MANIFEST_DIR")));
     candidates.iter().find(|p| p.is_file()).cloned().ok_or_else(|| {
         let tried: Vec<String> = candidates.iter().map(|p| p.display().to_string()).collect();
         format!("tadori の本体（main.js）が見つかりません。`pnpm build` をしてから開いてください。\n探した所：\n{}", tried.join("\n"))

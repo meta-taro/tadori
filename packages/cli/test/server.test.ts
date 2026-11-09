@@ -230,3 +230,16 @@ describe('エージェントの専用カーソル（POST /api/agent）', () => {
     expect(res.status).toBe(400)
   })
 })
+
+describe('今日の日付', () => {
+  test('--today を渡さずに立ち上げたら、読むたびにその日の日付を使う（開きっぱなしでも日付がずれない）', async () => {
+    const { localToday } = await import('../src/state.js')
+    const plain = await startServer({ dir, port: 0, uiDir: resolve(import.meta.dirname, '../../ui/static') })
+    try {
+      const state = await (await fetch(`http://127.0.0.1:${(plain.address as AddressInfo).port}/api/state`)).json()
+      expect(state.today).toBe(localToday())
+    } finally {
+      await plain.close()
+    }
+  })
+})

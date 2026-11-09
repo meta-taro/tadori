@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tadori — 仕様から試験・指摘までのつながりと、リリースまでの残課題を見る</title>
+<meta name="description" content="tadori は、仕様の 1 文から試験ケース・実施の記録・指摘・再発防止までを ID でつなぐ git 上の台帳です。工程ごとのルールで「漏れ」を出し、リリースまでの残課題と直し方を見せます。オープンソース・手元で動くデスクトップアプリ。">
+<link rel="canonical" href="https://meta-taro.github.io/tadori/">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icon-128.png">
+<meta name="theme-color" content="#4f5bd5">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="tadori">
+<meta property="og:title" content="tadori — リリースまでの残課題を、つながりで見る">
+<meta property="og:description" content="仕様・試験・指摘を ID でつなぐ git 上の台帳。工程ごとのルールで漏れと直し方を出します。">
+<meta property="og:url" content="https://meta-taro.github.io/tadori/">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/timeline.png">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://meta-taro.github.io/tadori/#app",
+      "name": "tadori",
+      "alternateName": "辿り",
+      "description": "仕様の 1 文から試験ケース・実施の記録・指摘・再発防止までを ID でつなぐ git 上の台帳。工程ごとのルールで漏れを出し、リリースまでの残課題と直し方を示す。",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "macOS 11 以降（Apple シリコン・Intel）, Windows 10/11（x64・ARM）",
+      "softwareRequirements": "Node.js 22 以上",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
+      "license": "https://opensource.org/licenses/MIT",
+      "url": "https://meta-taro.github.io/tadori/",
+      "downloadUrl": "https://meta-taro.github.io/tadori/download.html",
+      "codeRepository": "https://github.com/meta-taro/tadori",
+      "screenshot": "https://meta-taro.github.io/tadori/img/timeline.png",
+      "inLanguage": "ja"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "tadori は何をする道具ですか？", "acceptedAnswer": { "@type": "Answer", "text": "設計書の章・試験ケース・実施の記録・指摘などを ID でつなぎ、工程ごとのルールで「つながりが無い所（漏れ）」を一覧にします。漏れごとに担当と、どのファイルの何行目に何を書けば消えるかを示します。" } },
+        { "@type": "Question", "name": "データはどこに置かれますか？外へ送られますか？", "acceptedAnswer": { "@type": "Answer", "text": "案件のフォルダの中の TSV（git で管理）に置きます。画面はその PC の中（127.0.0.1）だけで開き、外のサービスとは同期しません。" } },
+        { "@type": "Question", "name": "tadori が「漏れを直した」と判定しますか？", "acceptedAnswer": { "@type": "Answer", "text": "しません。tadori が出すのは漏れの一覧までです。「確かにそこが漏れていた」「直った」と認めるのは人です。承認や試験の合否も、人が記録します。" } },
+        { "@type": "Question", "name": "進み具合を割合や点数で出しますか？", "acceptedAnswer": { "@type": "Answer", "text": "出しません。割合を出すと、それを上げるための形だけの行が増えるためです。出すのは漏れの中身と件数・承認待ち・ステータス・遅れた日数という事実だけです。" } },
+        { "@type": "Question", "name": "AI エージェントから使えますか？", "acceptedAnswer": { "@type": "Answer", "text": "使えます。MCP の道具で使い方・残課題・漏れ・つながりを読めます。画面の中の専用カーソルで、人のマウスを使わずに画面を指して案内することもできます。" } },
+        { "@type": "Question", "name": "動かすのに何が要りますか？", "acceptedAnswer": { "@type": "Answer", "text": "Node.js 22 以上が入った macOS（Apple シリコン・Intel）か Windows（x64・ARM）です。インストーラーは無料で、ソースは MIT ライセンスで公開しています。" } }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/icon.svg" alt="" width="28" height="28">tadori</a>
+    <nav class="site-nav" aria-label="サイト">
+      <a href="#features">できること</a>
+      <a href="cases/">事例</a>
+      <a href="download.html">ダウンロード</a>
+      <a href="roadmap.html">ロードマップ</a>
+      <a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow">オープンソース・手元で動くデスクトップアプリ</span>
+      <h1>リリースまでの残課題を、<br><em>つながり</em>で見る。</h1>
+      <p class="lede"><strong>tadori（辿り）</strong>は、仕様の 1 文から試験ケース・実施の記録・指摘・再発防止までを ID でつなぐ、git 上の台帳です。
+        工程ごとのルールで「つながりが無い所（漏れ）」を出し、<strong>誰が・どのファイルの何行目に・何を書けば消えるか</strong>まで示します。</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="download.html" data-hero-download>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 16h12"/></svg>
+          <span>ダウンロード</span><small>macOS・Windows</small>
+        </a>
+        <a class="btn btn-ghost" href="cases/">事例を見る</a>
+      </div>
+      <p class="cta-note">無料・MIT ライセンス。Node.js 22 以上が要ります。データは PC の中の TSV だけに置き、外へは送りません。</p>
+      <figure class="shot">
+        <img src="img/timeline.png" width="1426" height="893" alt="tadori の「リリースまでの残課題」画面。工程ごとに予定の期間が横の帯で並び、基本設計は承認待ち 1 件、詳細設計は漏れ 2 件、結合テストは漏れ 1 件と承認待ち 1 件、遅れた日数と、前の工程の完了判定より前に着手したことが表示されている" fetchpriority="high">
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">tadori とは</span>
+        <h2>記録はある。つながりが、人の頭の中にしかない。</h2>
+        <p>不具合が出たとき「当時気づけたのか」「なぜ試験で拾えなかったのか」を説明するには、設計書・試験書・課題票・レビューを掘り返すことになります。
+          tadori は、それぞれの記録を ID でつなぎ、工程の出口で「この工程は終わったと言ってよいか（完了判定）」を止めているものを並べます。</p>
+      </div>
+      <ul class="facts">
+        <li><b>つながりは ID だけで決める</b><span>台帳に書かれた ID でつなぎ、推測でつながない。</span></li>
+        <li><b>漏れを認めるのは人</b><span>tadori が出すのは漏れの一覧まで。承認も試験の合否も人が書く。</span></li>
+        <li><b>割合や点数を出さない</b><span>出すのは漏れの中身・承認待ち・ステータス・遅れた日数という事実だけ。</span></li>
+        <li><b>正本を増やさない</b><span>設計書や試験シートは元の道具に置いたまま。台帳には場所だけを書く。</span></li>
+        <li><b>git 上の TSV</b><span>tadori が無くても人が読める。変更は commit で残り、push は人が確かめてから。</span></li>
+        <li><b>手元で完結</b><span>画面は PC の中（127.0.0.1）だけ。外のサービスとは同期しない。</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="soft" id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">できること</span>
+        <h2>工程の出口で止まっているものと、その直し方</h2>
+      </div>
+
+      <div class="feature">
+        <div class="feature-text">
+          <h3>リリースまでの残課題</h3>
+          <p>工程ごとに、ルールで見つかった<span class="chip hole">漏れ</span>と、人の<span class="chip wait">承認待ち</span>を並べます。
+            タイムラインでは予定の期間・いまのタスク・遅れた日数と、前の工程の完了判定より前に着手したことが一目で分かります。</p>
+          <ul>
+            <li>工程は会社やプロダクトごとに自由に決められる</li>
+            <li>予定を入れない案件は、工程の数が分かるカード表示で</li>
+          </ul>
+        </div>
+        <figure class="shot"><img src="img/cards.png" width="1426" height="893" loading="lazy" alt="カード表示の残課題。基本設計・詳細設計・実装・結合テスト・リリースの 5 枚のカードに、漏れと承認待ちの件数とルールの ID が並ぶ"></figure>
+      </div>
+
+      <div class="feature flip">
+        <div class="feature-text">
+          <h3>漏れごとに、担当と直し方</h3>
+          <p>「TC-07 に試験の記録が紐づいていない」のような漏れごとに、<strong>担当</strong>と、<strong>どのファイルの何行目のどの列に何を書けば消えるか</strong>を出します。</p>
+          <p>md / qa のアイコンから、仕様の原本を md-business で開いたり、試験ケースを git-qa で実施したりできます（設定で URL の形を書いたとき）。</p>
+        </div>
+        <figure class="shot"><img src="img/leaks.png" width="1426" height="893" loading="lazy" alt="結合テストの残っているルール。R9 の漏れ「TC-07 に試験の記録が紐づいていない」に、直し方「ledger/items.tsv に試験の記録（RUN）の行を足し、その refs に TC-07 を書く」と md・qa のアイコンが付いている"></figure>
+      </div>
+
+      <div class="feature">
+        <div class="feature-text">
+          <h3>つながりを辿る</h3>
+          <p>受入で出た指摘から、試験ケース・観点・詳細設計・基本設計・WBS のタスクまで、上流と下流を工程の順に並べます。切れている所は赤、前のチェックで漏れていて今は直っている所は「対応済み」と出ます。</p>
+          <p>会議では <code>#trace-F-02</code> のような URL を渡すだけで、同じ線を一緒に見られます。</p>
+        </div>
+        <figure class="shot"><img src="img/trace.png" width="1426" height="893" loading="lazy" alt="つながりを辿る画面。指摘 F-02 から辿った結果、試験ケース TC-07 の試験の記録が無い所と、再発防止が無い所が赤い点線のカードで示されている"></figure>
+      </div>
+
+      <div class="feature flip">
+        <div class="feature-text">
+          <h3>工程ごとのルールセット</h3>
+          <p>「観点ごとに試験ケースがある」「詳細設計の節に改修後の対応が書いてある」のようなルールを、工程ごとに TSV で持ちます。判定は 4 種類（下流がある・上流を元にしている・列が埋まっている・人の承認）。</p>
+          <p>ルールはエージェントが書き、人が画面で読んで確かめます。1,000 行を超えても、探す・絞る・並べ替えるで追えます。</p>
+        </div>
+        <figure class="shot"><img src="img/rules.png" width="1426" height="893" loading="lazy" alt="ルールセットの画面。工程ごとの帯の下に、ルールの ID・何と何が・条件・判定・担当・いまの状態が並ぶ"></figure>
+      </div>
+
+      <div class="feature">
+        <div class="feature-text">
+          <h3>エージェントが、画面を指して案内する</h3>
+          <p>MCP の道具で、AI エージェントが使い方・残課題・漏れ・つながりを読めます。案内するときは、画面の中の<strong>専用カーソル</strong>で指して、黄色の枠と一言で示します。</p>
+          <p>人のマウスは使いません。エージェントが動かしている間も、自分のマウスで同じ画面を触れます。</p>
+        </div>
+        <figure class="shot"><img src="img/agent.png" width="1426" height="893" loading="lazy" alt="エージェントの専用カーソルが、漏れ R4·DD-2.3 を黄色の枠で囲み「この漏れは設計担当が直します」と札を出している"></figure>
+      </div>
+
+      <div class="feature flip">
+        <div class="feature-text">
+          <h3>ライトとダーク</h3>
+          <p>会議で画面を共有しやすいライトが既定です。ダークと「OS に合わせる」も選べます。選んだものは、その PC だけに効きます。</p>
+          <p>ほかのアプリ（md-business など）や git pull で台帳が書き換わると、画面はその場で描き直されます。</p>
+        </div>
+        <figure class="shot"><img src="img/dark.png" width="1426" height="893" loading="lazy" alt="ダークの配色で表示した、リリースまでの残課題の画面"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">事例</span>
+        <h2>架空の案件で見る、tadori の使いどころ</h2>
+        <p>どれも架空の「備品貸出アプリ 改修 v1.2」で再現しています。実在の案件のデータは使っていません。</p>
+      </div>
+      <div class="cards">
+        <a class="card" href="cases/design-change-gap.html">
+          <img src="img/timeline.png" width="1426" height="893" loading="lazy" alt="">
+          <div class="card-body"><h3>改修後の対応の書き漏れ</h3><p>詳細設計の節に「変わる／変わらない」が書かれていない所を、行番号まで出す。</p><span class="more">事例を読む →</span></div>
+        </a>
+        <a class="card" href="cases/trace-from-finding.html">
+          <img src="img/trace.png" width="1426" height="893" loading="lazy" alt="">
+          <div class="card-body"><h3>受入の指摘から辿る</h3><p>「延滞中なのに借りられた」から、実施されていない試験ケースに行き着く。</p><span class="more">事例を読む →</span></div>
+        </a>
+        <a class="card" href="cases/early-start.html">
+          <img src="img/cards.png" width="1426" height="893" loading="lazy" alt="">
+          <div class="card-body"><h3>前の工程が終わる前の着手</h3><p>基本設計が差し戻しのまま詳細設計に入っていることと、遅れを並べて見る。</p><span class="more">事例を読む →</span></div>
+        </a>
+        <a class="card" href="cases/agent-guide.html">
+          <img src="img/agent.png" width="1426" height="893" loading="lazy" alt="">
+          <div class="card-body"><h3>エージェントに案内させる</h3><p>MCP で読ませ、専用カーソルで画面を指しながら、新しく入った人に説明する。</p><span class="more">事例を読む →</span></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="soft">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">はじめ方</span>
+        <h2>4 つの手順で、手元の案件に入れる</h2>
+      </div>
+      <ol class="steps">
+        <li><h3>入れる</h3><p><a href="download.html">ダウンロード</a>から、OS と CPU に合うインストーラーを入れます（Node.js 22 以上が要ります）。</p></li>
+        <li><h3>始める</h3><p>「ファイル › 新しく始める…」で案件のフォルダを選ぶと、工程・ステータス・台帳のひな形が置かれます。</p></li>
+        <li><h3>書く</h3><p>工程・WBS・台帳の行（ID と、何を元にしたか）・ルールを TSV に書きます。エージェントに書かせることもできます。</p></li>
+        <li><h3>見る</h3><p>残課題の画面で漏れと直し方を見て、直したら、もう一度確かめます。変更は git の commit で残ります。</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="faq" id="faq">
+    <div class="wrap">
+      <div class="section-head"><span class="eyebrow">よくある質問</span><h2>よくある質問</h2></div>
+      <details><summary>tadori は何をする道具ですか？</summary><p>設計書の章・試験ケース・実施の記録・指摘などを ID でつなぎ、工程ごとのルールで「つながりが無い所（漏れ）」を一覧にします。漏れごとに担当と、どのファイルの何行目に何を書けば消えるかを示します。</p></details>
+      <details><summary>データはどこに置かれますか？外へ送られますか？</summary><p>案件のフォルダの中の TSV（git で管理）に置きます。画面はその PC の中（127.0.0.1）だけで開き、外のサービスとは同期しません。</p></details>
+      <details><summary>tadori が「漏れを直した」と判定しますか？</summary><p>しません。tadori が出すのは漏れの一覧までです。「確かにそこが漏れていた」「直った」と認めるのは人です。承認や試験の合否も、人が記録します。</p></details>
+      <details><summary>進み具合を割合や点数で出しますか？</summary><p>出しません。割合を出すと、それを上げるための形だけの行が増えるためです。出すのは漏れの中身と件数・承認待ち・ステータス・遅れた日数という事実だけです。</p></details>
+      <details><summary>AI エージェントから使えますか？</summary><p>使えます。MCP の道具で使い方・残課題・漏れ・つながりを読めます。画面の中の専用カーソルで、人のマウスを使わずに画面を指して案内することもできます。</p></details>
+      <details><summary>動かすのに何が要りますか？</summary><p>Node.js 22 以上が入った macOS（Apple シリコン・Intel）か Windows（x64・ARM）です。インストーラーは無料で、ソースは MIT ライセンスで公開しています。</p></details>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div><a class="brand" href="./"><img src="assets/icon.svg" alt="" width="22" height="22">tadori</a><p>仕様から試験・指摘までのつながりと、リリースまでの残課題。MIT ライセンス。</p></div>
+    <nav aria-label="フッター">
+      <a href="cases/">事例</a><a href="download.html">ダウンロード</a><a href="releases.html">過去の版</a><a href="roadmap.html">ロードマップ</a><a href="https://github.com/meta-taro/tadori">GitHub</a><a href="llms.txt">llms.txt</a>
+    </nav>
+  </div>
+</footer>
+<script type="module" src="assets/site.js"></script>
+</body>
+</html>

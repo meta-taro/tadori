@@ -1,0 +1,31 @@
+# tadori
+
+> tadori（辿り）は、仕様の 1 文から試験ケース・実施の記録・指摘・再発防止までを ID でつなぐ、git 上の台帳です。工程ごとのルールで「つながりが無い所（漏れ）」を出し、リリースまでの残課題と、誰がどのファイルの何行目に何を書けば消えるかを示します。オープンソース（MIT）・手元で動くデスクトップアプリ（macOS・Windows）です。
+
+## 要点
+
+- つながりは台帳に書かれた ID だけで決め、推測でつながない
+- 漏れを認めるのは人。tadori は「漏れを埋めた」と判定しない。承認と試験の合否も人が記録する
+- 割合や点数は出さない。出すのは漏れの中身と件数・承認待ち・ステータス・遅れた日数という事実だけ
+- 正本（設計書・検証シート）は元の道具に置いたまま。台帳には場所だけを書く
+- データは案件のフォルダの TSV（git 管理）。画面は PC の中（127.0.0.1）だけで開き、外へ同期しない
+- ルールの判定は 4 種類：covered（下流がある）・refers（上流を元にしている）・filled（列が埋まっている）・approval（人の承認）
+- AI エージェントは MCP で使い方・残課題・漏れ・つながりを読める。画面の中の専用カーソルで、人のマウスを使わずに画面を指して案内できる
+- 動かすには Node.js 22 以上。macOS（Apple シリコン・Intel）と Windows（x64・ARM）のインストーラーがある
+
+## ページ
+
+- [トップ](https://meta-taro.github.io/tadori/): できることと、よくある質問
+- [ダウンロード](https://meta-taro.github.io/tadori/download.html): OS と CPU ごとのインストーラー
+- [過去の版](https://meta-taro.github.io/tadori/releases.html): これまでの版の一覧
+- [ロードマップ](https://meta-taro.github.io/tadori/roadmap.html): 段と、続けるかどうかの判断の条件
+- [事例：改修後の対応の書き漏れ](https://meta-taro.github.io/tadori/cases/design-change-gap.html)
+- [事例：受入の指摘から辿る](https://meta-taro.github.io/tadori/cases/trace-from-finding.html)
+- [事例：前の工程が終わる前の着手](https://meta-taro.github.io/tadori/cases/early-start.html)
+- [事例：エージェントに案内させる](https://meta-taro.github.io/tadori/cases/agent-guide.html)
+
+## ソース
+
+- [GitHub リポジトリ](https://github.com/meta-taro/tadori)
+- [使い方（MCP の how_to と同じ中身）](https://github.com/meta-taro/tadori/blob/main/packages/cli/guide.md)
+- [決めたことと理由](https://github.com/meta-taro/tadori/blob/main/docs/decisions.md)

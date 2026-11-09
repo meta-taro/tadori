@@ -2,14 +2,15 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { ProjectLoadError, saveSettings, saveTaskStatus, trace, validatePhases, validateStatuses, type Phase, type StatusDef } from '@tadori/core'
-import { loadState } from './state.js'
+import { loadState, localToday } from './state.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
 import { AgentActionError, parseAgentAction } from './agent.js'
 
 export interface ServerOptions {
   readonly dir: string
   readonly port: number
-  readonly today: string
+  /** 今日（YYYY-MM-DD）。渡さなければ、読むたびにその日の日付を使う（開きっぱなしでも日付がずれない） */
+  readonly today?: string
   /** 画面のファイルの置き場所。null なら API だけ */
   readonly uiDir: string | null
 }
@@ -146,7 +147,8 @@ function serialized<T>(work: () => Promise<T>): Promise<T> {
 async function route(options: ServerOptions, port: number, notifier: ChangeNotifier, req: IncomingMessage, res: ServerResponse): Promise<void> {
   assertLocalHost(req, port)
   const url = new URL(req.url ?? '/', 'http://localhost')
-  const { dir, today } = options
+  const { dir } = options
+  const today = options.today ?? localToday()
 
   if (req.method === 'GET' && url.pathname === '/api/events') {
     notifier.attach(res)

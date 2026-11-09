@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>事例 — tadori の使いどころ</title>
+<meta name="description" content="架空の改修案件で見る tadori の使いどころ。改修後の対応の書き漏れ、受入の指摘から辿る、前の工程が終わる前の着手、エージェントに案内させる。">
+<link rel="canonical" href="https://meta-taro.github.io/tadori/cases/">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../assets/favicon-32.png" sizes="32x32" type="image/png">
+<meta name="theme-color" content="#4f5bd5">
+<meta property="og:type" content="website">
+<meta property="og:title" content="tadori の事例">
+<meta property="og:url" content="https://meta-taro.github.io/tadori/cases/">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/trace.png">
+<link rel="stylesheet" href="../assets/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "tadori の事例",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "url": "https://meta-taro.github.io/tadori/cases/design-change-gap.html", "name": "改修後の対応の書き漏れを、行番号まで出す" },
+    { "@type": "ListItem", "position": 2, "url": "https://meta-taro.github.io/tadori/cases/trace-from-finding.html", "name": "受入の指摘から辿って、実施されていない試験ケースに行き着く" },
+    { "@type": "ListItem", "position": 3, "url": "https://meta-taro.github.io/tadori/cases/early-start.html", "name": "前の工程が終わる前の着手と遅れを、並べて見る" },
+    { "@type": "ListItem", "position": 4, "url": "https://meta-taro.github.io/tadori/cases/agent-guide.html", "name": "エージェントに、画面を指しながら案内させる" }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="28" height="28">tadori</a>
+    <nav class="site-nav" aria-label="サイト">
+      <a href="../#features">できること</a>
+      <a href="./" aria-current="page">事例</a>
+      <a href="../download.html">ダウンロード</a>
+      <a href="../roadmap.html">ロードマップ</a>
+      <a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow">事例</span>
+      <h1>tadori の使いどころ</h1>
+      <p class="lede">どれも架空の「備品貸出アプリ 改修 v1.2」で再現しています。工程は 基本設計・詳細設計・実装・結合テスト・リリース の 5 つ、ルールは 13 個です。
+        同じ案件は <a href="https://github.com/meta-taro/tadori/tree/main/examples/lend-v12">リポジトリの examples/lend-v12</a> にあり、手元で同じ画面を開けます。</p>
+    </div>
+  </section>
+  <section style="padding-top:0">
+    <div class="wrap cards">
+      <a class="card" href="design-change-gap.html">
+        <img src="../img/timeline.png" width="1426" height="893" loading="lazy" alt="">
+        <div class="card-body"><h3>改修後の対応の書き漏れ</h3><p>詳細設計の節に「変わる／変わらない」が書かれていない所を、ファイルと行番号まで出す。</p><span class="more">事例を読む →</span></div>
+      </a>
+      <a class="card" href="trace-from-finding.html">
+        <img src="../img/trace.png" width="1426" height="893" loading="lazy" alt="">
+        <div class="card-body"><h3>受入の指摘から辿る</h3><p>「延滞中なのに借りられた」から、実施の記録が無い試験ケースに行き着く。</p><span class="more">事例を読む →</span></div>
+      </a>
+      <a class="card" href="early-start.html">
+        <img src="../img/browse.png" width="1426" height="893" loading="lazy" alt="">
+        <div class="card-body"><h3>前の工程が終わる前の着手</h3><p>基本設計が差し戻しのまま、詳細設計・実装・結合テストが動いていることを並べる。</p><span class="more">事例を読む →</span></div>
+      </a>
+      <a class="card" href="agent-guide.html">
+        <img src="../img/agent.png" width="1426" height="893" loading="lazy" alt="">
+        <div class="card-body"><h3>エージェントに案内させる</h3><p>MCP で読ませ、専用カーソルで画面を指しながら、新しく入った人に説明する。</p><span class="more">事例を読む →</span></div>
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div><a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>仕様から試験・指摘までのつながりと、リリースまでの残課題。MIT ライセンス。</p></div>
+    <nav aria-label="フッター"><a href="./">事例</a><a href="../download.html">ダウンロード</a><a href="../releases.html">過去の版</a><a href="../roadmap.html">ロードマップ</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
+  </div>
+</footer>
+</body>
+</html>

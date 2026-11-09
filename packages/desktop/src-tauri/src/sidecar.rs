@@ -48,16 +48,29 @@ pub fn init_args(cli: &Path, dir: &Path, name: &str) -> Vec<String> {
     ]
 }
 
-/// tadori の CLI（packages/cli/dist/main.js）を探す場所。上から順に、在るものを使う。
+/// tadori の CLI（main.js）を探す場所。上から順に、在るものを使う。
 /// 1. 環境変数 TADORI_CLI（手元で別の版を試すとき）
-/// 2. このリポジトリの中の packages/cli/dist/main.js（開発中）
-pub fn cli_candidates(env_cli: Option<String>, manifest_dir: &Path) -> Vec<PathBuf> {
+/// 2. インストーラーで入れたアプリの中（resources/tadori/cli/dist/main.js。scripts/stage.mjs が並べる）
+/// 3. このリポジトリの中の packages/cli/dist/main.js（開発中）
+pub fn cli_candidates(env_cli: Option<String>, resource_dir: Option<&Path>, manifest_dir: &Path) -> Vec<PathBuf> {
     let mut list = Vec::new();
     if let Some(path) = env_cli.filter(|p| !p.trim().is_empty()) {
         list.push(PathBuf::from(path));
     }
+    if let Some(resources) = resource_dir {
+        list.push(plain_path(&resources.join("tadori").join("cli").join("dist").join("main.js")));
+    }
     list.push(manifest_dir.join("..").join("..").join("cli").join("dist").join("main.js"));
     list
+}
+
+/// Windows の `\\?\` の付いた場所を、ふつうの形にする（Node がその形のままだと部品を探せないことがある）
+pub fn plain_path(path: &Path) -> PathBuf {
+    let text = path.to_string_lossy();
+    match text.strip_prefix(r"\\?\") {
+        Some(rest) if !rest.starts_with("UNC\\") => PathBuf::from(rest),
+        _ => path.to_path_buf(),
+    }
 }
 
 /// 案件のフォルダとして開けるか（.tadori フォルダがあるか）
@@ -133,10 +146,17 @@ mod tests {
 
     #[test]
     fn cli_は環境変数を先に見て_次にリポジトリの中を見る() {
-        let list = cli_candidates(Some("/x/main.js".into()), Path::new("/repo/packages/desktop/src-tauri"));
+        let list = cli_candidates(Some("/x/main.js".into()), Some(Path::new("/app/res")), Path::new("/repo/packages/desktop/src-tauri"));
         assert_eq!(list[0], PathBuf::from("/x/main.js"));
-        assert!(list[1].ends_with("cli/dist/main.js"));
-        assert_eq!(cli_candidates(Some("  ".into()), Path::new("/r")).len(), 1);
+        assert_eq!(list[1], Path::new("/app/res").join("tadori").join("cli").join("dist").join("main.js"));
+        assert!(list[2].ends_with("cli/dist/main.js"));
+        assert_eq!(cli_candidates(Some("  ".into()), None, Path::new("/r")).len(), 1);
+    }
+
+    #[test]
+    fn windows_の長い形の場所はふつうの形にする() {
+        assert_eq!(plain_path(Path::new(r"\\?\C:\Program Files\tadori\x.js")), PathBuf::from(r"C:\Program Files\tadori\x.js"));
+        assert_eq!(plain_path(Path::new("/usr/x.js")), PathBuf::from("/usr/x.js"));
     }
 
     #[test]

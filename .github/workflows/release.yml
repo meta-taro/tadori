@@ -1,0 +1,73 @@
+name: release
+
+# デスクトップアプリのインストーラーを、OS と CPU ごとに作る。
+# 人が v で始まるタグ（例：v0.1.0）を push したときだけ走り、下書きのリリースに付ける。
+# 下書きを公開するのは人（中身を確かめてから）。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installers:
+    name: ${{ matrix.name }}
+    permissions:
+      contents: write # 下書きのリリースにインストーラーを付けるため
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS（Apple シリコン）
+            os: macos-latest
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+          - name: macOS（Intel）
+            os: macos-latest
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+          - name: Windows（x64・Intel / AMD）
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: ''
+          - name: Windows（ARM）
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+            args: --target aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # 版はリポジトリの package.json の packageManager に合わせる
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: 依存を入れる
+        run: pnpm install --frozen-lockfile
+
+      - name: インストーラーを作り、下書きのリリースに付ける
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: packages/desktop
+          tauriScript: pnpm tauri
+          args: ${{ matrix.args }}
+          tagName: ${{ github.ref_name }}
+          releaseName: tadori ${{ github.ref_name }}
+          releaseBody: |
+            tadori のデスクトップアプリです。Node.js 22 以上が入った PC で動きます。
+            - macOS：Apple シリコンは aarch64、Intel は x64 の .dmg
+            - Windows：x64（Intel / AMD）・ARM（arm64）とも .msi か .exe
+            コード署名はまだありません。初めて開くとき、OS やウイルス対策ソフトが確認を求めることがあります。
+          releaseDraft: true
+          prerelease: false

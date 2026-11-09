@@ -60,10 +60,20 @@ async function moveTo(el, message) {
   await wait(MOVE_MS)
 }
 
+/** しばらく指示が無ければ、カーソルも消す（画面に残って人の邪魔をしないように） */
+const CURSOR_IDLE_MS = 6000
+
 let hideTimer = null
+let idleTimer = null
 function hideLater() {
   clearTimeout(hideTimer)
+  clearTimeout(idleTimer)
   hideTimer = setTimeout(() => { if (box) box.hidden = true }, HIGHLIGHT_MS)
+  idleTimer = setTimeout(() => {
+    if (!cursor) return
+    cursor.hidden = true
+    cursor.querySelector('.tag').textContent = 'エージェント'
+  }, CURSOR_IDLE_MS)
 }
 
 async function say(message, el) {

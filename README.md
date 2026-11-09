@@ -3,6 +3,7 @@
 > ⚠ **MVP です。**架空の見本の案件で、判定（`check`・`why`）と手元で開く画面（`serve`）が動きます。
 > 方向性は [PRD.md](PRD.md)、決めたことと理由は [docs/decisions.md](docs/decisions.md)、
 > 画面と文書で使う言葉は [用語集（glossary.tsv）](packages/ui/static/glossary.tsv) にあります。
+> 紹介とダウンロードのページ：https://meta-taro.github.io/tadori/
 
 **仕様の 1 文から、試験ケース・実施の証跡・指摘・再発防止までを ID でつなぐ、git 上の台帳。**
 工程ごとにルールセットを持ち、「どこが漏れているか」を出します。漏れを認めるのは人です。
@@ -32,6 +33,8 @@ pnpm --filter @tadori/desktop dev   # 窓が開き、案件のフォルダ（.ta
 ```
 
 窓は裏で `tadori serve` を起こし、その画面を映すだけです（判定は CLI と同じ核）。
+
+インストーラー（macOS の Apple シリコン・Intel、Windows の x64・ARM）は、`v` で始まるタグ（例：`v0.1.0`）を push すると GitHub Actions が作り、下書きのリリースに付けます。中身を確かめてから公開してください。手元で作るなら `pnpm --filter @tadori/desktop build` です。
 
 commit の前に型の検査・テスト・置き場所の検査、個人や委託先の名前の検査を走らせるには（このリポジトリで 1 回だけ）。
 名前の一覧は公開できないので、リポジトリの外の `~/.config/oss-guard/deny-words.txt` に 1 行 1 語で書きます:
@@ -101,6 +104,7 @@ packages/core   判定の核（台帳を読み、漏れ・完了判定・つな�
 packages/cli    tadori コマンドと、手元のサーバー
 packages/ui     画面（tadori serve がそのまま配る）
 packages/desktop デスクトップアプリ（Tauri 2）。裏で tadori serve を起こし、その画面を窓に映す
+site/           紹介のサイト（GitHub Pages。ビルドの要らない HTML）
 examples/       架空の見本の案件
 ```
 

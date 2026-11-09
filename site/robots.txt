@@ -1,0 +1,5 @@
+# 検索エンジンにも、AI の検索・回答の道具にも、すべてのページを読んでもらってかまいません
+User-agent: *
+Allow: /
+
+Sitemap: https://meta-taro.github.io/tadori/sitemap.xml

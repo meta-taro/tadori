@@ -1,10 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "tadori",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "identifier": "io.github.meta-taro.tadori",
   "build": {
-    "frontendDist": "../web"
+    "frontendDist": "../web",
+    "beforeBuildCommand": "pnpm --filter @tadori/cli... build && node scripts/stage.mjs"
   },
   "app": {
     "windows": [
@@ -26,15 +27,24 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "msi"
-    ],
+    "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": [
+      "tadori/**/*"
+    ],
+    "shortDescription": "仕様から試験・指摘までのつながりと、リリースまでの残課題を出す",
+    "longDescription": "tadori は、仕様の 1 文から試験ケース・実施の記録・指摘・再発防止までを ID でつなぐ git 上の台帳です。工程ごとのルールで漏れを出し、リリースまでの残課題を見せます。",
+    "category": "DeveloperTool",
+    "license": "MIT",
+    "homepage": "https://meta-taro.github.io/tadori/",
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    }
   }
 }
