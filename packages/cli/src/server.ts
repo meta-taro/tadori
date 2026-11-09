@@ -1,8 +1,11 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { checkUpdate, type UpdateInfo } from './update-check.js'
 import { CLI_VERSION } from './version.js'
+import { appendServerError, defaultLogDir } from './error-log.js'
+import { readBuildInfo } from './build-info.js'
+import { fileURLToPath } from 'node:url'
 import { readFile } from 'node:fs/promises'
-import { extname, join, normalize, resolve, sep } from 'node:path'
+import { dirname, extname, join, normalize, resolve, sep } from 'node:path'
 import { ProjectLoadError, removeRule, saveRule, saveSettings, saveTaskStatus, trace, validatePhases, validateStatuses, WriteRefused, type Phase, type RuleInput, type StatusDef } from '@tadori/core'
 import { loadState, localToday } from './state.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
@@ -20,6 +23,8 @@ export interface ServerOptions {
   readonly appVersion?: string
   /** 新しい版があるかを確かめる（テストでは差し替える）。既定は GitHub の公開リリースを見る */
   readonly checkUpdate?: (current: string) => Promise<UpdateInfo>
+  /** server の中の例外を残す所。無ければ OS ごとの手元のログの場所 */
+  readonly logDir?: string
 }
 
 export interface RunningServer {
@@ -217,7 +222,10 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
 
   // ヘルプの「バージョンと更新」。見に行くのは GitHub の公開リリースだけで、案件の中身は送らない
   if (req.method === 'GET' && url.pathname === '/api/version') {
-    return sendJson(res, 200, { version: options.appVersion ?? CLI_VERSION })
+    // 建てた時刻と commit、元のコードより古くないか（古ければ画面が知らせる）
+    const here = dirname(fileURLToPath(import.meta.url))
+    const build = await readBuildInfo(here, [resolve(here, '../src'), resolve(here, '../../core/src')])
+    return sendJson(res, 200, { version: options.appVersion ?? CLI_VERSION, ...build })
   }
   if (req.method === 'GET' && url.pathname === '/api/update') {
     try {
@@ -306,6 +314,20 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
   throw new HttpError(404, '見つかりません')
 }
 
+/**
+ * 例外を手元の記録に残し、そのファイルの場所を返す（画面に出す）。残せなくても、画面への返事は止めない
+ */
+async function reportCrash(options: ServerOptions, req: IncomingMessage, error: unknown): Promise<string | null> {
+  try {
+    const path = new URL(req.url ?? '/', 'http://127.0.0.1').pathname
+    return await appendServerError(options.logDir ?? defaultLogDir(), { method: req.method ?? '', path, project: options.dir, error })
+  } catch (logError: unknown) {
+    process.stderr.write(`tadori serve: 例外を記録に残せませんでした：${logError instanceof Error ? logError.message : String(logError)}
+`)
+    return null
+  }
+}
+
 /** 手元だけで動くサーバーを立てる。127.0.0.1 にだけつなぐ（同じ網のほかの PC からは見えない） */
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
   // 実際につないだ番号（--port 0 のときは OS が決める）。Host の検査に使う
@@ -317,7 +339,11 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       if (error instanceof HttpError) return sendJson(res, error.status, { error: error.message, problems: error.problems })
       if (error instanceof ProjectLoadError) return sendJson(res, 422, { error: '案件を読めませんでした', problems: error.problems })
       process.stderr.write(`tadori serve: ${error instanceof Error ? error.stack : String(error)}\n`)
-      return sendJson(res, 500, { error: 'サーバーの中で問題が起きました。ターミナルの表示を見てください' })
+      // 画面には例外の要点と、手元に残した記録の場所を出す（エージェントは MCP の server_errors で読める）
+      return reportCrash(options, req, error).then(logFile => sendJson(res, 500, {
+        error: `サーバーの中で問題が起きました：${error instanceof Error ? error.message : String(error)}`,
+        ...(logFile ? { logFile } : {}),
+      }))
     })
   })
   await new Promise<void>(done => server.listen(options.port, '127.0.0.1', done))

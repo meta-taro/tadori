@@ -95,7 +95,9 @@ export async function api(path, { method = 'GET', body } = {}) {
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new ApiError(data.error ?? `サーバーが ${res.status} を返しました`, data.problems ?? [])
+    // server の中で落ちたときは、手元に残した記録の場所も出す（どこで何が落ちたかを後から確かめられるように）
+    const where = data.logFile ? `（記録：${data.logFile}）` : ''
+    throw new ApiError(`${data.error ?? `サーバーが ${res.status} を返しました`}${where}`, data.problems ?? [])
   }
   return data
 }

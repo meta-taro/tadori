@@ -116,3 +116,22 @@ describe('MCP の daily（人単位の 1 日の進行）', () => {
     expect((await tool('daily', { date: 'きょう' })).isError).toBe(true)
   })
 })
+
+describe('server_errors（画面の裏の server で起きた例外を読む）', () => {
+  test('新しい順に、時刻・API・例外の要点と、落ちた所を返す。無ければそう言う', async () => {
+    const { mkdtemp, rm } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { appendServerError } = await import('../src/error-log.js')
+    const logDir = await mkdtemp(join(tmpdir(), 'tadori-mcp-log-'))
+    const mcp = createMcpHandler({ glossaryPath: GLOSSARY, version: '0.0.1', logDir })
+    const call = async (args: Record<string, unknown>) => ((await mcp({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'server_errors', arguments: args } })) as { result: ToolResult }).result
+    expect((await call({})).content[0]?.text).toContain('記録はありません')
+    await appendServerError(logDir, { method: 'GET', path: '/api/daily', project: 'C:/work/a', error: new TypeError('x is not a function') })
+    const text = (await call({ limit: 5 })).content[0]?.text ?? ''
+    expect(text).toContain('GET /api/daily')
+    expect(text).toContain('TypeError: x is not a function')
+    expect(text).toContain(logDir)
+    await rm(logDir, { recursive: true, force: true })
+  })
+})

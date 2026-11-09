@@ -6,6 +6,7 @@ import { howTo } from './guide.js'
 import { writeTools, type WriteContext } from './mcp-write.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 import { loadState, localToday } from './state.js'
+import { defaultLogDir, readServerErrors } from './error-log.js'
 
 /**
  * tadori の MCP の口（標準入出力・1 行 1 つの JSON-RPC）。
@@ -49,6 +50,8 @@ export interface McpOptions {
   readonly guidePath?: string
   /** 専用カーソルで操作する画面（tadori serve）の場所。既定はデスクトップアプリの http://127.0.0.1:4873 */
   readonly screenUrl?: string
+  /** server の例外の記録の場所（server_errors が読む）。無ければ OS ごとの手元のログの場所 */
+  readonly logDir?: string
 }
 
 /** デスクトップアプリが開く番号（packages/desktop の PREFERRED_PORT と同じ） */
@@ -271,8 +274,24 @@ function buildTools(options: McpOptions): Tool[] {
       additionalProperties: false,
     },
     run: async args => text(await glossaryText(options.glossaryPath, typeof args.query === 'string' ? args.query : '')),
+  }, {
+    name: 'server_errors',
+    description: '画面の裏で動いている tadori serve の中で起きた例外（画面に「サーバーの中で問題が起きました」と出たもの）を、新しい順に返す。'
+      + '時刻・API・例外の種類と文・落ちた所（呼び出しの頭の数行）だけで、送られた本文は残していない。直すときは、この結果を人に見せてから。',
+    inputSchema: { type: 'object', properties: { limit: { type: 'number', description: '何件まで（既定 10・最大 50）' } }, additionalProperties: false },
+    run: async args => {
+      const dir = options.logDir ?? defaultLogDir()
+      const limit = Math.min(MAX_ERRORS, Math.max(1, typeof args.limit === 'number' ? Math.floor(args.limit) : DEFAULT_ERRORS))
+      const errors = await readServerErrors(dir, limit)
+      if (!errors.length) return text(`server の例外の記録はありません（記録の場所：${dir}）`)
+      const lines = errors.map(e => [`- ${e.at} ${e.method} ${e.path}（案件：${e.project}）`, `  ${e.name}: ${e.message}`, ...e.stack.map(s => `    ${s}`)].join('\n'))
+      return text([`server の例外 ${errors.length} 件（新しい順・記録の場所：${dir}）`, ...lines].join('\n'))
+    },
   }]
 }
+
+const DEFAULT_ERRORS = 10
+const MAX_ERRORS = 50
 
 /** 1 つのメッセージに返事を作る。通知（id が無いもの）には null を返す */
 export function createMcpHandler(options: McpOptions): (message: JsonRpcMessage) => Promise<JsonRpcResponse | null> {

@@ -598,3 +598,4 @@
   .update-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
   .update-actions a { text-decoration:none; }
   .update-close { position:absolute; top:14px; right:14px; }
+  .stale-chip { cursor:help; }

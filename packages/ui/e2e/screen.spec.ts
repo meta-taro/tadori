@@ -183,3 +183,18 @@ test.describe('バージョンと更新', () => {
     await expect(panel).toContainText('切ってあります')
   })
 })
+
+test.describe('server の中の例外と版', () => {
+  test('server が落ちたら、画面に例外の要点と記録の場所を出す（「ターミナルを見て」ではなく）', async ({ page }) => {
+    await page.route('**/api/daily?*', route => route.fulfill({ status: 500, json: { error: 'サーバーの中で問題が起きました：x is not a function', logFile: 'C:/logs/server-2026-11-09.log' } }))
+    await page.goto('/#daily')
+    await expect(page.locator('#view')).toContainText('x is not a function')
+    await expect(page.locator('#view')).toContainText('server-2026-11-09.log')
+  })
+
+  test('server が元のコードより古い版なら、上の帯に知らせる', async ({ page }) => {
+    await page.route('**/api/version', route => route.fulfill({ json: { version: '0.1.0', builtAt: '2026-11-09T04:50:00.000Z', commit: 'abc1234', isStale: true } }))
+    await page.goto('/#phases')
+    await expect(page.locator('.stale-chip')).toHaveText('server が古い版です')
+  })
+})

@@ -38,8 +38,10 @@ const fill = (panel, body) => {
 export async function showUpdatePanel() {
   const panel = openPanel()
   fill(panel, '<p class="cond">確かめています…</p>')
-  /** @type {{ version: string }} */
-  const { version } = await api('/api/version').catch(() => ({ version: '' }))
+  /** @type {{ version: string, builtAt?: string, commit?: string }} */
+  const build = await api('/api/version').catch(() => ({ version: '' }))
+  const version = build.version
+  const builtNote = build.builtAt ? `<p class="cond">画面の裏の server：${esc(build.builtAt.slice(0, 16).replace('T', ' '))}（UTC）に建てた版${build.commit ? `・${esc(build.commit)}` : ''}</p>` : ''
   try {
     const info = await api('/api/update')
     remember(info)
@@ -47,7 +49,7 @@ export async function showUpdatePanel() {
       ? `<p><b>新しい版 ${esc(info.latest)} があります。</b>いまは ${esc(info.current)} です。</p>
          <p class="cond">配布のページから、この PC の OS と CPU に合うものを入れ直してください。案件のフォルダや設定はそのまま使えます。</p>`
       : `<p>tadori ${esc(info.current)} は最新です。</p>`
-    fill(panel, status)
+    fill(panel, status + builtNote)
     const actions = panel.querySelector('[data-actions]')
     if (actions) actions.innerHTML = info.isNewer ? `${outLink(info.downloadUrl, '配布のページを開く')}${outLink(info.releaseUrl, '変わったこと')}` : outLink(info.releaseUrl, 'リリースのページ')
   } catch (error) {
@@ -91,5 +93,21 @@ export async function checkUpdateQuietly(before) {
   chip.textContent = `新しい版 ${info.latest}`
   chip.title = 'バージョンと更新を開く'
   chip.addEventListener('click', () => { void showUpdatePanel() })
+  before.before(chip)
+}
+
+/**
+ * 画面の裏の server が、元のコードより古い版で動いていたら上の帯に知らせる（新しい画面と食い違って落ちる前に気づけるように）。
+ * 配る版では元のコードが無いので出ない
+ * @param {HTMLElement} before この要素の前に札を置く
+ */
+export async function warnIfServerStale(before) {
+  /** @type {{ isStale?: boolean, builtAt?: string, commit?: string } | null} */
+  const info = await api('/api/version').catch(() => null)
+  if (!info?.isStale || document.querySelector('.stale-chip')) return
+  const chip = document.createElement('span')
+  chip.className = 'chip hole stale-chip'
+  chip.textContent = 'server が古い版です'
+  chip.title = `画面の裏の server は ${info.builtAt ?? '?'}（${info.commit || 'commit 不明'}）に建てた版で、そのあと元のコードが直されています。pnpm build をしてから、案件を開き直してください`
   before.before(chip)
 }

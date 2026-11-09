@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import { request } from 'node:http'
 import { startServer, type RunningServer } from '../src/server.js'
+import { readServerErrors } from '../src/error-log.js'
 
 // 架空の見本の案件を一時フォルダに写して使う（見本そのものは書き換えない）
 const EXAMPLE = resolve(import.meta.dirname, '../../../examples/lend-v12')
@@ -334,7 +335,7 @@ describe('GET /api/version・/api/update（ヘルプのバージョンと更新�
       checkUpdate: async current => ({ current, latest: '0.2.0', isNewer: true, releaseUrl: 'https://github.com/meta-taro/tadori/releases/tag/v0.2.0', downloadUrl: 'https://meta-taro.github.io/tadori/download.html' }),
     })
     const url = `http://127.0.0.1:${(app.address as { port: number }).port}`
-    expect(await (await fetch(`${url}/api/version`)).json()).toEqual({ version: '0.1.0' })
+    expect(await (await fetch(`${url}/api/version`)).json()).toMatchObject({ version: '0.1.0', isStale: false })
     expect(await (await fetch(`${url}/api/update`)).json()).toMatchObject({ current: '0.1.0', latest: '0.2.0', isNewer: true })
     await app.close()
 
@@ -370,5 +371,26 @@ describe('ルールを画面から足す・直す・消す（/api/rules）', () 
     expect((await send('POST', '/api/rules', { id: 'R9', phase: 'it', kind: 'covered', label: 'x' })).status).toBe(400)
     expect((await send('DELETE', '/api/rules/R99')).status).toBe(400)
     expect((await fetch(`${base}/api/rules`, { method: 'POST', body: '{}' })).status).toBe(403) // x-tadori の無い書き込み
+  })
+})
+
+describe('server の中の例外（画面に要点と記録の場所を出し、手元に残す）', () => {
+  test('落ちたら 500 で例外の要点と記録のファイルを返し、記録を新しい順に読める', async () => {
+    const logDir = await mkdtemp(join(tmpdir(), 'tadori-cli-log-'))
+    const app = await startServer({ dir, port: 0, uiDir: null, logDir })
+    const url = `http://127.0.0.1:${(app.address as { port: number }).port}`
+    // 壊れた日ごとのファイル（見出しが知らない値）を読ませて落とす
+    await mkdir(join(dir, '.tadori/daily'), { recursive: true })
+    await writeFile(join(dir, '.tadori/daily/2026-01-05.tsv'), 'id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\nx\ta\tnope\tt\t\t\t\tauto\t\n', 'utf8')
+    const res = await fetch(`${url}/api/daily?date=2026-01-05`)
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toMatch(/サーバーの中で問題が起きました：.*section/)
+    expect(body.logFile).toMatch(/server-\d{4}-\d{2}-\d{2}\.log$/)
+    const errors = await readServerErrors(logDir, 5)
+    expect(errors[0]).toMatchObject({ method: 'GET', path: '/api/daily' })
+    await app.close()
+    await rm(join(dir, '.tadori/daily/2026-01-05.tsv'))
+    await rm(logDir, { recursive: true, force: true })
   })
 })

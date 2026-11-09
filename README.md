@@ -45,6 +45,8 @@ git config core.hooksPath .githooks
 
 環境変数・秘密情報は要りません（`.env` は使いません）。
 
+画面の裏の server の中で例外が起きたら、時刻・API・例外の要点を PC の手元に残します（Windows は `%LOCALAPPDATA%	adorilogs`、macOS は `~/Library/Logs/tadori`、`TADORI_LOG_DIR` で変えられます）。送られてきた本文（案件の中身）は残しません。エージェントは MCP の `server_errors` で読めます。
+
 新しい版の確認：ヘルプの「バージョンと更新」と、起動したとき（1 日に 1 回）に、GitHub の公開リリースの最新の版だけを見に行きます。案件の中身は送りません。外へ出られない環境では `TADORI_UPDATE_CHECK=off` で切れます。新しい版があれば配布のページを開けるようにするだけで、入れ替えは人が行います。
 
 ## するもの
