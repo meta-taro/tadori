@@ -3,7 +3,11 @@ import { esc, messageOf } from './util.js'
 
 let query = ''
 
-/** TSV を読む（# と空行は読み飛ばす。判定の核の parseTsv と同じ決まり） */
+/**
+ * TSV を読む（# と空行は読み飛ばす。判定の核の parseTsv と同じ決まり）
+ * @param {string} text
+ * @returns {Array<Record<string, string>>} 列名 → 値
+ */
 function parseTsv(text) {
   const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim() && !l.startsWith('#'))
   const [head, ...body] = lines
@@ -12,6 +16,7 @@ function parseTsv(text) {
   return body.map(line => Object.fromEntries(header.map((h, i) => [h, line.split('\t')[i] ?? ''])))
 }
 
+/** @param {ReadonlyArray<Record<string, string>>} entries */
 function rowsHtml(entries) {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
   const shown = entries.filter(e => words.every(w => `${e.term} ${e.meaning} ${e.example}`.toLowerCase().includes(w)))
@@ -26,25 +31,29 @@ function rowsHtml(entries) {
     </table></div>`).join('')
 }
 
+/** @param {HTMLElement} view */
 export async function renderGlossary(view) {
   view.innerHTML = `
     <h1>用語</h1>
     <p class="lede">tadori の画面と文書で使う言葉です。エージェントが画面を説明するときも、この言葉を使います。</p>
     <input id="glossary-query" class="glossary-query" type="search" placeholder="言葉で探す（例：漏れ、タスク）" value="${esc(query)}" aria-label="言葉で探す">
     <div id="glossary-body"><div class="cond">読み込み中…</div></div>`
-  const body = view.querySelector('#glossary-body')
+  // 直前に描いた中にかならずある
+  const body = /** @type {HTMLElement} */ (view.querySelector('#glossary-body'))
   try {
     const res = await fetch('/glossary.tsv')
     if (!res.ok) throw new Error(`用語集を読めませんでした（${res.status}）`)
     const entries = parseTsv(await res.text())
     body.innerHTML = rowsHtml(entries)
-    view.querySelector('#glossary-query').addEventListener('input', e => { query = e.target.value; body.innerHTML = rowsHtml(entries) })
+    const queryInput = /** @type {HTMLInputElement} */ (view.querySelector('#glossary-query'))
+    queryInput.addEventListener('input', () => { query = queryInput.value; body.innerHTML = rowsHtml(entries) })
   } catch (error) {
     body.innerHTML = `<div class="cond">${esc(messageOf(error))}</div>`
   }
 }
 
 /** 検索から開くとき、その言葉で絞った状態にする */
+/** @param {string} value */
 export function setGlossaryQuery(value) {
   query = value
 }

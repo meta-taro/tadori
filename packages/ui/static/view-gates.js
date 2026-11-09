@@ -1,26 +1,37 @@
 // リリースまでの残課題：タイムラインとカードの切り替え。割合や点数は出さない
 import { chip, day, esc, fullDate, getWho, isMine, kindLabel, lateColor, shortDate, isDoneStatus } from './util.js'
 
+/** @typedef {import('./types').ProjectState} ProjectState */
+/** @typedef {import('./types').Gate} Gate */
+/** @typedef {import('./types').Rule} Rule */
+/** @typedef {import('./types').Leak} Leak */
+
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+/** タイムラインかカードか */
 let gateView = 'timeline'
+/** @type {string | null | undefined} 表を開いている工程の ID */
 let selectedPhase = null
 
 /** 見た目の状態。ルールが無い工程は「通過」の緑にしない（まだ判定していないだけ） */
-const shownState = gate => (gate.state === 'clear' && !gate.rules.length ? 'unjudged' : gate.state)
+const shownState = (/** @type {Gate} */ gate) => (gate.state === 'clear' && !gate.rules.length ? 'unjudged' : gate.state)
 
-const badgesOf = gate => [
+const badgesOf = (/** @type {Gate} */ gate) => [
   gate.leaks.length ? chip('hole', `漏れ ${gate.leaks.length}`) : '',
   gate.pendingApprovals.length ? chip('wait', `承認待ち ${gate.pendingApprovals.length}`) : '',
   // ルールが無い工程は、まだ判定していないだけなので「通過」と出さない
   !gate.leaks.length && !gate.pendingApprovals.length ? (gate.rules.length ? chip('ok', '通過') : chip('none', 'ルールなし')) : '',
 ].join('')
 
+/** @param {ProjectState} state */
 function timelineHtml(state) {
-  const gates = state.gates.filter(g => g.span)
-  const lo = Math.min(...gates.map(g => day(g.span.start)))
-  const hi = Math.max(...gates.map(g => day(g.span.end))) + 3 // 最後のひし形と件数が切れないよう少し余白
-  const pos = iso => `${((day(iso) - lo) / (hi - lo) * 100).toFixed(2)}%`
-  const months = [], weeks = []
+  const spans = state.gates.flatMap(g => (g.span ? [g.span] : []))
+  const lo = Math.min(...spans.map(s => day(s.start)))
+  const hi = Math.max(...spans.map(s => day(s.end))) + 3 // 最後のひし形と件数が切れないよう少し余白
+  const pos = (/** @type {string} */ iso) => `${((day(iso) - lo) / (hi - lo) * 100).toFixed(2)}%`
+  /** @type {string[]} */
+  const months = []
+  /** @type {string[]} */
+  const weeks = []
   for (let t = lo; t <= hi; t++) {
     const d = new Date(t * 86_400_000)
     const iso = d.toISOString().slice(0, 10)
@@ -31,28 +42,31 @@ function timelineHtml(state) {
     + months.map(m => `<span class="tl-month" style="left:${pos(m)}"><b>${MONTHS.at(Number(m.slice(5, 7)) - 1)}</b></span>`).join('')
 
   const rows = state.gates.map((gate, i) => {
-    if (!gate.span) return ''
+    const span = gate.span
+    if (!span) return ''
     const open = gate.tasks.filter(t => !isDoneStatus(state, t.status))
     const barColor = open.length ? lateColor(gate.maxLateDays) : 'var(--ok)'
-    const overdue = day(state.today) > day(gate.span.end) && gate.state !== 'clear'
-    const steps = gate.tasks.filter(t => t.end).map(t => {
-      const cls = isDoneStatus(state, t.status) ? 'done' : gate.currentTask && t.id === gate.currentTask.id ? 'now' : ''
-      return `<span class="tl-step ${cls}" style="left:${pos(t.end)}" title="${esc(t.id)} ${esc(t.name)}"></span>`
+    const current = gate.currentTask
+    const overdue = day(state.today) > day(span.end) && gate.state !== 'clear'
+    const steps = gate.tasks.flatMap(t => {
+      if (!t.end) return []
+      const cls = isDoneStatus(state, t.status) ? 'done' : current && t.id === current.id ? 'now' : ''
+      return [`<span class="tl-step ${cls}" style="left:${pos(t.end)}" title="${esc(t.id)} ${esc(t.name)}"></span>`]
     }).join('')
-    const status = gate.currentTask ? (state.statuses.find(s => s.id === gate.currentTask.status)?.name ?? '') : ''
-    const runner = gate.currentTask?.end ? `<span class="tl-runner" style="left:${pos(gate.currentTask.end)}">${esc(gate.currentTask.id)} ${esc(status)}</span>` : ''
-    const hatchEnd = day(state.today) < day(gate.span.end) ? state.today : gate.span.end
-    const hatch = gate.startedBefore && day(hatchEnd) > day(gate.span.start)
-      ? `<span class="tl-hatch" style="left:${pos(gate.span.start)};width:calc(${pos(hatchEnd)} - ${pos(gate.span.start)})"></span>` : ''
+    const status = current ? (state.statuses.find(s => s.id === current.status)?.name ?? '') : ''
+    const runner = current?.end ? `<span class="tl-runner" style="left:${pos(current.end)}">${esc(current.id)} ${esc(status)}</span>` : ''
+    const hatchEnd = day(state.today) < day(span.end) ? state.today : span.end
+    const hatch = gate.startedBefore && day(hatchEnd) > day(span.start)
+      ? `<span class="tl-hatch" style="left:${pos(span.start)};width:calc(${pos(hatchEnd)} - ${pos(span.start)})"></span>` : ''
     const early = gate.startedBefore ? `<span class="tl-early">${esc(gate.startedBefore.name)}の完了判定より前に着手</span>` : ''
     const late = gate.maxLateDays ? `<span class="late" style="color:${barColor}">${gate.maxLateDays} 日遅れ</span>` : ''
     return `<button type="button" class="tl-row ${gate.phase.id === selectedPhase ? 'on' : ''}" data-phase="${esc(gate.phase.id)}" aria-pressed="${gate.phase.id === selectedPhase}">
       <span class="tl-label"><span class="step">${String(i + 1).padStart(2, '0')}</span><span class="tl-name">${esc(gate.phase.name)}${early}</span>${late}</span>
       <span class="tl-track">
-        <span class="tl-bar" style="left:${pos(gate.span.start)};width:calc(${pos(gate.span.end)} - ${pos(gate.span.start)});--bar:${barColor}"></span>
+        <span class="tl-bar" style="left:${pos(span.start)};width:calc(${pos(span.end)} - ${pos(span.start)});--bar:${barColor}"></span>
         ${hatch}${steps}${runner}
-        <span class="tl-gate ${shownState(gate)} ${overdue ? 'overdue' : ''}" style="left:${pos(gate.span.end)}" title="完了判定 ${fullDate(gate.span.end)}"></span>
-        <span class="tl-badges" style="left:${pos(gate.span.end)}">${badgesOf(gate)}<span class="tl-date">${shortDate(gate.span.end)}</span></span>
+        <span class="tl-gate ${shownState(gate)} ${overdue ? 'overdue' : ''}" style="left:${pos(span.end)}" title="完了判定 ${fullDate(span.end)}"></span>
+        <span class="tl-badges" style="left:${pos(span.end)}">${badgesOf(gate)}<span class="tl-date">${shortDate(span.end)}</span></span>
       </span>
     </button>`
   }).join('')
@@ -65,6 +79,10 @@ function timelineHtml(state) {
   </div>`
 }
 
+/**
+ * @param {ProjectState} state
+ * @param {Rule} rule
+ */
 function rulePip(state, rule) {
   if (rule.kind === 'approval') {
     const ok = state.approvals.some(a => a.rule === rule.id && a.status === '承認')
@@ -74,6 +92,7 @@ function rulePip(state, rule) {
   return `<span class="pip ${n ? 'hole' : 'ok'}" title="${esc(rule.label)}">${esc(rule.id)}</span>`
 }
 
+/** @param {ProjectState} state */
 function cardsHtml(state) {
   const cards = state.gates.map((gate, i) => `
     <button type="button" class="stage ${shownState(gate)}" data-phase="${esc(gate.phase.id)}" aria-pressed="${gate.phase.id === selectedPhase}">
@@ -90,6 +109,11 @@ function cardsHtml(state) {
 /**
  * ほかの道具のアイコン。URL があれば押せる。無ければ薄く出し、なぜ押せないかを添える
  * （どこへつながるのかを先に見て分かるようにするため）。
+ * @param {string} tool
+ * @param {string} mark
+ * @param {string | undefined} url
+ * @param {string} readyTitle
+ * @param {string} waitingTitle
  */
 function toolIcon(tool, mark, url, readyTitle, waitingTitle) {
   return url
@@ -97,7 +121,11 @@ function toolIcon(tool, mark, url, readyTitle, waitingTitle) {
     : `<span class="tool-icon tool-${tool} off" title="${esc(waitingTitle)}" aria-label="${esc(waitingTitle)}" aria-disabled="true">${mark}</span>`
 }
 
-/** 直し方の 1 行と、md-business（原本を開く）・git-qa（その場で実施する）のアイコン */
+/**
+ * 直し方の 1 行と、md-business（原本を開く）・git-qa（その場で実施する）のアイコン
+ * @param {string | undefined} fix
+ * @param {Leak} [leak]
+ */
 function fixHtml(fix, leak) {
   if (!fix) return ''
   const place = leak?.file ? `${leak.file}${leak.line ? ` の ${leak.line} 行目` : ''}` : ''
@@ -112,6 +140,10 @@ function fixHtml(fix, leak) {
   return `<div class="fix-line"><span class="fix-label">直し方</span>${esc(fix)}</div>${icons}`
 }
 
+/**
+ * @param {ProjectState} state
+ * @param {Rule} rule
+ */
 function ruleStatus(state, rule) {
   if (rule.kind === 'approval') {
     const a = state.approvals.find(x => x.rule === rule.id)
@@ -131,18 +163,30 @@ function ruleStatus(state, rule) {
 // 残課題の表を大きな案件でも読めるようにする設定（画面を移っても覚えておく）
 const LEAKS_PER_RULE = 3
 const RULES_PAGE = 50
+/** @type {Set<string>} 漏れを全部出しているルールの ID */
 const expandedRules = new Set()
 let showSatisfied = false
 let rulesShown = RULES_PAGE
 
-/** 残っているルール（漏れがある・承認されていない） */
+/**
+ * 残っているルール（漏れがある・承認されていない）
+ * @param {ProjectState} state
+ * @param {Rule} rule
+ */
 function isRemaining(state, rule) {
   if (rule.kind === 'approval') return !state.approvals.some(a => a.rule === rule.id && a.status === '承認')
   return state.leaks.some(l => l.rule === rule.id)
 }
 
+/** @type {Readonly<Record<string, string>>} 判定の種類 → 誰が判定するか */
 const KIND_NAMES = { covered: '機械', refers: '機械', filled: '機械', approval: '人' }
 
+/**
+ * @param {HTMLElement} view
+ * @param {ProjectState} state
+ * @param {(itemId: string) => void} onTrace
+ * @param {string} [phaseId]
+ */
 export function renderGates(view, state, onTrace, phaseId) {
   // URL の #phases-it のように工程を指されたら、その工程の表を開く（会議で URL を渡せるように）
   if (phaseId && state.gates.some(g => g.phase.id === phaseId) && phaseId !== selectedPhase) {
@@ -188,11 +232,14 @@ export function renderGates(view, state, onTrace, phaseId) {
     ${listed.length > rulesShown ? `<button type="button" class="btn-ghost rules-more" id="gate-more">さらに ${Math.min(RULES_PAGE, listed.length - rulesShown)} 件（残り ${listed.length - rulesShown} 件）</button>` : ''}
     </div>` : ''}`
   const rerender = () => renderGates(view, state, onTrace)
-  view.querySelector('#show-satisfied')?.addEventListener('change', e => { showSatisfied = e.target.checked; rulesShown = RULES_PAGE; rerender() })
+  const satisfiedBox = /** @type {HTMLInputElement | null} */ (view.querySelector('#show-satisfied'))
+  satisfiedBox?.addEventListener('change', () => { showSatisfied = satisfiedBox.checked; rulesShown = RULES_PAGE; rerender() })
   view.querySelector('#gate-more')?.addEventListener('click', () => { rulesShown += RULES_PAGE; rerender() })
-  view.querySelectorAll('[data-expand]').forEach(b => b.addEventListener('click', () => { expandedRules.add(b.dataset.expand); rerender() }))
-  view.querySelectorAll('.tl-row, .stage').forEach(b => b.addEventListener('click', () => { selectedPhase = b.dataset.phase; rulesShown = RULES_PAGE; renderGates(view, state, onTrace) }))
-  view.querySelectorAll('[data-gate-view]').forEach(b => b.addEventListener('click', () => { gateView = b.dataset.gateView; renderGates(view, state, onTrace) }))
-  view.querySelectorAll('[data-trace]').forEach(a => a.addEventListener('click', () => onTrace(a.dataset.trace)))
+  // 下の data-* は、どれも直前に描いた要素に付けたもの
+  const all = (/** @type {string} */ selector) => /** @type {NodeListOf<HTMLElement>} */ (view.querySelectorAll(selector))
+  all('[data-expand]').forEach(b => b.addEventListener('click', () => { expandedRules.add(b.dataset.expand ?? ''); rerender() }))
+  all('.tl-row, .stage').forEach(b => b.addEventListener('click', () => { selectedPhase = b.dataset.phase; rulesShown = RULES_PAGE; renderGates(view, state, onTrace) }))
+  all('[data-gate-view]').forEach(b => b.addEventListener('click', () => { gateView = b.dataset.gateView ?? 'timeline'; renderGates(view, state, onTrace) }))
+  all('[data-trace]').forEach(a => a.addEventListener('click', () => onTrace(a.dataset.trace ?? '')))
 }
 

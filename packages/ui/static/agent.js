@@ -43,18 +43,22 @@ const setTag = (/** @type {HTMLElement} */ cursor, /** @type {string} */ text) =
 }
 
 /** 人に見えているか（隠れた要素は押させない） */
-const isVisible = el => {
+const isVisible = (/** @type {HTMLElement} */ el) => {
   const r = el.getBoundingClientRect()
   return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'
 }
 
 /** 要素の呼び名（画面に出ている文字・読み上げ名・説明・欄の見出し） */
-const namesOf = el => [
+const namesOf = (/** @type {HTMLElement} */ el) => [
   el.getAttribute('aria-label'), el.getAttribute('title'), el.getAttribute('placeholder'),
-  el.labels?.[0]?.textContent, el.textContent,
-].filter(Boolean).map(s => s.replace(/\s+/g, ' ').trim())
+  // 欄の見出し（labels）は入力欄にだけある
+  ('labels' in el ? /** @type {HTMLInputElement} */ (el).labels?.[0]?.textContent : undefined), el.textContent,
+].filter(/** @returns {s is string} */ s => Boolean(s)).map(s => s.replace(/\s+/g, ' ').trim())
 
-/** target の言葉で要素を探す。ぴったり同じ名前を先に、無ければ名前に含むものを、画面の上から順に */
+/**
+ * target の言葉で要素を探す。ぴったり同じ名前を先に、無ければ名前に含むものを、画面の上から順に
+ * @param {string} target
+ */
 function findTarget(target) {
   const want = target.replace(/\s+/g, ' ').trim()
   const candidates = [...document.querySelectorAll(TARGETS)].filter(el => el instanceof HTMLElement && isVisible(el)).map(el => /** @type {HTMLElement} */ (el))
@@ -63,10 +67,11 @@ function findTarget(target) {
     ?? candidates.find(el => namesOf(el).some(n => n.includes(want)))
 }
 
-const wait = ms => new Promise(done => setTimeout(done, ms))
+const wait = (/** @type {number} */ ms) => new Promise(done => setTimeout(done, ms))
 
 /** 一言の札が窓の右や左からはみ出すときは、窓の内側へずらす（指した所が窓の端にあっても全文が読めるように） */
 const EDGE_PX = 8
+/** @param {HTMLElement} label */
 function keepInWindow(label) {
   label.style.left = ''
   const r = label.getBoundingClientRect()
@@ -121,7 +126,11 @@ async function say(message, el) {
   hideLater()
 }
 
-/** 指示を 1 つ実行する。見つからなければ、そのことを画面に出す（黙って失敗しない） */
+/**
+ * 指示を 1 つ実行する。見つからなければ、そのことを画面に出す（黙って失敗しない）
+ * @param {import('./types').AgentAction} command
+ * @param {(message: string) => void} toast
+ */
 async function run(command, toast) {
   if (command.action === 'say') return say(command.message)
   if (command.action === 'filter') {
@@ -160,10 +169,15 @@ async function run(command, toast) {
   return undefined
 }
 
-/** 指示は届いた順に 1 つずつ実行する（前の動きが終わってから次へ） */
+/**
+ * 指示は届いた順に 1 つずつ実行する（前の動きが終わってから次へ）
+ * @param {EventSource} events
+ * @param {(message: string) => void} toast
+ */
 export function initAgent(events, toast) {
   let queue = Promise.resolve()
-  events.addEventListener('agent', e => {
+  events.addEventListener('agent', (/** @type {MessageEvent<string>} */ e) => {
+    /** @type {import('./types').AgentAction} */
     let command
     try { command = JSON.parse(e.data) } catch { return } // 壊れた知らせは捨てる（サーバーが検査済みの形しか流さない）
     queue = queue.then(() => run(command, toast)).catch(error => toast(`エージェントの操作に失敗しました：${messageOf(error)}`))

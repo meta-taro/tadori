@@ -17,6 +17,7 @@
     if (dark) document.documentElement.setAttribute('data-theme', 'dark')
     else document.documentElement.removeAttribute('data-theme')
   }
+  /** @param {string} value */
   function set(value) {
     if (CHOICES.indexOf(value) < 0) return
     try { localStorage.setItem(KEY, value) } catch (e) { /* 覚えられなくても、いまの画面には効かせる */ }

@@ -1,29 +1,36 @@
 // 画面で共通に使う小さな道具。データはすべて /api から読み、ここでは控えを持たない
 
-export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+/** @type {Readonly<Record<string, string>>} */
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+export const esc = (/** @type {unknown} */ s) => String(s ?? '').replace(/[&<>"']/g, c => HTML_ESCAPES[c] ?? c)
 
-export const chip = (cls, text) => `<span class="chip ${cls}"><span class="dot"></span>${text}</span>`
+export const chip = (/** @type {string} */ cls, /** @type {string | number} */ text) => `<span class="chip ${cls}"><span class="dot"></span>${text}</span>`
 
 const MS_PER_DAY = 86_400_000
-export const day = iso => Math.floor(Date.parse(`${iso}T00:00:00Z`) / MS_PER_DAY)
-export const shortDate = iso => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8))}`
+export const day = (/** @type {string} */ iso) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / MS_PER_DAY)
+export const shortDate = (/** @type {string} */ iso) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8))}`
 // 日付は読み込み時に形を確かめているが、画面に埋め込む前にも念のためエスケープする
-export const fullDate = iso => esc(String(iso).replaceAll('-', '/'))
+export const fullDate = (/** @type {string} */ iso) => esc(String(iso).replaceAll('-', '/'))
 
 export const ICON_INFO = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.2v4M8 4.8v.2"/></svg>'
 
-/** 台帳の種類の読み方（画面での呼び名） */
+/**
+ * 台帳の種類の読み方（画面での呼び名）
+ * @type {Readonly<Record<string, string>>}
+ */
 export const KIND_LABELS = {
   W: 'WBS のタスク', BD: '基本設計の章', DD: '詳細設計の節', Q: '未確認の項目', COMMIT: 'ソースの変更',
   V: '観点', TC: '試験ケース', RUN: '試験の記録', F: '指摘', R: '再発防止',
 }
 // 案件の設定（.tadori/kinds.tsv）の読み方を先に使い、無ければ既定の読み方、それも無ければ記号のまま
+/** @type {Readonly<Record<string, string>>} */
 let projectKinds = {}
-export const setKindLabels = kinds => { projectKinds = kinds ?? {} }
-export const kindLabel = kind => projectKinds[kind] ?? KIND_LABELS[kind] ?? kind
+export const setKindLabels = (/** @type {Readonly<Record<string, string>> | undefined} */ kinds) => { projectKinds = kinds ?? {} }
+export const kindLabel = (/** @type {string} */ kind) => projectKinds[kind] ?? KIND_LABELS[kind] ?? kind
 
 /** 遅れの色：予定どおりは青、終了予定を過ぎた日数に応じて赤へ（14 日で真っ赤） */
 const RED_AT_LATE_DAYS = 14
+/** @param {number} days */
 export function lateColor(days) {
   const pct = Math.round(Math.min(days, RED_AT_LATE_DAYS) / RED_AT_LATE_DAYS * 100)
   return `color-mix(in oklch, var(--late-red) ${pct}%, var(--late-blue))`
@@ -36,17 +43,20 @@ export function lateColor(days) {
 const WHO_KEY = 'tadori-who'
 let currentWho = (() => { try { return localStorage.getItem(WHO_KEY) ?? '' } catch { return '' } })()
 export const getWho = () => currentWho
+/** @param {string | null | undefined} value */
 export function setWho(value) {
   currentWho = value ?? ''
   try { localStorage.setItem(WHO_KEY, currentWho) } catch { /* 覚えられなくても、いまの画面には効かせる */ }
 }
 
 /** 担当の欄を人ごとに分ける（「A・B」「A、B」「A,B」「A/B」） */
-export const ownersOf = owner => String(owner ?? '').split(/[・、,，/／]/).map(s => s.trim()).filter(Boolean)
+export const ownersOf = (/** @type {string | null | undefined} */ owner) => String(owner ?? '').split(/[・、,，/／]/).map(s => s.trim()).filter(Boolean)
 
 /**
  * owner の欄が、選んでいる人の分か（判定の核の isFor と同じ決まり）。
  * 名前の一致か、その人の役割（.tadori/members.tsv の roles）の一致。だれも選んでいなければ全部。
+ * @param {import('./types').ProjectState} state
+ * @param {string | null | undefined} owner
  */
 export function isMine(state, owner) {
   const who = currentWho
@@ -57,12 +67,16 @@ export function isMine(state, owner) {
 }
 
 /** 担当の選択肢：人の表の名前と、WBS の担当（人）。役割だけの名前は出さない */
-export const peopleOf = state => [...new Set([...(state.members ?? []).map(m => m.name), ...state.tasks.flatMap(t => ownersOf(t.owner))])]
+export const peopleOf = (/** @type {import('./types').ProjectState} */ state) => [...new Set([...(state.members ?? []).map(m => m.name), ...state.tasks.flatMap(t => ownersOf(t.owner))])]
 
 /** 終わったステータス（設定で色の意味が ok のもの）か */
-export const isDoneStatus = (state, status) => state.statuses.some(s => s.id === status && s.tone === 'ok')
+export const isDoneStatus = (/** @type {import('./types').ProjectState} */ state, /** @type {string} */ status) => state.statuses.some(s => s.id === status && s.tone === 'ok')
 
-/** 終了予定を過ぎた日数（判定の核と同じ数え方） */
+/**
+ * 終了予定を過ぎた日数（判定の核と同じ数え方）
+ * @param {import('./types').ProjectState} state
+ * @param {import('./types').Task} task
+ */
 export function lateDays(state, task) {
   if (isDoneStatus(state, task.status) || !task.end) return 0
   return Math.max(0, day(state.today) - day(task.end))
@@ -107,7 +121,10 @@ export async function api(path, { method = 'GET', body } = {}) {
 
 /** @type {ReturnType<typeof setTimeout> | undefined} */
 let toastTimer
-/** 画面の下に短い知らせを出す（alert は使わない） */
+/**
+ * 画面の下に短い知らせを出す（alert は使わない）
+ * @param {string} message
+ */
 export function toast(message, durationMs = 4000) {
   const el = /** @type {HTMLElement} */ (document.getElementById('toast'))
   el.textContent = message
@@ -116,7 +133,11 @@ export function toast(message, durationMs = 4000) {
   toastTimer = setTimeout(() => el.classList.remove('show'), durationMs)
 }
 
-/** 保存の結果（commit したか、しなかった理由）を知らせる */
+/**
+ * 保存の結果（commit したか、しなかった理由）を知らせる
+ * @param {string} what
+ * @param {import('./types').CommitResult} commit
+ */
 export function toastCommit(what, commit) {
   if (!commit.committed) { toast(`${what}を保存しました。${commit.reason}`); return }
   // tadori は push しない。push していない commit があることを知らせ、中身を確かめてから人が push する
@@ -127,12 +148,13 @@ export function toastCommit(what, commit) {
 }
 
 /** http・https の URL だけを通す（正本の表に書かれた URL でも、画面で押せるのはこれだけ） */
-export const webUrl = url => (/^https?:\/\//i.test(String(url ?? '')) ? String(url) : '')
+export const webUrl = (/** @type {unknown} */ url) => (/^https?:\/\//i.test(String(url ?? '')) ? String(url) : '')
 
 /**
  * 正本へのリンクと、正本から手元へ反映した記録（例：「正本 ↗ · 反映 11/8 検証担当」）。
  * 反映が古い（設定の日数を超えた・記録が無い）ときは目立たせる。正本の表に無い行は空。
  * リンクは新しいタブ（デスクトップアプリでは OS のブラウザ）で開く。
+ * @param {import('./types').Origin | undefined} origin
  */
 export function originHtml(origin) {
   if (!origin) return ''
@@ -154,5 +176,17 @@ export function originHtml(origin) {
 export function byId(id) {
   const el = document.getElementById(id)
   if (!el) throw new Error(`画面に #${id} がありません`)
+  return el
+}
+
+/**
+ * root の中から要素を取る。直前に描いた中にあるはずのものが無いのは作りの誤りなので、黙って進まずに止める
+ * @param {ParentNode} root
+ * @param {string} selector
+ * @returns {HTMLElement}
+ */
+export function within(root, selector) {
+  const el = root.querySelector(selector)
+  if (!(el instanceof HTMLElement)) throw new Error(`画面に ${selector} がありません`)
   return el
 }

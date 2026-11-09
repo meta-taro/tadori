@@ -57,41 +57,46 @@ export function initDesktop() {
   topbar.querySelector('[data-win="maximize"]')?.addEventListener('click', () => win.toggleMaximize())
   topbar.querySelector('[data-win="close"]')?.addEventListener('click', () => win.close())
 
-  initMenus(topbar.querySelector('.win-menu'))
+  // メニューの帯は画面の骨組み（index.html）にかならずある
+  initMenus(/** @type {HTMLElement} */ (topbar.querySelector('.win-menu')))
 }
 
+/** @param {HTMLElement} bar */
 function initMenus(bar) {
-  const panel = bar.querySelector('.menu-panel')
+  const panel = /** @type {HTMLElement} */ (bar.querySelector('.menu-panel'))
+  const buttons = /** @type {NodeListOf<HTMLElement>} */ (bar.querySelectorAll('[data-menu]'))
+  /** @type {string | null | undefined} いま開いているメニュー（file・view・help） */
   let openKey = null
 
   const close = () => {
     openKey = null
     panel.hidden = true
-    bar.querySelectorAll('[data-menu]').forEach(b => b.setAttribute('aria-expanded', 'false'))
+    buttons.forEach(b => b.setAttribute('aria-expanded', 'false'))
   }
-  const open = async button => {
+  const open = async (/** @type {HTMLElement} */ button) => {
     openKey = button.dataset.menu
-    bar.querySelectorAll('[data-menu]').forEach(b => b.setAttribute('aria-expanded', String(b === button)))
+    buttons.forEach(b => b.setAttribute('aria-expanded', String(b === button)))
     panel.style.left = `${button.offsetLeft}px`
     panel.innerHTML = await menuHtml(openKey)
     panel.hidden = false
   }
 
-  bar.querySelectorAll('[data-menu]').forEach(button => {
+  buttons.forEach(button => {
     button.addEventListener('click', () => (openKey === button.dataset.menu ? close() : open(button)))
     // 1 つ開いているときは、隣に指を動かすだけで切り替える（ふつうのメニューバーと同じ）
     button.addEventListener('mouseenter', () => { if (openKey && openKey !== button.dataset.menu) open(button) })
   })
   panel.addEventListener('click', e => {
-    const item = e.target.closest('[data-action]')
+    const item = /** @type {HTMLElement | null} */ (/** @type {Element} */ (e.target).closest('[data-action]'))
     if (!item) return
     close()
     runAction(item.dataset.action, item.dataset.value)
   })
-  document.addEventListener('mousedown', e => { if (openKey && !bar.contains(e.target)) close() })
+  document.addEventListener('mousedown', e => { if (openKey && !bar.contains(/** @type {Node | null} */ (e.target))) close() })
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && openKey) close() })
 }
 
+/** @param {string | null | undefined} key */
 async function menuHtml(key) {
   if (key === 'file') {
     /** @type {Array<[string, string]>} */
@@ -113,10 +118,14 @@ async function menuHtml(key) {
     <button type="button" role="menuitem" data-action="about"><span class="check"></span>tadori について</button>`
 }
 
+/**
+ * @param {string | undefined} action
+ * @param {string | undefined} value
+ */
 function runAction(action, value) {
   if (action === 'pick') invoke('pick_project').catch(error => toast(String(error)))
   if (action === 'open') invoke('open_project', { path: value }).catch(error => toast(String(error)))
-  if (action === 'theme') window.tadoriTheme?.set(value)
+  if (action === 'theme') window.tadoriTheme?.set(value ?? '')
   if (action === 'reload') location.reload()
   if (action === 'glossary') location.hash = '#glossary'
   if (action === 'version') void showUpdatePanel()

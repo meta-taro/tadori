@@ -1,34 +1,56 @@
 // 1 日の進行：担当ごとに見て、その場で直す（プロダクト単位の残課題とは別に、人単位で見る）。
 // 材料（WBS の状態の変化・台帳の差分・チェックの記録）から作った下書きを、日ごとのファイルに置き、行を足す・直す・消す。
 // 直した行・足した行・消した行は、下書きを作り直しても上書きしない。
-import { api, esc, getWho, ICON_INFO, messageOf, toast, toastCommit, webUrl } from './util.js'
+import { api, esc, getWho, ICON_INFO, messageOf, toast, toastCommit, webUrl, within } from './util.js'
 import { previewHtml } from './daily-preview.js'
+
+/** @typedef {import('./types').DailyEntry} DailyEntry */
+/** @typedef {import('./types').Origin} Origin */
+/** @typedef {Readonly<Record<string, Origin>>} Origins 行 ID → 正本へのリンクと反映の記録 */
 
 // 担当は上の帯で選ぶ（どの画面も同じ）
 let date = ''
 
 // 台帳の整備（台帳の行を足した・直した）は、成果物の作業と読み違えないよう別の見出しにする。無い日は出さない
+/** @type {Array<[string, string]>} */
 const SECTIONS = [['today', '今日'], ['next', '次の作業日'], ['consult', '相談'], ['upkeep', '台帳の整備']]
+/** @type {Readonly<Record<string, string>>} */
 const ORIGIN_LABEL = { edited: '直した行', manual: '足した行' }
 // 行の印（やり終えたことか、これからのことか）。文に出す言葉は案件の設定で決まる。画面の選択肢は意味で示す
+/** @type {Array<[string, string]>} */
 const TAGS = [['', '印なし'], ['done', 'やり終えた'], ['doing', '作業中'], ['plan', '予定'], ['upkeep', '台帳の整備'], ['checked', '確かめた']]
-const tagSelect = entry => `<select class="inline-select daily-tag" data-tag="${esc(entry.id)}" aria-label="印">${TAGS.map(([v, l]) => `<option value="${v}" ${v === (entry.tag ?? '') ? 'selected' : ''}>${l}</option>`).join('')}</select>`
+const tagSelect = (/** @type {DailyEntry} */ entry) => `<select class="inline-select daily-tag" data-tag="${esc(entry.id)}" aria-label="印">${TAGS.map(([v, l]) => `<option value="${v}" ${v === (entry.tag ?? '') ? 'selected' : ''}>${l}</option>`).join('')}</select>`
 
-/** 外のページを新しいタブ（デスクトップアプリでは OS のブラウザ）で開くリンク。URL は文字に出さない */
+/**
+ * 外のページを新しいタブ（デスクトップアプリでは OS のブラウザ）で開くリンク。URL は文字に出さない
+ * @param {string} label
+ * @param {string} url
+ * @param {string} title
+ * @param {string} [extra]
+ */
 const outLink = (label, url, title, extra = '') => `<a class="daily-link ${extra}" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(title)}">${esc(label)} ↗</a>`
 
 /** その作業でさわった正本の場所（エージェントや人が links で付けたもの） */
-const entryLinks = entry => (entry.links ?? []).flatMap(l => (webUrl(l.url) ? [outLink(l.label, webUrl(l.url), `${l.label} を開く：${l.url}`)] : [])).join('')
+const entryLinks = (/** @type {DailyEntry} */ entry) => (entry.links ?? []).flatMap(l => (webUrl(l.url) ? [outLink(l.label, webUrl(l.url), `${l.label} を開く：${l.url}`)] : [])).join('')
 
-/** 課題の正本へ飛ぶ小さなリンク（会議の場で正本を開けるように）。表示名は正本の表の名前。反映が古ければ目立たせる */
+/**
+ * 課題の正本へ飛ぶ小さなリンク（会議の場で正本を開けるように）。表示名は正本の表の名前。反映が古ければ目立たせる
+ * @param {Origin | undefined} origin
+ */
 function originLink(origin) {
   const url = webUrl(origin?.url)
-  if (!url) return ''
+  if (!origin || !url) return ''
   const sync = origin.syncedAt ? `反映 ${origin.syncedAt}${origin.syncedBy ? ` ${origin.syncedBy}` : ''}` : '反映の記録なし'
   return outLink(origin.name || '正本', url, `正本を開く（${sync}${origin.stale ? '・古い' : ''}）：${url}`, `origin-link ${origin.stale ? 'stale' : ''}`)
 }
 
-/** 1 行：番号・本文（その場で直せる）・担当・課題と WBS へのリンク・消すボタン */
+/**
+ * 1 行：番号・本文（その場で直せる）・担当・課題と WBS へのリンク・消すボタン
+ * @param {DailyEntry} entry
+ * @param {number} no
+ * @param {Origins} [origins]
+ * @param {boolean} [isAll]
+ */
 function entryRow(entry, no, origins = {}, isAll = true) {
   const badge = ORIGIN_LABEL[entry.origin] ? `<span class="chip mono">${ORIGIN_LABEL[entry.origin]}</span>` : ''
   // 課題は「つながりを辿る」へ、WBS は「プロダクト」のその行へ（会議の場で、その場から開けるように）
@@ -46,6 +68,10 @@ function entryRow(entry, no, origins = {}, isAll = true) {
   </li>`
 }
 
+/**
+ * @param {readonly DailyEntry[]} entries
+ * @param {Origins} [origins]
+ */
 function sectionsHtml(entries, origins = {}) {
   // 担当で絞っていないときは、見出しの横に「全員」、各行の頭に担当を出す（別の人の作業が混ざっていると一目で分かるように）
   const who = getWho()
@@ -61,6 +87,14 @@ function sectionsHtml(entries, origins = {}) {
   }).join('')
 }
 
+/**
+ * 書き込んで結果を知らせ、描き直す（できなかったときも、いまのファイルの中身で描き直す）
+ * @param {string} path
+ * @param {string} method
+ * @param {unknown} body
+ * @param {string} what
+ * @param {() => unknown} rerender
+ */
 async function write(path, method, body, what, rerender) {
   try {
     const result = await api(path, { method, body: body ?? {} })
@@ -71,9 +105,14 @@ async function write(path, method, body, what, rerender) {
   rerender()
 }
 
+/**
+ * @param {HTMLElement} view
+ * @param {import('./types').ProjectState} state
+ */
 export async function renderDaily(view, state) {
   date ||= state.today
   const rerender = () => renderDaily(view, state)
+  /** @type {import('./types').Daily} */
   let daily
   try {
     const who = getWho()
@@ -105,20 +144,25 @@ export async function renderDaily(view, state) {
     <h2>文の形（補足つき）</h2>
     <div class="panel daily-preview">${previewHtml(daily.text, daily.links ?? [], daily.tags ?? [], daily.whoMarks ?? [])}</div>`
 
-  view.querySelector('#daily-date').addEventListener('change', e => { if (e.target.value) { date = e.target.value; rerender() } })
-  view.querySelector('#daily-generate').addEventListener('click', () => write(`${base}/generate`, 'POST', {}, '1 日の進行の下書き', rerender))
-  view.querySelectorAll('[data-entry]').forEach(input => input.addEventListener('change', () =>
-    write(`${base}/entries/${encodeURIComponent(input.dataset.entry)}`, 'PUT', { text: input.value }, '行', rerender)))
-  view.querySelectorAll('[data-tag]').forEach(select => select.addEventListener('change', () =>
-    write(`${base}/entries/${encodeURIComponent(select.dataset.tag)}`, 'PUT', { tag: select.value }, '印', rerender)))
-  view.querySelectorAll('[data-remove]').forEach(button => button.addEventListener('click', () =>
-    write(`${base}/entries/${encodeURIComponent(button.dataset.remove)}`, 'DELETE', {}, '行の削除', rerender)))
-  view.querySelector('#daily-add').addEventListener('submit', e => {
+  const dateInput = /** @type {HTMLInputElement} */ (within(view, '#daily-date'))
+  dateInput.addEventListener('change', () => { if (dateInput.value) { date = dateInput.value; rerender() } })
+  within(view, '#daily-generate').addEventListener('click', () => write(`${base}/generate`, 'POST', {}, '1 日の進行の下書き', rerender))
+  const entryInputs = /** @type {NodeListOf<HTMLInputElement>} */ (view.querySelectorAll('[data-entry]'))
+  entryInputs.forEach(input => input.addEventListener('change', () =>
+    write(`${base}/entries/${encodeURIComponent(input.dataset.entry ?? '')}`, 'PUT', { text: input.value }, '行', rerender)))
+  const tagSelects = /** @type {NodeListOf<HTMLSelectElement>} */ (view.querySelectorAll('[data-tag]'))
+  tagSelects.forEach(select => select.addEventListener('change', () =>
+    write(`${base}/entries/${encodeURIComponent(select.dataset.tag ?? '')}`, 'PUT', { tag: select.value }, '印', rerender)))
+  const removeButtons = /** @type {NodeListOf<HTMLButtonElement>} */ (view.querySelectorAll('[data-remove]'))
+  removeButtons.forEach(button => button.addEventListener('click', () =>
+    write(`${base}/entries/${encodeURIComponent(button.dataset.remove ?? '')}`, 'DELETE', {}, '行の削除', rerender)))
+  const addForm = /** @type {HTMLFormElement} */ (within(view, '#daily-add'))
+  addForm.addEventListener('submit', e => {
     e.preventDefault()
-    const f = new FormData(e.target)
+    const f = new FormData(addForm)
     write(`${base}/entries`, 'POST', { section: f.get('section'), who: String(f.get('who') ?? '').trim(), text: String(f.get('text') ?? '').trim() }, '行', rerender)
   })
-  view.querySelector('#daily-copy').addEventListener('click', async () => {
+  within(view, '#daily-copy').addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(daily.text)
       toast('文をコピーしました', 2000)

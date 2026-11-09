@@ -1,8 +1,18 @@
 // 画面の上の検索：打っている途中から、どの画面のどこに出てくるかをグループに分けて並べる
 import { byId, esc, kindLabel } from './util.js'
 
+/**
+ * 選ばれたときの動き。hash の画面へ移り、query があればその画面の絞り込みに言葉を入れる
+ * @typedef {{ hash: string, query?: { view: string, value: string } }} SearchOpen
+ */
+/**
+ * 検索の対象 1 件
+ * @typedef {{ group: string, id: string, title: string, where: string, text: string, open: SearchOpen, key?: string }} SearchEntry
+ */
+/** @typedef {Record<string, string>} GlossaryTerm 用語集（glossary.tsv）の 1 行。列名 → 値 */
+
 const PER_GROUP = 5
-/** @type {Array<Record<string, string>> | null} 用語集は最初に検索したときに 1 回だけ読む */
+/** @type {GlossaryTerm[] | null} 用語集は最初に検索したときに 1 回だけ読む */
 let glossary = null
 
 async function loadGlossary() {
@@ -18,10 +28,15 @@ async function loadGlossary() {
   return glossary
 }
 
-/** 検索の対象を作る。open は選ばれたときの動き（画面を移す・絞り込みを入れる） */
+/**
+ * 検索の対象を作る。open は選ばれたときの動き（画面を移す・絞り込みを入れる）
+ * @param {import('./types').ProjectState} state
+ * @param {readonly GlossaryTerm[]} terms
+ * @returns {SearchEntry[]}
+ */
 export function buildIndex(state, terms) {
-  const phaseName = id => state.phases.find(p => p.id === id)?.name ?? ''
-  const ruleOf = id => state.rules.find(r => r.id === id)
+  const phaseName = (/** @type {string} */ id) => state.phases.find(p => p.id === id)?.name ?? ''
+  const ruleOf = (/** @type {string} */ id) => state.rules.find(r => r.id === id)
   const taskIds = new Set(state.tasks.map(t => t.id))
   return [
     ...state.tasks.map(t => ({
@@ -54,7 +69,11 @@ export function buildIndex(state, terms) {
   ]
 }
 
-/** 打った言葉を全部含むものを、グループごとに PER_GROUP 件まで。ID が丸ごと一致したものを先頭に */
+/**
+ * 打った言葉を全部含むものを、グループごとに PER_GROUP 件まで。ID が丸ごと一致したものを先頭に
+ * @param {readonly SearchEntry[]} index
+ * @param {string} raw
+ */
 export function searchIndex(index, raw) {
   const words = raw.trim().toLowerCase().split(/\s+/).filter(Boolean)
   if (!words.length) return []
@@ -65,7 +84,11 @@ export function searchIndex(index, raw) {
   return groups.map(g => ({ group: g, total: hits.filter(h => h.group === g).length, entries: hits.filter(h => h.group === g).slice(0, PER_GROUP) }))
 }
 
-/** 合った言葉に印を付ける（先にエスケープしてから印を付けるので、文字が HTML として働くことはない） */
+/**
+ * 合った言葉に印を付ける（先にエスケープしてから印を付けるので、文字が HTML として働くことはない）
+ * @param {string} text
+ * @param {string} raw
+ */
 function mark(text, raw) {
   let html = esc(text)
   for (const w of raw.trim().split(/\s+/).filter(Boolean)) {
@@ -77,6 +100,7 @@ function mark(text, raw) {
 
 /**
  * 検索の欄を動かす。getState で最新の案件を読み、navigate(open) で画面を移す。
+ * @param {{ getState: () => import('./types').ProjectState | null, navigate: (open: SearchOpen) => void }} options
  */
 export function initSearch({ getState, navigate }) {
   const form = byId('jump')
@@ -86,11 +110,12 @@ export function initSearch({ getState, navigate }) {
   panel.setAttribute('role', 'listbox')
   panel.hidden = true
   form.appendChild(panel)
+  /** @type {SearchEntry[]} */
   let flat = []
   let active = 0
 
   const close = () => { panel.hidden = true; flat = [] }
-  const choose = entry => { if (!entry) return; close(); input.value = ''; input.blur(); navigate(entry.open) }
+  const choose = (/** @type {SearchEntry | undefined} */ entry) => { if (!entry) return; close(); input.value = ''; input.blur(); navigate(entry.open) }
 
   const draw = async () => {
     const state = getState()

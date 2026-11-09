@@ -1,9 +1,17 @@
 // チェックの記録・つながりを辿る
-import { api, chip, esc, ICON_INFO, kindLabel, messageOf, originHtml, toast } from './util.js'
+import { api, chip, esc, ICON_INFO, kindLabel, messageOf, originHtml, toast, within } from './util.js'
 import { renderPicker } from './trace-picker.js'
 
-const RESULT_TONE = result => (/^漏れ|差し戻し/.test(result) ? 'hole' : /^満たす|承認/.test(result) ? 'ok' : '')
+/** @typedef {import('./types').ProjectState} ProjectState */
+/** @typedef {import('./types').TraceResult} TraceResult */
+/** @typedef {import('./types').ResolvedItem} ResolvedItem */
 
+const RESULT_TONE = (/** @type {string} */ result) => (/^漏れ|差し戻し/.test(result) ? 'hole' : /^満たす|承認/.test(result) ? 'ok' : '')
+
+/**
+ * @param {HTMLElement} view
+ * @param {ProjectState} state
+ */
 export function renderLog(view, state) {
   const rows = [...state.checks].reverse().map(r => `<tr>
     <td class="mono">${esc(r.when)}</td><td>${esc(r.who)}</td><td class="pair">${esc(r.what)}</td>
@@ -22,9 +30,15 @@ export function renderLog(view, state) {
 const ICON_OK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 8.5l3 3 6-7"/></svg>'
 const ICON_NG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>'
 
+/**
+ * @param {TraceResult} result
+ * @param {readonly ResolvedItem[]} [resolved]
+ * @param {ProjectState['origins']} [origins]
+ */
 function storyPath(result, resolved = [], origins = {}) {
   // 切れ目として出す漏れは、カードに重ねて出さない（列が空など、つながり以外の漏れだけをカードに出す）
   const shownAsGap = new Set(result.steps.flatMap(s => (s.type === 'missing' ? [`${s.rule}:${s.after ?? s.before}`] : [])))
+  /** @type {string[]} */
   const parts = []
   result.steps.forEach((s, i) => {
     const prev = result.steps[i - 1]
@@ -55,22 +69,32 @@ function storyPath(result, resolved = [], origins = {}) {
   return parts.join('')
 }
 
-/** 図の上の 1 行：この線の上の漏れと対応済みが、どの行のものかを並べる */
+/**
+ * 図の上の 1 行：この線の上の漏れと対応済みが、どの行のものかを並べる
+ * @param {TraceResult} result
+ * @param {readonly ResolvedItem[]} resolved
+ */
 function traceSummary(result, resolved) {
+  /** @type {Set<string | undefined>} */
   const leakIds = new Set()
   for (const s of result.steps) {
     if (s.type === 'missing') leakIds.add(s.after ?? s.before)
     else if ((s.leaks ?? []).length) leakIds.add(s.item.id)
   }
-  const onLine = new Set(result.steps.filter(s => s.type === 'item').map(s => s.item.id))
+  const onLine = new Set(result.steps.flatMap(s => (s.type === 'item' ? [s.item.id] : [])))
   const done = resolved.filter(r => onLine.has(r.itemId) && !leakIds.has(r.itemId)).map(r => r.itemId)
   const parts = [
-    leakIds.size ? `<span class="chip hole"><span class="dot"></span>漏れ ${leakIds.size} 件（${[...leakIds].map(esc).join('・')}）</span>` : '<span class="chip ok"><span class="dot"></span>この線の上に漏れはありません</span>',
-    done.length ? `<span class="chip ok"><span class="dot"></span>対応済み ${done.length} 件（${done.map(esc).join('・')}）</span>` : '',
+    leakIds.size ? `<span class="chip hole"><span class="dot"></span>漏れ ${leakIds.size} 件（${[...leakIds].map(id => esc(id)).join('・')}）</span>` : '<span class="chip ok"><span class="dot"></span>この線の上に漏れはありません</span>',
+    done.length ? `<span class="chip ok"><span class="dot"></span>対応済み ${done.length} 件（${done.map(id => esc(id)).join('・')}）</span>` : '',
   ]
   return `<div class="trace-summary"><span class="cond">この線の上：</span>${parts.join('')}</div>`
 }
 
+/**
+ * @param {HTMLElement} view
+ * @param {ProjectState} state
+ * @param {string} startId
+ */
 export async function renderTrace(view, state, startId) {
   const start = state.items.find(i => i.id === startId)
   view.innerHTML = `
@@ -86,7 +110,7 @@ export async function renderTrace(view, state, startId) {
         <div class="verdict"><span>この線のどこが漏れていたかを決めるのは人です。確かめたら、チェックの記録に人の行として残してください。</span></div>
       </section>
     </div>`
-  renderPicker(view.querySelector('#picker'), state, startId, id => { location.hash = `trace-${encodeURIComponent(id)}` })
+  renderPicker(within(view, '#picker'), state, startId, id => { location.hash = `trace-${encodeURIComponent(id)}` })
   if (!startId) return
   // リンクをコピー：クリックの中でだけ書き込める。断られたら URL を知らせる
   view.querySelector('#copy-link')?.addEventListener('click', async () => {
@@ -98,10 +122,11 @@ export async function renderTrace(view, state, startId) {
     }
   })
   try {
+    /** @type {TraceResult} */
     const result = await api(`/api/trace/${encodeURIComponent(startId)}`)
-    view.querySelector('#story').innerHTML = storyPath(result, state.resolved ?? [], state.origins ?? {})
-    view.querySelector('#trace-summary').innerHTML = traceSummary(result, state.resolved ?? [])
+    within(view, '#story').innerHTML = storyPath(result, state.resolved ?? [], state.origins ?? {})
+    within(view, '#trace-summary').innerHTML = traceSummary(result, state.resolved ?? [])
   } catch (error) {
-    view.querySelector('#story').innerHTML = `<div class="note">${ICON_INFO}<span>${esc(messageOf(error))}</span></div>`
+    within(view, '#story').innerHTML = `<div class="note">${ICON_INFO}<span>${esc(messageOf(error))}</span></div>`
   }
 }

@@ -9,9 +9,20 @@ import { esc, webUrl } from './util.js'
 const URL_PATTERN = 'https?:\\/\\/[^\\s（）()／、]+'
 // 「表示名：URL」の表示名（空白・括弧・区切りを含まない 40 文字まで）
 const LABEL_PATTERN = '[^\\s：（）()、／]{1,40}'
-const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const escapeRegExp = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-/** 1 行の中の印・リンクを、札とリンクにする（それ以外の文字はそのまま出す） */
+/**
+ * 文の中のリンク（Daily の links と同じ形）
+ * @typedef {import('./types').Daily['links'][number]} DailyTextLink
+ */
+
+/**
+ * 1 行の中の印・リンクを、札とリンクにする（それ以外の文字はそのまま出す）
+ * @param {string} line
+ * @param {readonly DailyTextLink[]} links
+ * @param {readonly string[]} tags
+ * @param {readonly string[]} [whoMarks]
+ */
 function inlineHtml(line, links, tags, whoMarks = []) {
   const byText = new Map(links.map(l => [l.text, l.href]))
   const words = [...tags, ...whoMarks, ...byText.keys()].filter(Boolean).sort((a, b) => b.length - a.length).map(escapeRegExp)
@@ -20,8 +31,10 @@ function inlineHtml(line, links, tags, whoMarks = []) {
   let html = ''
   let last = 0
   for (const match of line.matchAll(pattern)) {
-    html += esc(line.slice(last, match.index))
-    last = match.index + match[0].length
+    // matchAll で取れた一致には、かならず index がある
+    const index = match.index ?? 0
+    html += esc(line.slice(last, index))
+    last = index + match[0].length
     const [text, name, url] = match
     if (url) {
       const href = webUrl(url)
@@ -40,7 +53,13 @@ function inlineHtml(line, links, tags, whoMarks = []) {
   return html + esc(line.slice(last))
 }
 
-/** 文全体を、見出し・番号付きの一覧・小見出しに分けて描く */
+/**
+ * 文全体を、見出し・番号付きの一覧・小見出しに分けて描く
+ * @param {string | null | undefined} text
+ * @param {readonly DailyTextLink[]} [links]
+ * @param {readonly string[]} [tags]
+ * @param {readonly string[]} [whoMarks]
+ */
 export function previewHtml(text, links = [], tags = [], whoMarks = []) {
   const blocks = String(text ?? '').split(/\n{2,}/).map(b => b.split('\n').filter(l => l.trim()))
   return blocks.filter(lines => lines.length).map(lines => {

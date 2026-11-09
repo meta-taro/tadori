@@ -1,19 +1,33 @@
 // ルールセット：1,000 行を超えても探せるように、探す欄・絞り込み・工程ごとの帯・少しずつ出す
-import { api, ApiError, esc, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, toastCommit } from './util.js'
+import { api, ApiError, esc, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, toastCommit, within } from './util.js'
+
+/** @typedef {import('./types').ProjectState} ProjectState */
+/** @typedef {import('./types').Rule} Rule */
+/** @typedef {'leak' | 'wait' | 'ok'} RuleStatusKey */
+/** @typedef {{ query: string, phase: string, judge: string, status: string, sort: string }} RuleFilters */
 
 const PAGE = 50
+/** @type {Readonly<Record<string, string>>} */
 const KIND_NAMES = { covered: '下流が出ている', refers: '上流を元にしている', filled: '列が埋まっている', approval: '人の承認' }
 
 // 画面を移っても、絞り込みと開け閉めは覚えておく
+/** @type {RuleFilters} */
 const filters = { query: '', phase: 'all', judge: 'all', status: 'all', sort: 'id' }
+/** @type {Set<string>} */
 const closedPhases = new Set()
-const shownCount = new Map() // 工程 → いま出している件数
+/** @type {Map<string, number>} 工程 → いま出している件数 */
+const shownCount = new Map()
 // 「消す」を 1 回押したルール。ファイルの変化の知らせで画面が描き直されても、押した状態を保つ（しばらくで戻す）
 let armedRuleId = ''
+/** @type {ReturnType<typeof setTimeout> | undefined} */
 let armedTimer
 const ARMED_MS = 5000
 
-/** ルールのいまの状態：漏れ（件数）・承認待ち・満たす */
+/**
+ * ルールのいまの状態：漏れ（件数）・承認待ち・満たす
+ * @param {ProjectState} state @param {Rule} rule
+ * @returns {{ key: RuleStatusKey, count: number }}
+ */
 function statusOf(state, rule) {
   if (rule.kind === 'approval') {
     const approved = state.approvals.some(a => a.rule === rule.id && a.status === '承認')
@@ -23,23 +37,27 @@ function statusOf(state, rule) {
   return count ? { key: 'leak', count } : { key: 'ok', count: 0 }
 }
 
+/** @type {Record<RuleStatusKey, (n: number) => string>} */
 const STATUS_HTML = {
   leak: n => `<span class="chip hole"><span class="dot"></span>漏れ ${n} 件</span>`,
   wait: () => '<span class="chip wait"><span class="dot"></span>承認待ち</span>',
   ok: () => '<span class="chip ok"><span class="dot"></span>満たす</span>',
 }
 
+/** @param {Rule} rule */
 function whatText(rule) {
   const from = rule.from ? kindLabel(rule.from) : ''
   const to = rule.to ? kindLabel(rule.to) : ''
   return `${from}${to ? ` → ${to}` : ''}${rule.field ? ` の ${rule.field}` : ''}`
 }
 
+/** @param {Rule} rule @param {string[]} words */
 function matches(rule, words) {
   const text = `${rule.id} ${rule.label} ${whatText(rule)} ${KIND_NAMES[rule.kind]} ${rule.owner ?? ''}`.toLowerCase()
   return words.every(w => text.includes(w))
 }
 
+/** @param {ProjectState} state @returns {Rule[]} */
 function filtered(state) {
   const words = filters.query.trim().toLowerCase().split(/\s+/).filter(Boolean)
   const list = state.rules.filter(r =>
@@ -49,12 +67,13 @@ function filtered(state) {
     && (filters.status === 'all' || statusOf(state, r).key === filters.status)
     // 上の帯の担当で絞る（ルールの担当は役割。人の表の役割でも見分ける）
     && isMine(state, r.owner))
-  const byId = (a, b) => a.id.localeCompare(b.id, 'ja', { numeric: true })
+  const byId = (/** @type {Rule} */ a, /** @type {Rule} */ b) => a.id.localeCompare(b.id, 'ja', { numeric: true })
   return filters.sort === 'leaks'
     ? [...list].sort((a, b) => statusOf(state, b).count - statusOf(state, a).count || byId(a, b))
     : [...list].sort(byId)
 }
 
+/** @param {ProjectState} state @param {Rule} r */
 function ruleRow(state, r) {
   const s = statusOf(state, r)
   return `<tr>
@@ -68,6 +87,7 @@ function ruleRow(state, r) {
   </tr>`
 }
 
+/** @param {ProjectState} state */
 function listHtml(state) {
   const rules = filtered(state)
   if (!rules.length) return `<div class="note">${ICON_INFO}<span>合うルールがありません</span></div>`
@@ -87,18 +107,28 @@ function listHtml(state) {
   }).join('')
 }
 
+/**
+ * @param {keyof RuleFilters} name
+ * @param {Array<[string, string]>} options [値, 見出し]
+ */
 function segHtml(name, options) {
   return `<div class="seg" role="group" aria-label="${esc(name)}">${options.map(([value, label]) =>
     `<button type="button" data-filter="${esc(name)}" data-value="${esc(value)}" aria-pressed="${filters[name] === value}">${esc(label)}</button>`).join('')}</div>`
 }
 
-/** 空いている次のルールの ID（R の後ろの数がいちばん大きいものの次） */
+/**
+ * 空いている次のルールの ID（R の後ろの数がいちばん大きいものの次）
+ * @param {ProjectState} state
+ */
 function nextRuleId(state) {
   const numbers = state.rules.map(r => /^R(\d+)$/.exec(r.id)?.[1]).filter(Boolean).map(Number)
   return `R${(numbers.length ? Math.max(...numbers) : 0) + 1}`
 }
 
-/** ルールを足す・直す欄。rule を渡すと、その中身で直す（ID は変えない） */
+/**
+ * ルールを足す・直す欄。rule を渡すと、その中身で直す（ID は変えない）
+ * @param {ProjectState} state @param {Rule | undefined} rule
+ */
 function ruleFormHtml(state, rule) {
   const r = rule ?? { id: nextRuleId(state), phase: state.phases[0]?.id ?? '', kind: 'covered', from: '', to: '', field: '', owner: '', label: '' }
   const only = rule?.only ? `${rule.only.field}=${rule.only.value}` : ''
@@ -124,8 +154,10 @@ function ruleFormHtml(state, rule) {
 }
 
 /** 欄の中身を、API に渡す形にする（空の項目は、足すときは送らず、直すときは空にする） */
+/** @param {HTMLFormElement} form @param {boolean} isEdit @returns {Record<string, string>} */
 function ruleBody(form, isEdit) {
   const data = Object.fromEntries(new FormData(form).entries())
+  /** @type {Record<string, string>} */
   const body = {}
   for (const key of ['phase', 'kind', 'from', 'to', 'field', 'only', 'owner', 'label']) {
     const value = String(data[key] ?? '').trim()
@@ -134,8 +166,14 @@ function ruleBody(form, isEdit) {
   return body
 }
 
+/**
+ * @param {HTMLElement} view
+ * @param {ProjectState} state
+ * @param {() => Promise<void>} reload 保存したあとに案件を読み直す
+ */
 export function renderRules(view, state, reload) {
-  const phaseOptions = [['all', 'すべての工程'], ...state.phases.map(p => [p.id, p.name])]
+  /** @type {Array<[string, string]>} */
+  const phaseOptions = [['all', 'すべての工程'], ...state.phases.map(p => /** @type {[string, string]} */ ([p.id, p.name]))]
   view.innerHTML = `
     <h1>ルールセット</h1>
     <p class="lede">工程ごとのルールセットです。エージェントは作業の前にこれを読んで守り、チェックした結果を記録に残します。人の承認が要るルールは、人がチェックします。
@@ -154,38 +192,45 @@ export function renderRules(view, state, reload) {
     <div class="cond rules-total" id="rules-total"></div>
     <div class="panel rules-list" id="rules-list"></div>`
 
-  const list = view.querySelector('#rules-list')
-  const total = view.querySelector('#rules-total')
+  const list = within(view, '#rules-list')
+  const total = within(view, '#rules-total')
   const draw = () => {
     const n = filtered(state).length
     total.textContent = n === state.rules.length ? `ルール ${n} 件` : `ルール ${state.rules.length} 件のうち ${n} 件`
     list.innerHTML = listHtml(state)
-    list.querySelectorAll('[data-group]').forEach(d => d.addEventListener('toggle', () => {
-      if (d.open) closedPhases.delete(d.dataset.group); else closedPhases.add(d.dataset.group)
-    }))
-    list.querySelectorAll('[data-more]').forEach(b => b.addEventListener('click', () => {
-      shownCount.set(b.dataset.more, (shownCount.get(b.dataset.more) ?? PAGE) + PAGE)
-      draw()
-    }))
+    list.querySelectorAll('details[data-group]').forEach(el => {
+      const d = /** @type {HTMLDetailsElement} */ (el)
+      const group = d.dataset.group ?? ''
+      d.addEventListener('toggle', () => { if (d.open) closedPhases.delete(group); else closedPhases.add(group) })
+    })
+    list.querySelectorAll('[data-more]').forEach(el => {
+      const phase = /** @type {HTMLElement} */ (el).dataset.more ?? ''
+      el.addEventListener('click', () => { shownCount.set(phase, (shownCount.get(phase) ?? PAGE) + PAGE); draw() })
+    })
   }
   draw()
   bindRuleEditing(view, state, reload)
   // 打つたびに一覧だけ描き直す（欄ごと描き直すと、打っている途中で入力が切れる）
-  view.querySelector('#rules-query').addEventListener('input', e => { filters.query = e.target.value; shownCount.clear(); draw() })
-  view.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => {
-    filters[b.dataset.filter] = b.dataset.value
+  const query = /** @type {HTMLInputElement} */ (within(view, '#rules-query'))
+  query.addEventListener('input', () => { filters.query = query.value; shownCount.clear(); draw() })
+  view.querySelectorAll('[data-filter]').forEach(el => el.addEventListener('click', () => {
+    const b = /** @type {HTMLElement} */ (el)
+    const name = /** @type {keyof RuleFilters} */ (b.dataset.filter)
+    filters[name] = b.dataset.value ?? ''
     shownCount.clear()
-    renderRules(view, state)
+    // 読み直しの口も渡す（渡さないと、絞り込みを替えたあとの保存で一覧が新しくならない）
+    renderRules(view, state, reload)
   }))
 }
 
 /** 足す・直す・消す（保存したら案件を読み直す。断られたら理由を欄に出し、一覧は変えない） */
+/** @param {HTMLElement} view @param {ProjectState} state @param {() => Promise<void>} reload */
 function bindRuleEditing(view, state, reload) {
-  const slot = view.querySelector('#rule-form-slot')
-  const open = rule => {
+  const slot = within(view, '#rule-form-slot')
+  const open = (/** @type {Rule | undefined} */ rule) => {
     slot.innerHTML = ruleFormHtml(state, rule)
-    const form = slot.querySelector('#rule-form')
-    form.querySelector('[data-cancel]').addEventListener('click', () => { slot.innerHTML = '' })
+    const form = /** @type {HTMLFormElement} */ (within(slot, '#rule-form'))
+    within(form, '[data-cancel]').addEventListener('click', () => { slot.innerHTML = '' })
     form.addEventListener('submit', async e => {
       e.preventDefault()
       const isEdit = form.dataset.mode === 'edit'
@@ -197,19 +242,20 @@ function bindRuleEditing(view, state, reload) {
           : await api('/api/rules', { method: 'POST', body: { id, ...body } })
         toastCommit(`ルール ${id} `, result.commit)
         slot.innerHTML = ''
-        await reload?.()
+        await reload()
       } catch (error) {
         const problems = error instanceof ApiError && error.problems.length ? error.problems : [messageOf(error)]
-        form.querySelector('.form-problems').innerHTML = problems.map(p => `<div>${esc(p)}</div>`).join('')
+        within(form, '.form-problems').innerHTML = problems.map(p => `<div>${esc(p)}</div>`).join('')
       }
     })
-    form.querySelector(rule ? '[name="label"]' : '[name="id"]').focus()
+    within(form, rule ? '[name="label"]' : '[name="id"]').focus()
   }
-  view.querySelector('#rule-add').addEventListener('click', () => open(undefined))
-  view.querySelector('#rules-list').addEventListener('click', async e => {
-    const button = e.target instanceof Element ? e.target.closest('button[data-edit], button[data-remove]') : null
-    if (!button) return
-    const id = button.dataset.edit ?? button.dataset.remove
+  within(view, '#rule-add').addEventListener('click', () => open(undefined))
+  within(view, '#rules-list').addEventListener('click', async e => {
+    const found = e.target instanceof Element ? e.target.closest('button[data-edit], button[data-remove]') : null
+    if (!(found instanceof HTMLButtonElement)) return
+    const button = found
+    const id = button.dataset.edit ?? button.dataset.remove ?? ''
     if (button.dataset.edit) { open(state.rules.find(r => r.id === id)); return }
     // 消すのは 2 回押す（押し間違いで消さないように。消しても git の履歴からは戻せる）
     if (armedRuleId !== id) {
@@ -228,7 +274,7 @@ function bindRuleEditing(view, state, reload) {
     try {
       const result = await api(`/api/rules/${encodeURIComponent(id)}`, { method: 'DELETE' })
       toastCommit(`ルール ${id} の削除を`, result.commit)
-      await reload?.()
+      await reload()
     } catch (error) {
       button.textContent = '消せませんでした'
       button.title = messageOf(error)
@@ -236,7 +282,10 @@ function bindRuleEditing(view, state, reload) {
   })
 }
 
-/** 検索から開くとき、その言葉で絞った状態にする */
+/**
+ * 検索から開くとき、その言葉で絞った状態にする
+ * @param {string} value
+ */
 export function setRulesQuery(value) {
   filters.query = value
   filters.phase = 'all'

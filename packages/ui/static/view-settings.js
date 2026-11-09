@@ -1,10 +1,22 @@
 // 設定：工程とステータス。保存すると TSV に書き戻し、案件が git リポジトリなら commit する
-import { api, ApiError, chip, esc, ICON_INFO, messageOf, toast, toastCommit } from './util.js'
+import { api, ApiError, chip, esc, ICON_INFO, messageOf, toast, toastCommit, within } from './util.js'
 
+/** @typedef {import('./types').ProjectState} ProjectState */
+/** @typedef {import('./types').Phase} Phase */
+/**
+ * 保存するステータス（色の意味 tone は、サーバーが none・wait・hole・ok かを確かめる）
+ * @typedef {{ id: string, name: string, tone: string }} StatusInput
+ */
+
+/** @type {Readonly<Record<string, string>>} 色の意味 → 画面での呼び名 */
 const TONES = { none: '色なし', wait: '青灰（途中）', hole: '琥珀（止まっている）', ok: '緑（済み）' }
+/** @type {string[]} 保存を断られたときの理由（次に描くときに出す） */
 let problems = []
 
-/** 見た目の選び方。案件の設定ではなく、この PC のこの人の好みなので TSV には書かない（theme.js が覚える） */
+/**
+ * 見た目の選び方。案件の設定ではなく、この PC のこの人の好みなので TSV には書かない（theme.js が覚える）
+ * @type {Readonly<Record<string, string>>}
+ */
 const THEMES = { light: 'ライト', dark: 'ダーク', system: 'OS に合わせる' }
 
 function themeHtml() {
@@ -15,7 +27,14 @@ function themeHtml() {
     <p class="cond">この PC で開く tadori だけに効きます（案件の設定には書きません）。</p>`
 }
 
-/** 一覧の行を並べ替える（元の配列は変えない） */
+/**
+ * 一覧の行を並べ替える（元の配列は変えない）
+ * @template T
+ * @param {readonly T[]} list
+ * @param {number} index
+ * @param {number} dir
+ * @returns {T[]}
+ */
 const moved = (list, index, dir) => {
   const next = [...list]
   const target = index + dir
@@ -24,6 +43,12 @@ const moved = (list, index, dir) => {
   return next
 }
 
+/**
+ * @param {string} path
+ * @param {unknown} body
+ * @param {string} what
+ * @param {() => Promise<void>} reload
+ */
 async function save(path, body, what, reload) {
   try {
     const { commit } = await api(path, { method: 'PUT', body })
@@ -37,8 +62,9 @@ async function save(path, body, what, reload) {
   }
 }
 
+/** @param {ProjectState} state */
 function phaseRows(state) {
-  const used = id => [...state.rules.filter(r => r.phase === id).map(r => r.id), ...state.tasks.filter(t => t.phase === id).map(t => t.id)]
+  const used = (/** @type {string} */ id) => [...state.rules.filter(r => r.phase === id).map(r => r.id), ...state.tasks.filter(t => t.phase === id).map(t => t.id)]
   return state.phases.map((p, i) => `<tr>
     <td class="rule-id">${i + 1}</td>
     <td><input class="inline-input" data-phase-name="${esc(p.id)}" value="${esc(p.name)}" aria-label="工程 ${esc(p.id)} の名前"></td>
@@ -51,8 +77,9 @@ function phaseRows(state) {
     </td></tr>`).join('')
 }
 
+/** @param {ProjectState} state */
 function statusRows(state) {
-  const toneOptions = cur => Object.entries(TONES).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${v}</option>`).join('')
+  const toneOptions = (/** @type {string} */ cur) => Object.entries(TONES).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${v}</option>`).join('')
   return state.statuses.map((s, i) => `<tr>
     <td class="rule-id">${i + 1}</td>
     <td>${chip(s.tone === 'none' ? '' : s.tone, esc(s.name))}</td>
@@ -65,6 +92,11 @@ function statusRows(state) {
     </td></tr>`).join('')
 }
 
+/**
+ * @param {HTMLElement} view
+ * @param {ProjectState} state
+ * @param {() => Promise<void>} reload
+ */
 export function renderSettings(view, state, reload) {
   view.innerHTML = `
     <h1>設定</h1>
@@ -91,35 +123,41 @@ export function renderSettings(view, state, reload) {
         <div class="actions"><button type="submit" class="btn-primary">ステータスを足す</button></div>
       </form></div>`
 
-  view.querySelectorAll('[data-theme-choice]').forEach(b => b.addEventListener('click', () => {
-    window.tadoriTheme?.set(b.dataset.themeChoice)
-    view.querySelectorAll('[data-theme-choice]').forEach(x => x.setAttribute('aria-pressed', String(x === b)))
+  // 下の data-* は、どれも直前に描いた要素に付けたもの
+  const all = (/** @type {string} */ selector) => /** @type {NodeListOf<HTMLElement>} */ (view.querySelectorAll(selector))
+  const inputs = (/** @type {string} */ selector) => /** @type {NodeListOf<HTMLInputElement | HTMLSelectElement>} */ (view.querySelectorAll(selector))
+
+  all('[data-theme-choice]').forEach(b => b.addEventListener('click', () => {
+    window.tadoriTheme?.set(b.dataset.themeChoice ?? '')
+    all('[data-theme-choice]').forEach(x => x.setAttribute('aria-pressed', String(x === b)))
   }))
 
-  const savePhases = list => save('/api/settings/phases', list.map((p, i) => ({ ...p, order: i + 1 })), '工程の設定', reload)
-  const saveStatuses = list => save('/api/settings/statuses', list, 'ステータスの設定', reload)
+  const savePhases = (/** @type {readonly Phase[]} */ list) => save('/api/settings/phases', list.map((p, i) => ({ ...p, order: i + 1 })), '工程の設定', reload)
+  const saveStatuses = (/** @type {readonly StatusInput[]} */ list) => save('/api/settings/statuses', list, 'ステータスの設定', reload)
 
-  view.querySelectorAll('[data-phase-name]').forEach(input => input.addEventListener('change', () =>
+  inputs('[data-phase-name]').forEach(input => input.addEventListener('change', () =>
     savePhases(state.phases.map(p => (p.id === input.dataset.phaseName ? { ...p, name: input.value.trim() } : p)))))
-  view.querySelectorAll('[data-phase-move]').forEach(b => b.addEventListener('click', () =>
+  all('[data-phase-move]').forEach(b => b.addEventListener('click', () =>
     savePhases(moved(state.phases, Number(b.dataset.phaseMove), Number(b.dataset.dir)))))
-  view.querySelectorAll('[data-phase-remove]').forEach(b => b.addEventListener('click', () =>
+  all('[data-phase-remove]').forEach(b => b.addEventListener('click', () =>
     savePhases(state.phases.filter(p => p.id !== b.dataset.phaseRemove))))
-  view.querySelector('#add-phase').addEventListener('submit', e => {
+  const addPhase = /** @type {HTMLFormElement} */ (within(view, '#add-phase'))
+  addPhase.addEventListener('submit', e => {
     e.preventDefault()
-    const f = new FormData(e.target)
+    const f = new FormData(addPhase)
     savePhases([...state.phases, { id: String(f.get('id')).trim(), name: String(f.get('name')).trim(), order: 0 }])
   })
 
-  view.querySelectorAll('[data-status-tone]').forEach(sel => sel.addEventListener('change', () =>
+  inputs('[data-status-tone]').forEach(sel => sel.addEventListener('change', () =>
     saveStatuses(state.statuses.map(s => (s.id === sel.dataset.statusTone ? { ...s, tone: sel.value } : s)))))
-  view.querySelectorAll('[data-status-move]').forEach(b => b.addEventListener('click', () =>
+  all('[data-status-move]').forEach(b => b.addEventListener('click', () =>
     saveStatuses(moved(state.statuses, Number(b.dataset.statusMove), Number(b.dataset.dir)))))
-  view.querySelectorAll('[data-status-remove]').forEach(b => b.addEventListener('click', () =>
+  all('[data-status-remove]').forEach(b => b.addEventListener('click', () =>
     saveStatuses(state.statuses.filter(s => s.id !== b.dataset.statusRemove))))
-  view.querySelector('#add-status').addEventListener('submit', e => {
+  const addStatus = /** @type {HTMLFormElement} */ (within(view, '#add-status'))
+  addStatus.addEventListener('submit', e => {
     e.preventDefault()
-    const f = new FormData(e.target)
+    const f = new FormData(addStatus)
     saveStatuses([...state.statuses, { id: String(f.get('id')).trim(), name: String(f.get('name')).trim(), tone: String(f.get('tone')) }])
   })
 }

@@ -19,6 +19,10 @@ const view = byId('view')
  */
 let state = /** @type {any} */ (null)
 
+/**
+ * 画面の名前 → 見出しと描き方。id は #trace-F-02 のように画面の名前のあとに付けた ID
+ * @type {Record<string, { label: string, render: (id?: string) => void | Promise<void> }>}
+ */
 const VIEWS = {
   browse: { label: 'プロダクト', render: id => renderWbs(view, state, reload, id) },
   phases: { label: 'リリースまでの残課題', render: phaseId => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }, phaseId) },
@@ -39,6 +43,7 @@ function defaultTraceStart() {
   return pick?.id ?? ''
 }
 
+/** @param {string} key */
 function renderChrome(key) {
   const waits = state.gates.reduce((n, g) => n + g.pendingApprovals.length, 0)
   // 最後にチェックを記録したのは、いつ・誰か（チェックの記録の最後の行。無ければ出さない）
@@ -74,8 +79,10 @@ window.addEventListener('tadori-who', () => route())
  * 左メニューに件数のバッジを出す。0 のときは出さない（全部直せば消える）。
  * 件数は事実として出すだけで、割合や点数にはしない。
  */
+/** @param {number} waits */
 function renderNavBadges(waits) {
   const leakRows = new Set(state.leaks.map(l => l.itemId)).size
+  /** @type {Record<string, Array<[number, string, string]>>} 画面の名前 → [件数, 色, 読み上げ] */
   const badges = {
     phases: [[state.leaks.length, 'hole', `漏れ ${state.leaks.length} 件`], [waits, 'wait', `承認待ち ${waits} 件`]],
     trace: [[leakRows, 'hole', `漏れのある行 ${leakRows} 件`]],
@@ -83,7 +90,7 @@ function renderNavBadges(waits) {
   document.querySelectorAll('nav a[data-view]').forEach(el => {
     const a = /** @type {HTMLAnchorElement} */ (el)
     a.querySelector('.nav-badges')?.remove()
-    const shown = (badges[a.dataset.view] ?? []).filter(([n]) => n > 0)
+    const shown = (badges[a.dataset.view ?? ''] ?? []).filter(([n]) => n > 0)
     if (!shown.length) return
     const holder = document.createElement('span')
     holder.className = 'nav-badges'
@@ -113,6 +120,7 @@ function route() {
 /**
  * 検索で選ばれた先へ移る。ルールセットと用語は、その言葉で絞った状態で開く。
  * 同じ画面にいるときは hash が変わらないので、自分で描き直す。
+ * @param {import('./search.js').SearchOpen} open
  */
 function navigate(open) {
   if (open.query?.view === 'rules') setRulesQuery(open.query.value)
