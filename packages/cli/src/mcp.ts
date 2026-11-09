@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises'
 import { createInterface } from 'node:readline'
 import { parseTsv, trace } from '@tadori/core'
 import { formatCheck, formatTrace } from './format.js'
+import { howTo } from './guide.js'
+import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 import { loadState, localToday } from './state.js'
 
 /**
@@ -119,29 +121,86 @@ function buildProjectTools(options: McpOptions): Tool[] {
         return text(lines.join('\n'))
       }),
     },
+    ...dailyTools(options),
   ]
 }
 
-/** guide.md を「## <話題> <見出し>」ごとに分ける */
-function guideSections(markdown: string): { intro: string; sections: Array<{ topic: string; title: string; body: string }> } {
-  const [intro = '', ...parts] = markdown.split(/^## /m)
-  return {
-    intro: intro.trim(),
-    sections: parts.map(part => {
-      const [head = '', ...rest] = part.split('\n')
-      const [topic = '', ...title] = head.trim().split(/\s+/)
-      return { topic, title: title.join(' '), body: `## ${head.trim()}\n${rest.join('\n').trim()}` }
-    }),
+/** 1 日の進行の道具：読む・作る・足す・直す・消す。人の承認には関わらない（1 日の進行は人とエージェントが書く記録） */
+function dailyTools(options: McpOptions): Tool[] {
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  const SECTION = { type: 'string', enum: ['today', 'next', 'consult'], description: 'today＝今日 / next＝次の作業日 / consult＝相談' }
+  const DATE = { type: 'string', description: '日付（YYYY-MM-DD）。空なら今日' }
+  const ENTRY_FIELDS = {
+    who: { type: 'string', description: '担当（2 人以上は「A・B」）' },
+    text: { type: 'string', description: '本文（番号と末尾の WBS は付けない。場所や URL は補足へ）' },
+    wbs: { type: 'array', items: { type: 'string' }, description: 'つながる WBS の ID（例：W-03）' },
+    issue: { type: 'string', description: '課題の ID（台帳の行）' },
+    note: { type: 'string', description: '補足に足す一言（聞かれたら読むもの）' },
   }
+  /** 案件・日付を確かめてから、本体を動かす。入力の誤りは isError で返す */
+  const withDay = async (args: Record<string, unknown>, work: (dir: string, date: string) => Promise<ToolResult>): Promise<ToolResult> => {
+    if (!options.projectDir) return text('案件のフォルダを指定して起動してください（例：tadori mcp examples/lend-v12）', true)
+    const date = str(args.date).trim() || (options.today ?? localToday())
+    if (!isDay(date)) return text('date は YYYY-MM-DD で渡してください', true)
+    try {
+      return await work(options.projectDir, date)
+    } catch (error: unknown) {
+      if (error instanceof DailyInputError) return text(error.message, true)
+      throw error
+    }
+  }
+  const committed = (c: { committed: boolean; reason?: string }) => (c.committed ? 'commit しました（push は人）' : (c.reason ?? ''))
+  return [
+    {
+      name: 'daily',
+      description: '人単位の「1 日の進行」を返す（今日・次の作業日・相談・補足）と、行の一覧（[ID] 付き）。who に担当を渡すと、その人の分だけ。'
+        + '材料（WBS の状態の変化・台帳の差分・チェックの記録）から作った下書きと、人やエージェントが直した行を合わせたもの。'
+        + '文を直す・相談を書くのは daily_update / daily_add で。',
+      inputSchema: { type: 'object', properties: { who: { type: 'string', description: '担当。空なら全員' }, date: DATE }, additionalProperties: false },
+      run: async args => withDay(args, async (dir, date) => {
+        const daily = await loadDaily(dir, date, str(args.who).trim() || undefined)
+        const rows = daily.entries.map(e => `- [${e.id}] ${e.section} · ${e.who || '担当なし'} · ${e.text}${e.origin === 'auto' ? '' : `（${e.origin === 'manual' ? '足した行' : '直した行'}）`}`)
+        const where = daily.saved ? 'ファイルに置いてある' : 'まだ置いていない下書き。daily_generate で置く'
+        return text(`${daily.text}\n\n行の一覧（${where}）：\n${rows.join('\n')}`)
+      }),
+    },
+    {
+      name: 'daily_generate',
+      description: '材料から下書きを作り、日ごとのファイル（.tadori/daily/YYYY-MM-DD.tsv）に置いて commit する。作り直しても、直した行・足した行・消した行は上書きしない。',
+      inputSchema: { type: 'object', properties: { date: DATE }, additionalProperties: false },
+      run: async args => withDay(args, async (dir, date) => text(`${date} の下書きを置きました。${committed(await generateDaily(dir, date))}`)),
+    },
+    {
+      name: 'daily_add',
+      description: '1 日の進行に行を足す（相談や、材料に出ない作業）。足した行は作り直しても残る。',
+      inputSchema: { type: 'object', properties: { date: DATE, section: SECTION, ...ENTRY_FIELDS }, required: ['section', 'text'], additionalProperties: false },
+      run: async args => withDay(args, async (dir, date) => {
+        const { entry, commit } = await addDaily(dir, date, args)
+        return text(`[${entry.id}] を足しました。${committed(commit)}`)
+      }),
+    },
+    {
+      name: 'daily_update',
+      description: '1 日の進行の行を直す（id は daily の [ID]）。渡した項目だけ変わる。自動の行は「直した行」になり、作り直しても上書きされない。',
+      inputSchema: { type: 'object', properties: { date: DATE, id: { type: 'string' }, section: SECTION, ...ENTRY_FIELDS }, required: ['id'], additionalProperties: false },
+      run: async args => withDay(args, async (dir, date) => {
+        const { entry, commit } = await updateDaily(dir, date, str(args.id), args)
+        return text(`[${entry.id}] を直しました。${committed(commit)}`)
+      }),
+    },
+    {
+      name: 'daily_remove',
+      description: '1 日の進行の行を消す（id は daily の [ID]）。自動の行は、作り直しても戻ってこない。',
+      inputSchema: { type: 'object', properties: { date: DATE, id: { type: 'string' } }, required: ['id'], additionalProperties: false },
+      run: async args => withDay(args, async (dir, date) => text(`[${str(args.id)}] を消しました。${committed((await removeDaily(dir, date, str(args.id))).commit)}`)),
+    },
+  ]
 }
 
 async function howToText(path: string | undefined, topic: string): Promise<ToolResult> {
   if (!path) return text('使い方の文書が見つかりません（guidePath が渡されていません）', true)
-  const { intro, sections } = guideSections(await readFile(path, 'utf8'))
-  const list = sections.map(s => `- ${s.topic}：${s.title}`).join('\n')
-  if (!topic) return text(`${intro}\n\n話題（topic に渡す）：\n${list}\n\n初めてなら start、エージェントは必ず agent-rules も読んでください。`)
-  const found = sections.find(s => s.topic === topic)
-  return found ? text(found.body) : text(`「${topic}」という話題はありません。\n${list}`, true)
+  const result = await howTo(path, topic)
+  return text(result.text, result.isError)
 }
 
 /** 画面の中の専用カーソルへ指示を送る（人のマウスは使わない）。中身の検査はサーバーが行う */

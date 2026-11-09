@@ -126,6 +126,8 @@ function toTask({ row, line }: NumberedRow, problems: string[]): Task {
     name: row.name ?? '',
     status: row.status ?? '',
     ...(start && end ? { start, end } : {}),
+    ...(row.owner?.trim() ? { owner: row.owner.trim() } : {}),
+    ...(row.issue?.trim() ? { issue: row.issue.trim() } : {}),
     line,
   }
 }

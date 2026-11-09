@@ -96,3 +96,16 @@ describe('MCP の口', () => {
     expect(await call(7, 'nope/nope')).toMatchObject({ id: 7, error: { code: -32601 } })
   })
 })
+
+describe('MCP の daily（人単位の 1 日の進行）', () => {
+  test('担当と日付で、1 日の進行の文を返す', async () => {
+    const result = await tool('daily', { date: '2026-11-05', who: '検証担当' })
+    expect(result.isError).toBeUndefined()
+    expect(result.content[0]?.text).toMatch(/^今日（11\/5 木）/)
+    expect(result.content[0]?.text).toContain('相談')
+  })
+
+  test('日付の形がおかしければ isError', async () => {
+    expect((await tool('daily', { date: 'きょう' })).isError).toBe(true)
+  })
+})

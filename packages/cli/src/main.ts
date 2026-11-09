@@ -7,6 +7,8 @@ import { formatCheck, formatTrace } from './format.js'
 import { loadState, localToday } from './state.js'
 import { startServer } from './server.js'
 import { serveMcp } from './mcp.js'
+import { howTo } from './guide.js'
+import { isDay, loadDaily } from './daily.js'
 
 const DEFAULT_PORT = 4870
 const USAGE = `使い方:
@@ -14,6 +16,8 @@ const USAGE = `使い方:
   tadori check [案件のフォルダ] [--log --who 名前 --why 理由] [--today YYYY-MM-DD]
   tadori why <ID> [案件のフォルダ]
   tadori serve [案件のフォルダ] [--port ${DEFAULT_PORT}] [--today YYYY-MM-DD]
+  tadori daily [案件のフォルダ] [--who 担当] [--date YYYY-MM-DD]
+  tadori how-to [話題]
   tadori mcp [案件のフォルダ] [--screen http://127.0.0.1:4873]
 
   init   試す案件のフォルダに、最小の設定（.tadori/）と台帳（ledger/）を置く。あるファイルは書き換えない
@@ -21,6 +25,8 @@ const USAGE = `使い方:
          --log を付けると、チェックの記録（.tadori/checks.tsv）に 5W1H で足す
   why    1 件から上下に辿り、線が切れている所を出す
   serve  手元（127.0.0.1）で画面を立ち上げる
+  daily  人単位の 1 日の進行（今日・次の作業日・相談・補足）。--who で担当を絞る
+  how-to 使い方を出す（MCP の how_to と同じ中身）。話題：start・ledger・rules・check・screen・links・agent-rules
   mcp    MCP の口を標準入出力で開く（使い方・用語・残課題・漏れ・つながり・台帳の行を探す・画面の専用カーソル）
          --screen は専用カーソルで操作する画面の場所（既定はデスクトップアプリの http://127.0.0.1:4873）`
 
@@ -34,6 +40,7 @@ const { values, positionals } = parseArgs({
     why: { type: 'string' },
     name: { type: 'string' },
     screen: { type: 'string' },
+    date: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
   },
 })
@@ -126,6 +133,23 @@ async function main(): Promise<void> {
     // --port 0 のときは OS が空いている番号を選ぶので、実際につないだ番号を出す（デスクトップアプリはこの行から URL を読む）
     const bound = typeof server.address === 'object' && server.address ? server.address.port : port
     process.stdout.write(`tadori を立ち上げました：http://127.0.0.1:${bound}/\n案件：${dir}\n止めるときは Ctrl+C\n`)
+    return
+  }
+
+  if (command === 'daily') {
+    const dir = resolve(rest[0] ?? '.')
+    const date = values.date ?? today
+    if (!isDay(date)) fail(`--date は YYYY-MM-DD で書いてください：${date}`)
+    const daily = await loadDaily(dir, date, values.who)
+    process.stdout.write(`${daily.text}\n`)
+    return
+  }
+
+  if (command === 'how-to') {
+    const result = await howTo(fileURLToPath(new URL('../guide.md', import.meta.url)), (rest[0] ?? '').trim())
+    process.stdout.write(`${result.text}
+`)
+    process.exitCode = result.isError ? 2 : 0
     return
   }
 

@@ -243,3 +243,59 @@ describe('今日の日付', () => {
     }
   })
 })
+
+describe('GET /api/daily（人単位の 1 日の進行）', () => {
+  test('1 日の進行の文と、担当の一覧を返す。担当で絞れる', async () => {
+    const all = await (await fetch(`${base}/api/daily?date=2026-11-05`)).json()
+    expect(all.text).toMatch(/^今日（11\/5 木）\d+ 件/)
+    expect(all.owners).toEqual(expect.arrayContaining(['設計担当', '検証担当']))
+    const mine = await (await fetch(`${base}/api/daily?date=2026-11-05&who=${encodeURIComponent('検証担当')}`)).json()
+    expect(mine.text).not.toContain('基本設計レビュー')
+  })
+
+  test('日付の形がおかしければ 400', async () => {
+    expect((await fetch(`${base}/api/daily?date=11-05`)).status).toBe(400)
+  })
+})
+
+describe('1 日の進行を作る・足す・直す・消す', () => {
+  const day = '2026-11-05'
+  const send = (method: string, path: string, body?: unknown) =>
+    fetch(`${base}${path}`, { method, headers: WRITE_HEADERS, ...(body ? { body: JSON.stringify(body) } : {}) })
+
+  test('下書きを作ると日ごとのファイルに置き、行の ID が付く', async () => {
+    const res = await send('POST', `/api/daily/${day}/generate`)
+    expect(res.status).toBe(200)
+    const daily = await (await fetch(`${base}/api/daily?date=${day}`)).json()
+    expect(daily.saved).toBe(true)
+    expect(daily.entries.length).toBeGreaterThan(0)
+    expect(daily.entries[0].id).toMatch(/^a\d+$/)
+  })
+
+  test('足した行・直した行は、作り直しても残る。消した行は戻ってこない', async () => {
+    const added = await (await send('POST', `/api/daily/${day}/entries`, { who: '検証担当', section: 'consult', text: '試験の環境はいつ空くか確かめたい' })).json()
+    expect(added.entry.id).toMatch(/^m\d+$/)
+    const before = await (await fetch(`${base}/api/daily?date=${day}`)).json()
+    const target = before.entries.find((e: { origin: string }) => e.origin === 'auto')
+    expect((await send('PUT', `/api/daily/${day}/entries/${target.id}`, { text: '観点表を半分まで書いた' })).status).toBe(200)
+    const other = before.entries.find((e: { origin: string; id: string }) => e.origin === 'auto' && e.id !== target.id)
+    if (other) expect((await send('DELETE', `/api/daily/${day}/entries/${other.id}`)).status).toBe(200)
+
+    await send('POST', `/api/daily/${day}/generate`)
+    const after = await (await fetch(`${base}/api/daily?date=${day}`)).json()
+    expect(after.entries.find((e: { id: string }) => e.id === target.id)).toMatchObject({ text: '観点表を半分まで書いた', origin: 'edited' })
+    expect(after.entries.find((e: { id: string }) => e.id === added.entry.id)?.text).toBe('試験の環境はいつ空くか確かめたい')
+    if (other) expect(after.text).not.toContain(other.text)
+    expect(after.text).toMatch(/相談\n\d+\. 試験の環境はいつ空くか確かめたい/)
+  })
+
+  test('おかしな見出し・長すぎる文・無い行は断る', async () => {
+    expect((await send('POST', `/api/daily/${day}/entries`, { who: 'x', section: 'nope', text: 'a' })).status).toBe(400)
+    expect((await send('POST', `/api/daily/${day}/entries`, { who: 'x', section: 'today', text: 'あ'.repeat(501) })).status).toBe(400)
+    expect((await send('PUT', `/api/daily/${day}/entries/zz9`, { text: 'a' })).status).toBe(404)
+  })
+
+  test('x-tadori の無い書き込みは断る', async () => {
+    expect((await fetch(`${base}/api/daily/${day}/generate`, { method: 'POST' })).status).toBe(403)
+  })
+})

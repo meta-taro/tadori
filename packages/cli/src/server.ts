@@ -5,6 +5,7 @@ import { ProjectLoadError, saveSettings, saveTaskStatus, trace, validatePhases, 
 import { loadState, localToday } from './state.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
 import { AgentActionError, parseAgentAction } from './agent.js'
+import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 
 export interface ServerOptions {
   readonly dir: string
@@ -168,6 +169,35 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
     const screens = notifier.send('agent', action)
     if (!screens) throw new HttpError(409, 'tadori の画面が開いていません。画面を開いてから送ってください')
     return sendJson(res, 200, { screens })
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/daily') {
+    // 人単位の 1 日の進行
+    const date = url.searchParams.get('date') || today
+    if (!isDay(date)) throw new HttpError(400, '日付は YYYY-MM-DD で渡してください')
+    const who = url.searchParams.get('who')?.trim()
+    return sendJson(res, 200, await loadDaily(dir, date, who || undefined))
+  }
+
+  // 1 日の進行を作る・足す・直す・消す（日ごとのファイルに書き、git リポジトリなら commit）
+  const dailyMatch = url.pathname.match(/^\/api\/daily\/(\d{4}-\d{2}-\d{2})\/(generate|entries)(?:\/([A-Za-z0-9_-]{1,32}))?$/)
+  if (dailyMatch) {
+    assertWriteAllowed(req)
+    const [, date = '', what, id] = dailyMatch
+    if (!isDay(date)) throw new HttpError(400, '日付は YYYY-MM-DD で渡してください')
+    const work = async () => {
+      if (req.method === 'POST' && what === 'generate' && !id) return { commit: await generateDaily(dir, date) }
+      if (req.method === 'POST' && what === 'entries' && !id) return addDaily(dir, date, await readJson(req))
+      if (req.method === 'PUT' && what === 'entries' && id) return updateDaily(dir, date, id, await readJson(req))
+      if (req.method === 'DELETE' && what === 'entries' && id) return removeDaily(dir, date, id)
+      throw new HttpError(404, 'その操作はありません')
+    }
+    try {
+      return sendJson(res, 200, await serialized(work))
+    } catch (error: unknown) {
+      if (error instanceof DailyInputError) throw new HttpError(error.status, error.message)
+      throw error
+    }
   }
 
   if (req.method === 'GET' && url.pathname === '/api/state') {

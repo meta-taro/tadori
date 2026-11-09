@@ -85,3 +85,34 @@ describe('screen（画面の中の専用カーソルで操作する）', () => {
     expect(result.content[0]?.text).toMatch(/立ち上/)
   })
 })
+
+describe('MCP で 1 日の進行を作る・足す・直す・消す', () => {
+  const EXAMPLE = resolve(import.meta.dirname, '../../../examples/lend-v12')
+  let dir = ''
+  let tool: ReturnType<typeof toolOf>
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'tadori-mcp-daily-'))
+    await cp(EXAMPLE, dir, { recursive: true })
+    tool = toolOf(createMcpHandler({ glossaryPath: GLOSSARY, guidePath: GUIDE, version: '0.0.1', projectDir: dir, today: '2026-11-05' }))
+  })
+  afterAll(async () => { await rm(dir, { recursive: true, force: true }) })
+
+  test('daily_generate で置き、daily で行の ID が見え、daily_add・daily_update・daily_remove で直せる', async () => {
+    expect((await tool('daily_generate', { date: '2026-11-05' })).isError).toBeUndefined()
+    const listed = (await tool('daily', { date: '2026-11-05' })).content[0]?.text ?? ''
+    const id = listed.match(/\[(a\d+)\]/)?.[1]
+    expect(id).toBeDefined()
+    expect((await tool('daily_update', { date: '2026-11-05', id, text: '観点表を半分まで書いた' })).isError).toBeUndefined()
+    const added = await tool('daily_add', { date: '2026-11-05', who: '検証担当', section: 'consult', text: '試験の環境はいつ空くか確かめたい' })
+    const addedId = added.content[0]?.text.match(/\[(m\d+)\]/)?.[1]
+    expect(addedId).toBe('m1')
+    expect((await tool('daily_remove', { date: '2026-11-05', id: addedId })).isError).toBeUndefined()
+    const after = (await tool('daily', { date: '2026-11-05' })).content[0]?.text ?? ''
+    expect(after).toContain('観点表を半分まで書いた')
+    expect(after).not.toContain('試験の環境はいつ空くか')
+  })
+
+  test('無い行を直そうとしたら isError', async () => {
+    expect((await tool('daily_update', { date: '2026-11-05', id: 'zz9', text: 'a' })).isError).toBe(true)
+  })
+})

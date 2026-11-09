@@ -529,3 +529,21 @@
   /* エージェントの専用カーソルは、メニューより手前に出す */
   .agent-cursor { z-index:60; }
   .hl-box { z-index:55; }
+
+  /* ---- 1 日の進行 ---- */
+  .daily-bar { display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin:8px 0 16px; }
+  .daily-sheet { padding:8px 24px 16px; }
+  .daily-section h2 { font-size:15px; color:var(--ink); margin:18px 0 8px; padding-left:10px; border-left:3px solid var(--accent); }
+  .daily-section ol { margin:0; padding-left:28px; color:var(--ink); line-height:1.9; }
+  .daily-section.note-section ol { color:var(--ink-subtle); font-size:13px; }
+  .daily-list { list-style:none; padding-left:0 !important; }
+  .daily-entry { display:flex; align-items:center; gap:10px; padding:4px 0; }
+  .daily-no { width:24px; color:var(--ink-subtle); font-variant-numeric:tabular-nums; flex:none; }
+  .daily-text { flex:1; min-width:200px; }
+  .daily-meta { display:flex; align-items:center; gap:8px; flex:none; max-width:40%; overflow:hidden; white-space:nowrap; }
+  .daily-preview { white-space:pre-wrap; font-family:var(--sans); font-size:13px; line-height:1.8; padding:16px 20px; color:var(--ink-muted); }
+  .add .grow { flex:1; min-width:240px; }
+  /* 担当・日付・ボタンを 1 列にそろえる（見出しは欄の左に置き、上に積まない） */
+  .daily-bar label { display:inline-flex; flex-direction:row; align-items:center; gap:8px; margin:0; }
+  .daily-bar .inline-input, .daily-bar .inline-select { height:34px; margin:0; }
+  .daily-bar button { height:34px; }

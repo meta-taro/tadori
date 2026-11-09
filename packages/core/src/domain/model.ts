@@ -37,6 +37,10 @@ export interface Task {
   readonly start?: string
   readonly end?: string
   readonly status: string
+  /** 担当（wbs.tsv の owner 列。書かなくてもよい）。1 日の進行を担当ごとに出すのに使う */
+  readonly owner?: string
+  /** この作業の課題の ID（wbs.tsv の issue 列。台帳の行の ID。書かなくてもよい）。1 日の進行で、同じ課題の作業を 1 件にまとめる */
+  readonly issue?: string
   /** wbs.tsv の何行目か */
   readonly line?: number
 }

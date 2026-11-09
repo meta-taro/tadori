@@ -34,7 +34,7 @@ pnpm --filter @tadori/desktop dev   # 窓が開き、案件のフォルダ（.ta
 
 窓は裏で `tadori serve` を起こし、その画面を映すだけです（判定は CLI と同じ核）。
 
-インストーラー（macOS の Apple シリコン・Intel、Windows の x64・ARM）は、`v` で始まるタグ（例：`v0.1.0`）を push すると GitHub Actions が作り、下書きのリリースに付けます。中身を確かめてから公開してください。手元で作るなら `pnpm --filter @tadori/desktop build` です。
+インストーラー（macOS の Apple シリコン・Intel、Windows の x64・ARM）は、`v` で始まるタグ（例：`v0.1.0`）を push すると GitHub Actions が作り、下書きのリリースに付けます。中身を確かめてから公開してください。手元で作るなら `pnpm --filter @tadori/desktop bundle` です。
 
 commit の前に型の検査・テスト・置き場所の検査、個人や委託先の名前の検査を走らせるには（このリポジトリで 1 回だけ）。
 名前の一覧は公開できないので、リポジトリの外の `~/.config/oss-guard/deny-words.txt` に 1 行 1 語で書きます:
@@ -51,6 +51,8 @@ git config core.hooksPath .githooks
 |---|---|
 | `tadori init [案件] [--name 名前]` | 試す案件のリポジトリに、最小の設定（`.tadori/`）と台帳（`ledger/`）を置く。あるファイルは書き換えない。ルールは例をコメントで置くだけ（ルールが無い工程は「ルールなし」と出し、通ったようには見せない） |
 | `tadori check [案件]` | 工程ごとの漏れと人の承認待ち。漏れがあれば終了コード 1（CI でも使える）。`--log` でチェックの記録に 5W1H で足す |
+| `tadori daily [案件] [--who 担当] [--date 日付]` | 人単位の 1 日の進行（今日・次の作業日・相談・補足）。形は案件ごとに設定できる。画面の「1 日の進行」と MCP の `daily` も同じもの |
+| `tadori how-to [話題]` | 使い方（MCP の `how_to` と同じ中身）。話題は start・ledger・rules・check・screen・links・agent-rules |
 | `tadori why <ID> [案件]` | その 1 件から上下に辿った全部と、線が切れている所 |
 | `tadori serve [案件]` | 手元（127.0.0.1）で画面を開く。リリースまでの残課題（タイムライン／カード）・WBS・ルールセット・チェックの記録・つながりを辿る・設定 |
 | `tadori mcp [案件]` | MCP の口（標準入出力）。道具は使い方（`how_to`）・用語（`glossary`）・残課題（`get_remaining`）・漏れ（`list_leaks`）・つながり（`trace`）・台帳の行を探す（`find_items`）・画面の専用カーソル（`screen`）。案件の中身は読むだけ。`--screen` で操作する画面の場所を変えられる |

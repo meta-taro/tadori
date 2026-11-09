@@ -9,6 +9,7 @@ import { initDesktop } from './desktop.js'
 import { initAgent } from './agent.js'
 import { renderSettings } from './view-settings.js'
 import { renderGlossary, setGlossaryQuery } from './view-glossary.js'
+import { renderDaily } from './view-daily.js'
 
 const view = document.getElementById('view')
 let state = null
@@ -16,6 +17,7 @@ let state = null
 const VIEWS = {
   browse: { label: 'プロダクト', render: id => renderWbs(view, state, reload, id) },
   phases: { label: 'リリースまでの残課題', render: phaseId => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }, phaseId) },
+  daily: { label: '1 日の進行', render: () => renderDaily(view, state) },
   rules: { label: 'ルールセット', render: () => renderRules(view, state) },
   log: { label: 'チェックの記録', render: () => renderLog(view, state) },
   trace: { label: 'つながりを辿る', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
