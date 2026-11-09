@@ -14,14 +14,15 @@ const USAGE = `使い方:
   tadori check [案件のフォルダ] [--log --who 名前 --why 理由] [--today YYYY-MM-DD]
   tadori why <ID> [案件のフォルダ]
   tadori serve [案件のフォルダ] [--port ${DEFAULT_PORT}] [--today YYYY-MM-DD]
-  tadori mcp [案件のフォルダ]
+  tadori mcp [案件のフォルダ] [--screen http://127.0.0.1:4873]
 
   init   試す案件のフォルダに、最小の設定（.tadori/）と台帳（ledger/）を置く。あるファイルは書き換えない
   check  工程ごとの漏れと承認待ちを出す。漏れがあれば終了コード 1（CI でも使える）
          --log を付けると、チェックの記録（.tadori/checks.tsv）に 5W1H で足す
   why    1 件から上下に辿り、線が切れている所を出す
   serve  手元（127.0.0.1）で画面を立ち上げる
-  mcp    MCP の口を標準入出力で開く（用語・残課題・漏れ・つながり・台帳の行を探す）`
+  mcp    MCP の口を標準入出力で開く（使い方・用語・残課題・漏れ・つながり・台帳の行を探す・画面の専用カーソル）
+         --screen は専用カーソルで操作する画面の場所（既定はデスクトップアプリの http://127.0.0.1:4873）`
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -32,6 +33,7 @@ const { values, positionals } = parseArgs({
     who: { type: 'string' },
     why: { type: 'string' },
     name: { type: 'string' },
+    screen: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
   },
 })
@@ -130,6 +132,8 @@ async function main(): Promise<void> {
     // 標準出力は MCP の返事だけに使う。案内は出さない
     serveMcp({
       glossaryPath: fileURLToPath(new URL('../../ui/static/glossary.tsv', import.meta.url)),
+      guidePath: fileURLToPath(new URL('../guide.md', import.meta.url)),
+      ...(values.screen ? { screenUrl: values.screen.replace(/\/+$/, '') } : {}),
       version: '0.0.1',
       today,
       ...(rest[0] ? { projectDir: resolve(rest[0]) } : {}),

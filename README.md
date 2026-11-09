@@ -50,7 +50,7 @@ git config core.hooksPath .githooks
 | `tadori check [案件]` | 工程ごとの漏れと人の承認待ち。漏れがあれば終了コード 1（CI でも使える）。`--log` でチェックの記録に 5W1H で足す |
 | `tadori why <ID> [案件]` | その 1 件から上下に辿った全部と、線が切れている所 |
 | `tadori serve [案件]` | 手元（127.0.0.1）で画面を開く。リリースまでの残課題（タイムライン／カード）・WBS・ルールセット・チェックの記録・つながりを辿る・設定 |
-| `tadori mcp [案件]` | MCP の口（標準入出力）。道具は用語（`glossary`）・残課題（`get_remaining`）・漏れ（`list_leaks`）・つながり（`trace`）・台帳の行を探す（`find_items`）。どれも読むだけ |
+| `tadori mcp [案件]` | MCP の口（標準入出力）。道具は使い方（`how_to`）・用語（`glossary`）・残課題（`get_remaining`）・漏れ（`list_leaks`）・つながり（`trace`）・台帳の行を探す（`find_items`）・画面の専用カーソル（`screen`）。案件の中身は読むだけ。`--screen` で操作する画面の場所を変えられる |
 
 ```bash
 node packages/cli/dist/main.js check examples/lend-v12
@@ -68,6 +68,9 @@ Claude Code なら、ビルドしたあとに次の 1 行でつなげます（�
 ```bash
 claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp /path/to/案件のフォルダ
 ```
+
+つないだエージェントは、まず `how_to`（使い方）の `start` と `agent-rules`（守ること）を読みます。使い方の中身は [packages/cli/guide.md](packages/cli/guide.md) です。
+`screen` を使うと、人が開いている tadori の画面を、画面の中の専用カーソルで操作して見せられます（人のマウスは使いません）。
 
 ## 案件のフォルダの置き方
 
@@ -118,7 +121,7 @@ pnpm verify       # 型の検査とテスト
 
 ## 次の段
 
-- MCP の口を広げる（いまは読む道具だけ。書く道具・画面を動かす道具はこれから。画面でできることをエージェントからも。人の承認だけは口を作らない）
+- MCP の口を広げる（台帳やルールを書く道具はこれから。人の承認だけは口を作らない）
 - 画面の TypeScript 化、資料の版と差分の画面、デスクトップアプリとして包む
 
 ## ライセンス

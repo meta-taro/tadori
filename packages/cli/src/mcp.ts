@@ -42,7 +42,14 @@ export interface McpOptions {
   readonly projectDir?: string
   /** 今日（YYYY-MM-DD）。遅れの日数に使う */
   readonly today?: string
+  /** 使い方（packages/cli/guide.md）。## <話題> ごとに how_to で返す */
+  readonly guidePath?: string
+  /** 専用カーソルで操作する画面（tadori serve）の場所。既定はデスクトップアプリの http://127.0.0.1:4873 */
+  readonly screenUrl?: string
 }
+
+/** デスクトップアプリが開く番号（packages/desktop の PREFERRED_PORT と同じ） */
+export const DEFAULT_SCREEN_URL = 'http://127.0.0.1:4873'
 
 const MAX_FOUND = 30
 
@@ -115,8 +122,76 @@ function buildProjectTools(options: McpOptions): Tool[] {
   ]
 }
 
+/** guide.md を「## <話題> <見出し>」ごとに分ける */
+function guideSections(markdown: string): { intro: string; sections: Array<{ topic: string; title: string; body: string }> } {
+  const [intro = '', ...parts] = markdown.split(/^## /m)
+  return {
+    intro: intro.trim(),
+    sections: parts.map(part => {
+      const [head = '', ...rest] = part.split('\n')
+      const [topic = '', ...title] = head.trim().split(/\s+/)
+      return { topic, title: title.join(' '), body: `## ${head.trim()}\n${rest.join('\n').trim()}` }
+    }),
+  }
+}
+
+async function howToText(path: string | undefined, topic: string): Promise<ToolResult> {
+  if (!path) return text('使い方の文書が見つかりません（guidePath が渡されていません）', true)
+  const { intro, sections } = guideSections(await readFile(path, 'utf8'))
+  const list = sections.map(s => `- ${s.topic}：${s.title}`).join('\n')
+  if (!topic) return text(`${intro}\n\n話題（topic に渡す）：\n${list}\n\n初めてなら start、エージェントは必ず agent-rules も読んでください。`)
+  const found = sections.find(s => s.topic === topic)
+  return found ? text(found.body) : text(`「${topic}」という話題はありません。\n${list}`, true)
+}
+
+/** 画面の中の専用カーソルへ指示を送る（人のマウスは使わない）。中身の検査はサーバーが行う */
+async function sendToScreen(screenUrl: string, args: Record<string, unknown>): Promise<ToolResult> {
+  let res: Response
+  try {
+    res = await fetch(`${screenUrl}/api/agent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-tadori': '1' },
+      body: JSON.stringify(args),
+    })
+  } catch {
+    return text(`tadori が立ち上がっていません（${screenUrl}）。デスクトップアプリを開くか、tadori serve で立ち上げてください`, true)
+  }
+  const body = await res.json().catch(() => ({})) as { error?: string; screens?: number }
+  if (!res.ok) return text(body.error ?? `画面へ届けられませんでした（${res.status}）`, true)
+  return text(`画面（${body.screens ?? 1} つ）へ届けました。人の画面で、専用カーソルが動きます`)
+}
+
 function buildTools(options: McpOptions): Tool[] {
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
   return [...buildProjectTools(options), {
+    name: 'how_to',
+    description: 'tadori の使い方を返す（はじめ方・台帳とルールの書き方・確かめ方・画面の案内の仕方・エージェントが守ること）。'
+      + 'topic を空にすると話題の一覧。初めて使うときは start と agent-rules を読むこと。',
+    inputSchema: {
+      type: 'object',
+      properties: { topic: { type: 'string', description: '話題（start・ledger・rules・check・screen・links・agent-rules）。空なら一覧' } },
+      additionalProperties: false,
+    },
+    run: async args => howToText(options.guidePath, str(args.topic).trim()),
+  }, {
+    name: 'screen',
+    description: '人が開いている tadori の画面を、画面の中の専用カーソルで操作して見せる（人のマウスは使わない）。'
+      + 'action は point（指す）・click（押す）・type（欄に打つ）・go（画面を移る）・say（一言）。使い方は how_to の screen。'
+      + '押せるのは人が画面で押せるものだけ。Windows のダイアログは操作できないので人に頼むこと。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['point', 'click', 'type', 'go', 'say'] },
+        target: { type: 'string', description: '画面に出ている文字・ボタンの名前（例：ルールセット・ファイル・探す）' },
+        value: { type: 'string', description: 'type で打つ文字' },
+        hash: { type: 'string', description: 'go の移り先（例：#rules・#trace-F-02）' },
+        message: { type: 'string', description: '人に見せる一言（黄色の札に出る）' },
+      },
+      required: ['action'],
+      additionalProperties: false,
+    },
+    run: async args => sendToScreen(options.screenUrl ?? DEFAULT_SCREEN_URL, args),
+  }, {
     name: 'glossary',
     description: 'tadori の画面と文書で使う言葉（工程・完了判定・残課題・タスク・漏れ・承認待ち・つながりなど）の意味と、画面のどこに出るかを返す。'
       + '人に画面を説明するときは、ここの言葉を使うこと。query を空にすると全部の言葉を返す。',
