@@ -4,5 +4,11 @@
   "private": true,
   "description": "tadori の画面（tadori serve が static/ をそのまま配る。ビルドは要らない）",
   "type": "module",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.65.0"
+  },
+  "scripts": {
+    "e2e": "playwright test"
+  }
 }

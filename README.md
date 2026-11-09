@@ -113,6 +113,7 @@ examples/       架空の見本の案件
 
 ```bash
 pnpm verify       # 型の検査とテスト
+pnpm e2e          # 画面のテスト（Playwright。架空の見本を開いて確かめる。Windows では入っている Edge を使う）
 ```
 
 ## やらないこと

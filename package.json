@@ -12,7 +12,8 @@
     "typecheck": "pnpm -r typecheck",
     "verify": "pnpm typecheck && pnpm test",
     "dev": "pnpm build && node packages/cli/dist/main.js serve examples/lend-v12",
-    "check:example": "node packages/cli/dist/main.js check examples/lend-v12"
+    "check:example": "node packages/cli/dist/main.js check examples/lend-v12",
+    "e2e": "pnpm build && pnpm --filter @tadori/ui e2e"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

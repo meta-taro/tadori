@@ -1,0 +1,50 @@
+# push と pull request のたびに、型・単体のテスト・画面のテストを回す（手元の commit 前の検査が動かない日でも、ここで止める）。
+# デスクトップアプリ（Rust）は、インストーラーを作る release.yml の側で建てる。ここでは TypeScript の核・CLI・画面を見る。
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # 版はリポジトリの package.json の packageManager に合わせる
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 依存を入れる
+        run: pnpm install --frozen-lockfile
+
+      - name: 型を確かめる
+        run: pnpm -r --filter '!@tadori/desktop' typecheck
+
+      - name: 単体のテスト
+        run: pnpm -r --filter '!@tadori/desktop' test
+
+      - name: 建てる（画面のテストは CLI の dist を動かす）
+        run: pnpm -r --filter '!@tadori/desktop' build
+
+      - name: 画面のテストのブラウザを入れる
+        run: pnpm --filter @tadori/ui exec playwright install --with-deps chromium
+
+      - name: 画面のテスト
+        run: pnpm --filter @tadori/ui e2e
+
+      - name: 画面のテストの結果を残す（落ちたとき）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: packages/ui/playwright-report
+          retention-days: 7

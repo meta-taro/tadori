@@ -2,6 +2,9 @@
 node_modules/
 dist/
 coverage/
+# 画面のテスト（Playwright）の結果
+test-results/
+playwright-report/
 
 # 環境
 .env
