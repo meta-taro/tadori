@@ -1,4 +1,4 @@
-# 検索エンジンにも、AI の検索・回答の道具にも、すべてのページを読んでもらってかまいません
+# Search engines and AI search / answer tools are welcome to read every page
 User-agent: *
 Allow: /
 

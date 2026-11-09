@@ -18,6 +18,8 @@ tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 # 正本（https の文書・課題）を OS の既定のブラウザで開く（Tauri 公式プラグイン・MIT/Apache-2.0）。窓の中で外のページへ移らないように
 tauri-plugin-opener = "2"
+# OS の言語を読む（ダイアログとエラーの文を英語／日本語で出すため。MIT/Apache-2.0、依存が小さい）
+sys-locale = "0.3"
 
 [profile.release]
 opt-level = "s"

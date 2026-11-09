@@ -3,6 +3,8 @@
  * 見るのは GitHub の公開リリースの「最新」だけで、案件の中身や手元の情報は送らない。
  * 入れ替えはしない。新しい版があれば、配布のページを開けるようにするだけ。
  */
+import './i18n.js'
+import { t } from '@tadori/core'
 
 const LATEST_RELEASE = 'https://api.github.com/repos/meta-taro/tadori/releases/latest'
 export const DOWNLOAD_PAGE = 'https://meta-taro.github.io/tadori/download.html'
@@ -36,12 +38,12 @@ export async function checkUpdate(current: string, fetcher: Fetcher = fetch): Pr
   let body: { tag_name?: unknown; html_url?: unknown }
   try {
     const res = await fetcher(LATEST_RELEASE, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'tadori-update-check' }, signal: AbortSignal.timeout(TIMEOUT_MS) })
-    if (!res.ok) throw new Error(`GitHub が ${res.status} を返しました`)
+    if (!res.ok) throw new Error(t('GitHub returned {status}', { status: res.status }))
     body = (await res.json()) as typeof body
   } catch (error: unknown) {
-    throw new Error(`新しい版があるか確かめられませんでした（${error instanceof Error ? error.message : String(error)}）。ネットワークを確かめてください`)
+    throw new Error(t('Could not check for a new version ({reason}). Check your network connection', { reason: error instanceof Error ? error.message : String(error) }))
   }
-  if (typeof body.tag_name !== 'string' || !body.tag_name.trim()) throw new Error('新しい版があるか確かめられませんでした（リリースの版が読めません）')
+  if (typeof body.tag_name !== 'string' || !body.tag_name.trim()) throw new Error(t('Could not check for a new version (the release version is unreadable)'))
   const latest = body.tag_name.trim().replace(/^v/i, '')
   const releaseUrl = typeof body.html_url === 'string' && body.html_url.startsWith('https://github.com/') ? body.html_url : DOWNLOAD_PAGE
   return { current, latest, isNewer: isNewer(latest, current), releaseUrl, downloadUrl: DOWNLOAD_PAGE }

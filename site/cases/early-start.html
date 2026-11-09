@@ -1,17 +1,21 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>前の工程が終わる前の着手と遅れを、並べて見る — tadori の事例</title>
-<meta name="description" content="基本設計がレビューで差し戻しのまま、詳細設計・実装・結合テストが動いている状態を、tadori のタイムラインで遅れた日数と一緒に見る事例。割合や点数は出さない。">
+<title>See early starts and delays side by side — tadori use case</title>
+<meta name="description" content="Basic design is still sent back from review while detailed design, implementation and integration testing are underway. tadori's timeline shows this together with days overdue — with no percentages or scores.">
 <link rel="canonical" href="https://meta-taro.github.io/tadori/cases/early-start.html">
+<link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/early-start.html">
+<link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/early-start.html">
+<link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/early-start.html">
 <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 <link rel="icon" href="../assets/favicon-32.png" sizes="32x32" type="image/png">
 <meta name="theme-color" content="#4f5bd5">
 <meta property="og:type" content="article">
-<meta property="og:title" content="前の工程が終わる前の着手と遅れを、並べて見る">
+<meta property="og:title" content="See early starts and delays side by side">
 <meta property="og:url" content="https://meta-taro.github.io/tadori/cases/early-start.html">
+<meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://meta-taro.github.io/tadori/img/timeline.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../assets/site.css">
@@ -19,24 +23,24 @@
 {
   "@context": "https://schema.org",
   "@graph": [
-    { "@type": "TechArticle", "headline": "前の工程が終わる前の着手と遅れを、並べて見る", "inLanguage": "ja", "dateModified": "2026-11-09",
+    { "@type": "TechArticle", "headline": "See early starts and delays side by side", "inLanguage": "en", "dateModified": "2026-11-09",
       "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/timeline.png",
-      "description": "前の工程の完了判定より前に着手している工程と、遅れた日数を、WBS のタスクから並べて示す。" },
+      "description": "From WBS tasks, show the phases that started before the previous phase gate, together with days overdue." },
     { "@type": "BreadcrumbList", "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "tadori", "item": "https://meta-taro.github.io/tadori/" },
-      { "@type": "ListItem", "position": 2, "name": "事例", "item": "https://meta-taro.github.io/tadori/cases/" },
-      { "@type": "ListItem", "position": 3, "name": "前の工程が終わる前の着手" } ] }
+      { "@type": "ListItem", "position": 2, "name": "Use cases", "item": "https://meta-taro.github.io/tadori/cases/" },
+      { "@type": "ListItem", "position": 3, "name": "Starting before the previous phase is done" } ] }
   ]
 }
 </script>
 </head>
 <body>
-<a class="skip" href="#main">本文へ</a>
+<a class="skip" href="#main">Skip to content</a>
 <header class="site-head">
   <div class="wrap">
     <a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="28" height="28">tadori</a>
-    <nav class="site-nav" aria-label="サイト">
-      <a href="../#features">できること</a><a href="./" aria-current="page">事例</a><a href="../download.html">ダウンロード</a><a href="../roadmap.html">ロードマップ</a><a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="../#features">Features</a><a href="./" aria-current="page">Use cases</a><a href="../download.html">Download</a><a href="../roadmap.html">Roadmap</a><a class="lang" href="../ja/cases/early-start.html" hreflang="ja" lang="ja">日本語</a><a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
     </nav>
   </div>
 </header>
@@ -44,44 +48,44 @@
 <main id="main">
   <section class="hero">
     <div class="wrap article">
-      <p class="crumbs"><a href="../">tadori</a> / <a href="./">事例</a></p>
-      <h1>前の工程が終わる前の着手と遅れを、並べて見る</h1>
-      <p class="lede">現場では、基本設計が終わりきる前に詳細設計や実装に入ることがよくあります。それ自体は悪いことではありませんが、
-        <strong>どこが前の工程の判定を待たずに進んでいるか</strong>が見えないと、差し戻しの影響を読めません。</p>
+      <p class="crumbs"><a href="../">tadori</a> / <a href="./">Use cases</a></p>
+      <h1>See early starts and delays side by side</h1>
+      <p class="lede">In practice, detailed design or implementation often starts before basic design is fully done. That isn't bad in itself, but
+        if you can't see <strong>which work is moving ahead without waiting for the previous phase gate</strong>, you can't judge what a send-back will affect.</p>
       <dl class="summary-box">
-        <dt>状態</dt><dd>基本設計はレビューで差し戻し（R2 の承認待ち）のまま</dd>
-        <dt>見えること</dt><dd>詳細設計・実装・結合テストに「基本設計の完了判定より前に着手」の印と、遅れた日数</dd>
-        <dt>出さないもの</dt><dd>進み具合の割合や点数</dd>
+        <dt>Situation</dt><dd>Basic design is still sent back from review (R2 pending approval)</dd>
+        <dt>What you see</dt><dd>Detailed design, implementation and integration testing marked “started before the basic design phase gate”, with days overdue</dd>
+        <dt>What is not shown</dt><dd>Progress percentages or scores</dd>
       </dl>
     </div>
   </section>
 
   <section style="padding-top:0">
     <div class="wrap article">
-      <h2>1. WBS のタスクから、工程の期間が決まる</h2>
-      <p>WBS（<code>ledger/wbs.tsv</code>）のタスクには工程・開始日・終了日・ステータスを書きます。tadori は工程ごとに期間をまとめ、いま動いているタスクを示します。
-        プロダクトの画面では、タスクを工程ごとに開いたり閉じたりして見られます。</p>
-      <figure class="shot"><img src="../img/browse.png" width="1426" height="893" loading="lazy" alt="プロダクトの画面。WBS のタスクが工程ごとに並び、ステータスと期間、遅れの色が付いている"></figure>
+      <h2>1. WBS tasks set each phase's period</h2>
+      <p>Each task in the WBS (<code>ledger/wbs.tsv</code>) has a phase, start date, end date and status. tadori rolls them up into a period per phase and shows which tasks are active now.
+        On the product screen you can expand and collapse the tasks by phase.</p>
+      <figure class="shot"><img src="../img/browse.png" width="1426" height="893" loading="lazy" alt="The product screen. WBS tasks are grouped by phase, with their status, period and a delay color"></figure>
 
-      <h2>2. 前の工程の判定を待たずに進んでいる所に、印が付く</h2>
-      <p>基本設計の完了判定（R2：基本設計書をレビュー担当が承認した）は、差し戻しのまま残っています。それでも詳細設計・実装・結合テストのタスクは始まっているので、
-        その 3 つの工程に「基本設計の完了判定より前に着手」と出ます。タイムラインでは、その期間が斜線になります。</p>
-      <figure class="shot"><img src="../img/timeline.png" width="1426" height="893" loading="lazy" alt="タイムライン。基本設計は承認待ち 1 で遅れ、詳細設計・実装・結合テストに「基本設計の完了判定より前に着手」の印と斜線、遅れた日数が出ている"></figure>
+      <h2>2. Work that didn't wait for the previous phase gate gets marked</h2>
+      <p>The basic design phase gate (R2: the reviewer approved the basic design document) is still sent back. Even so, tasks in detailed design, implementation and integration testing have started,
+        so those three phases are marked “started before the basic design phase gate”. On the timeline, those periods are hatched.</p>
+      <figure class="shot"><img src="../img/timeline.png" width="1426" height="893" loading="lazy" alt="The timeline. Basic design has 1 pending approval and is late; detailed design, implementation and integration testing are marked “started before the basic design phase gate”, hatched, and show days overdue"></figure>
 
-      <h2>3. 遅れは「日数」で出す</h2>
-      <p>遅れは終了予定を過ぎた日数で出し、日数が増えるほど青から赤へ色が変わります。割合（○% 完了）は出しません。割合を上げるための形だけのタスクや行を増やさないためです。</p>
+      <h2>3. Delays are shown in days</h2>
+      <p>A delay is the number of days past the planned end date, and its color shifts from blue to red as the days add up. There is no “x% complete”. That way nobody adds tasks or rows just to push a percentage up.</p>
 
-      <h2>4. 差し戻しを片付けると、印が消える</h2>
-      <p>レビュー担当が <code>ledger/approvals.tsv</code> の R2 の行を「承認」にする（名前と日付も書く）と、基本設計の完了判定が通り、後ろの工程の印が消えます。
-        承認は人が行います。tadori にもエージェントにも、承認の口はありません。</p>
+      <h2>4. Clear the send-back and the marks disappear</h2>
+      <p>When the reviewer sets the R2 row in <code>ledger/approvals.tsv</code> to “approved” (with a name and date), the basic design phase gate passes and the marks on the later phases disappear.
+        Approval is done by a person. Neither tadori nor agents have a way to approve.</p>
 <pre><code>rule	status	who	when
-R2	承認	レビュー担当	2026-11-10</code></pre>
+R2	approved	Reviewer	2026-11-10</code></pre>
 
       <div class="next-cases">
-        <h2>ほかの事例</h2>
+        <h2>More use cases</h2>
         <div class="cards">
-          <a class="card" href="trace-from-finding.html"><div class="card-body"><h3>受入の指摘から辿る</h3><p>実施の記録が無い試験ケースに行き着く。</p><span class="more">読む →</span></div></a>
-          <a class="card" href="agent-guide.html"><div class="card-body"><h3>エージェントに案内させる</h3><p>専用カーソルで画面を指す。</p><span class="more">読む →</span></div></a>
+          <a class="card" href="trace-from-finding.html"><div class="card-body"><h3>Trace from an acceptance finding</h3><p>Arrive at a test case with no test run.</p><span class="more">Read →</span></div></a>
+          <a class="card" href="agent-guide.html"><div class="card-body"><h3>Let an agent guide you</h3><p>Pointing at the screen with the agent cursor.</p><span class="more">Read →</span></div></a>
         </div>
       </div>
     </div>
@@ -90,8 +94,8 @@ R2	承認	レビュー担当	2026-11-10</code></pre>
 
 <footer class="site-foot">
   <div class="wrap">
-    <div><a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>仕様から試験・指摘までのつながりと、リリースまでの残課題。MIT ライセンス。</p></div>
-    <nav aria-label="フッター"><a href="./">事例</a><a href="../download.html">ダウンロード</a><a href="../releases.html">過去の版</a><a href="../roadmap.html">ロードマップ</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
+    <div><a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>The links from spec to tests and findings, and the remaining work to release. MIT license.</p></div>
+    <nav aria-label="Footer"><a href="./">Use cases</a><a href="../download.html">Download</a><a href="../releases.html">Past versions</a><a href="../roadmap.html">Roadmap</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
   </div>
 </footer>
 </body>

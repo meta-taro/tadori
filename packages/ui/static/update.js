@@ -1,6 +1,7 @@
 // ヘルプの「バージョンと更新」と、起動したときの新しい版の確認。
 // 見に行くのは GitHub の公開リリースの「最新」だけ（サーバーの /api/update が代わりに見る）。案件の中身は送らない。
 // 入れ替えはしない。新しい版があれば、配布のページを OS のブラウザで開けるようにする。
+import { t } from './i18n.js'
 import { api, esc, messageOf } from './util.js'
 
 const LAST_CHECK_KEY = 'tadori-update-checked'
@@ -28,32 +29,34 @@ function openPanel() {
 /** @param {HTMLElement} panel @param {string} body */
 const fill = (panel, body) => {
   panel.innerHTML = `<div class="update-card">
-    <h2 id="update-title">バージョンと更新</h2>${body}
+    <h2 id="update-title">${esc(t('Version and updates'))}</h2>${body}
     <div class="update-actions" data-actions></div>
-    <button type="button" class="btn-ghost update-close" data-close aria-label="閉じる">閉じる</button>
+    <button type="button" class="btn-ghost update-close" data-close aria-label="${esc(t('Close'))}">${esc(t('Close'))}</button>
   </div>`
 }
 
 /** ヘルプの「バージョンと更新」：いまの版を出し、新しい版があるかをその場で確かめる */
 export async function showUpdatePanel() {
   const panel = openPanel()
-  fill(panel, '<p class="cond">確かめています…</p>')
+  fill(panel, `<p class="cond">${esc(t('Checking…'))}</p>`)
   /** @type {{ version: string, builtAt?: string, commit?: string }} */
   const build = await api('/api/version').catch(() => ({ version: '' }))
   const version = build.version
-  const builtNote = build.builtAt ? `<p class="cond">画面の裏の server：${esc(build.builtAt.slice(0, 16).replace('T', ' '))}（UTC）に建てた版${build.commit ? `・${esc(build.commit)}` : ''}</p>` : ''
+  const builtNote = build.builtAt ? `<p class="cond">${esc(build.commit
+    ? t('Server behind this screen: built {when} (UTC) · {commit}', { when: build.builtAt.slice(0, 16).replace('T', ' '), commit: build.commit })
+    : t('Server behind this screen: built {when} (UTC)', { when: build.builtAt.slice(0, 16).replace('T', ' ') }))}</p>` : ''
   try {
     const info = await api('/api/update')
     remember(info)
     const status = info.isNewer
-      ? `<p><b>新しい版 ${esc(info.latest)} があります。</b>いまは ${esc(info.current)} です。</p>
-         <p class="cond">配布のページから、この PC の OS と CPU に合うものを入れ直してください。案件のフォルダや設定はそのまま使えます。</p>`
-      : `<p>tadori ${esc(info.current)} は最新です。</p>`
+      ? `<p><b>${esc(t('Version {v} is available.', { v: info.latest }))}</b>${esc(t('You have {v}.', { v: info.current }))}</p>
+         <p class="cond">${esc(t('Reinstall the build for the OS and CPU of this PC from the download page. Your project folders and settings keep working as they are.'))}</p>`
+      : `<p>${esc(t('tadori {v} is up to date.', { v: info.current }))}</p>`
     fill(panel, status + builtNote)
     const actions = panel.querySelector('[data-actions]')
-    if (actions) actions.innerHTML = info.isNewer ? `${outLink(info.downloadUrl, '配布のページを開く')}${outLink(info.releaseUrl, '変わったこと')}` : outLink(info.releaseUrl, 'リリースのページ')
+    if (actions) actions.innerHTML = info.isNewer ? `${outLink(info.downloadUrl, t('Open the download page'))}${outLink(info.releaseUrl, t('What changed'))}` : outLink(info.releaseUrl, t('Release page'))
   } catch (error) {
-    fill(panel, `<p>tadori ${esc(version || '（版が読めません）')}</p><p class="cond">${esc(messageOf(error))}</p>`)
+    fill(panel, `<p>tadori ${esc(version || t('(version unknown)'))}</p><p class="cond">${esc(messageOf(error))}</p>`)
   }
 }
 
@@ -90,8 +93,8 @@ export async function checkUpdateQuietly(before) {
   const chip = document.createElement('button')
   chip.type = 'button'
   chip.className = 'chip update-chip'
-  chip.textContent = `新しい版 ${info.latest}`
-  chip.title = 'バージョンと更新を開く'
+  chip.textContent = t('New version {v}', { v: info.latest })
+  chip.title = t('Open version and updates')
   chip.addEventListener('click', () => { void showUpdatePanel() })
   before.before(chip)
 }
@@ -107,7 +110,7 @@ export async function warnIfServerStale(before) {
   if (!info?.isStale || document.querySelector('.stale-chip')) return
   const chip = document.createElement('span')
   chip.className = 'chip hole stale-chip'
-  chip.textContent = 'server が古い版です'
-  chip.title = `画面の裏の server は ${info.builtAt ?? '?'}（${info.commit || 'commit 不明'}）に建てた版で、そのあと元のコードが直されています。pnpm build をしてから、案件を開き直してください`
+  chip.textContent = t('The server is an old build')
+  chip.title = t('The server behind this screen was built at {when} ({commit}), and the source code has changed since. Run pnpm build, then reopen the project.', { when: info.builtAt ?? '?', commit: info.commit || t('unknown commit') })
   before.before(chip)
 }

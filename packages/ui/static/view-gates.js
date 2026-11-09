@@ -1,4 +1,5 @@
 // リリースまでの残課題：タイムラインとカードの切り替え。割合や点数は出さない
+import { t } from './i18n.js'
 import { chip, day, esc, fullDate, getWho, isMine, kindLabel, lateColor, shortDate, isDoneStatus } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
@@ -6,7 +7,7 @@ import { chip, day, esc, fullDate, getWho, isMine, kindLabel, lateColor, shortDa
 /** @typedef {import('./types').Rule} Rule */
 /** @typedef {import('./types').Leak} Leak */
 
-const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 /** タイムラインかカードか */
 let gateView = 'timeline'
 /** @type {string | null | undefined} 表を開いている工程の ID */
@@ -16,10 +17,10 @@ let selectedPhase = null
 const shownState = (/** @type {Gate} */ gate) => (gate.state === 'clear' && !gate.rules.length ? 'unjudged' : gate.state)
 
 const badgesOf = (/** @type {Gate} */ gate) => [
-  gate.leaks.length ? chip('hole', `漏れ ${gate.leaks.length}`) : '',
-  gate.pendingApprovals.length ? chip('wait', `承認待ち ${gate.pendingApprovals.length}`) : '',
+  gate.leaks.length ? chip('hole', esc(t('Gaps {n}', { n: gate.leaks.length }))) : '',
+  gate.pendingApprovals.length ? chip('wait', esc(t('Pending approvals {n}', { n: gate.pendingApprovals.length }))) : '',
   // ルールが無い工程は、まだ判定していないだけなので「通過」と出さない
-  !gate.leaks.length && !gate.pendingApprovals.length ? (gate.rules.length ? chip('ok', '通過') : chip('none', 'ルールなし')) : '',
+  !gate.leaks.length && !gate.pendingApprovals.length ? (gate.rules.length ? chip('ok', esc(t('Passed'))) : chip('none', esc(t('No rules')))) : '',
 ].join('')
 
 /** @param {ProjectState} state */
@@ -39,7 +40,7 @@ function timelineHtml(state) {
     if (d.getUTCDay() === 1) weeks.push(iso)
   }
   const grid = weeks.map(w => `<span class="tl-week" style="left:${pos(w)}"></span>`).join('')
-    + months.map(m => `<span class="tl-month" style="left:${pos(m)}"><b>${MONTHS.at(Number(m.slice(5, 7)) - 1)}</b></span>`).join('')
+    + months.map(m => `<span class="tl-month" style="left:${pos(m)}"><b>${esc(t(MONTHS.at(Number(m.slice(5, 7)) - 1) ?? ''))}</b></span>`).join('')
 
   const rows = state.gates.map((gate, i) => {
     const span = gate.span
@@ -58,14 +59,14 @@ function timelineHtml(state) {
     const hatchEnd = day(state.today) < day(span.end) ? state.today : span.end
     const hatch = gate.startedBefore && day(hatchEnd) > day(span.start)
       ? `<span class="tl-hatch" style="left:${pos(span.start)};width:calc(${pos(hatchEnd)} - ${pos(span.start)})"></span>` : ''
-    const early = gate.startedBefore ? `<span class="tl-early">${esc(gate.startedBefore.name)}の完了判定より前に着手</span>` : ''
-    const late = gate.maxLateDays ? `<span class="late" style="color:${barColor}">${gate.maxLateDays} 日遅れ</span>` : ''
+    const early = gate.startedBefore ? `<span class="tl-early">${esc(t('Started before the {phase} phase gate', { phase: gate.startedBefore.name }))}</span>` : ''
+    const late = gate.maxLateDays ? `<span class="late" style="color:${barColor}">${esc(t('{n} days late', { n: gate.maxLateDays }))}</span>` : ''
     return `<button type="button" class="tl-row ${gate.phase.id === selectedPhase ? 'on' : ''}" data-phase="${esc(gate.phase.id)}" aria-pressed="${gate.phase.id === selectedPhase}">
       <span class="tl-label"><span class="step">${String(i + 1).padStart(2, '0')}</span><span class="tl-name">${esc(gate.phase.name)}${early}</span>${late}</span>
       <span class="tl-track">
         <span class="tl-bar" style="left:${pos(span.start)};width:calc(${pos(span.end)} - ${pos(span.start)});--bar:${barColor}"></span>
         ${hatch}${steps}${runner}
-        <span class="tl-gate ${shownState(gate)} ${overdue ? 'overdue' : ''}" style="left:${pos(span.end)}" title="完了判定 ${fullDate(span.end)}"></span>
+        <span class="tl-gate ${shownState(gate)} ${overdue ? 'overdue' : ''}" style="left:${pos(span.end)}" title="${esc(t('Phase gate {date}', { date: fullDate(span.end) }))}"></span>
         <span class="tl-badges" style="left:${pos(span.end)}">${badgesOf(gate)}<span class="tl-date">${shortDate(span.end)}</span></span>
       </span>
     </button>`
@@ -73,7 +74,7 @@ function timelineHtml(state) {
   return `<div class="tl panel">
     <div class="tl-head"><span class="tl-label"></span><span class="tl-track">${grid}</span></div>
     <div class="tl-body">
-      <span class="tl-today-wrap"><span class="tl-today" style="left:${pos(state.today)}"><span>今日 ${shortDate(state.today)}</span></span></span>
+      <span class="tl-today-wrap"><span class="tl-today" style="left:${pos(state.today)}"><span>${esc(t('Today {date}', { date: shortDate(state.today) }))}</span></span></span>
       ${rows}
     </div>
   </div>`
@@ -102,7 +103,7 @@ function cardsHtml(state) {
       <div class="counts">${badgesOf(gate)}</div>
       <div class="rules">${gate.rules.map(r => rulePip(state, r)).join('')}</div>
     </button>`).join('')
-  return `<div class="rail" role="group" aria-label="工程">${cards}</div>`
+  return `<div class="rail" role="group" aria-label="${esc(t('Phases'))}">${cards}</div>`
 }
 
 /** どこをどう直せば消えるか（漏れ・承認待ちの下に出す） */
@@ -128,16 +129,16 @@ function toolIcon(tool, mark, url, readyTitle, waitingTitle) {
  */
 function fixHtml(fix, leak) {
   if (!fix) return ''
-  const place = leak?.file ? `${leak.file}${leak.line ? ` の ${leak.line} 行目` : ''}` : ''
+  const place = leak?.file ? (leak.line ? t('{file} line {line}', { file: leak.file, line: leak.line }) : leak.file) : ''
   const md = leak?.file
-    ? toolIcon('md', 'md', leak.openUrl, `md-business で ${place} を開く`, `md-business で ${place} を開く（md-business から URL の形が届いたら押せます）`)
+    ? toolIcon('md', 'md', leak.openUrl, t('Open {place} in md-business', { place }), t('Open {place} in md-business (available once md-business provides the URL format)', { place }))
     : ''
   const qa = leak?.runnable
-    ? toolIcon('qa', 'qa', leak.runUrl, `git-qa で ${leak.itemId} を実施する`, `git-qa で ${leak.itemId} を実施する（git-qa から URL の形が届いたら押せます）`)
+    ? toolIcon('qa', 'qa', leak.runUrl, t('Run {id} in git-qa', { id: leak.itemId }), t('Run {id} in git-qa (available once git-qa provides the URL format)', { id: leak.itemId }))
     : ''
   // アイコンは直し方の文の下に 1 段で並べる（文が折り返しても重ならないように）
   const icons = md || qa ? `<div class="tool-icons">${md}${qa}</div>` : ''
-  return `<div class="fix-line"><span class="fix-label">直し方</span>${esc(fix)}</div>${icons}`
+  return `<div class="fix-line"><span class="fix-label">${esc(t('How to fix'))}</span>${esc(fix)}</div>${icons}`
 }
 
 /**
@@ -147,16 +148,16 @@ function fixHtml(fix, leak) {
 function ruleStatus(state, rule) {
   if (rule.kind === 'approval') {
     const a = state.approvals.find(x => x.rule === rule.id)
-    if (a?.status === '承認') return chip('ok', `承認済 ${esc(a.who)} · ${esc(a.when)}`)
+    if (a?.status === '承認') return chip('ok', esc(t('Approved {who} · {when}', { who: a.who, when: a.when })))
     const pending = state.gates.flatMap(g => g.pending ?? []).find(p => p.rule.id === rule.id)
-    return chip('wait', a ? `${esc(a.status)} ${esc(a.who)} · ${esc(a.when)}` : '承認待ち') + fixHtml(pending?.fix)
+    return chip('wait', a ? `${esc(a.status)} ${esc(a.who)} · ${esc(a.when)}` : esc(t('Pending approval'))) + fixHtml(pending?.fix)
   }
   const leaks = state.leaks.filter(l => l.rule === rule.id)
-  if (!leaks.length) return chip('ok', '漏れなし')
+  if (!leaks.length) return chip('ok', esc(t('No gaps')))
   // 1 つのルールに漏れが数百あっても読めるよう、最初は 3 件だけ。残りはその場で開く
   const limit = expandedRules.has(rule.id) ? leaks.length : LEAKS_PER_RULE
-  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="漏れの呼び名（ルール·行）">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}${fixHtml(l.fix, l)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">たどる →</a></div>`).join('')
-  const more = leaks.length > limit ? `<button type="button" class="btn-ghost leaks-more" data-expand="${esc(rule.id)}">ほか ${leaks.length - limit} 件を出す</button>` : ''
+  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="${esc(t('Gap name (rule·row)'))}">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}${fixHtml(l.fix, l)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">${esc(t('Trace →'))}</a></div>`).join('')
+  const more = leaks.length > limit ? `<button type="button" class="btn-ghost leaks-more" data-expand="${esc(rule.id)}">${esc(t('Show {n} more', { n: leaks.length - limit }))}</button>` : ''
   return rows + more
 }
 
@@ -179,7 +180,7 @@ function isRemaining(state, rule) {
 }
 
 /** @type {Readonly<Record<string, string>>} 判定の種類 → 誰が判定するか */
-const KIND_NAMES = { covered: '機械', refers: '機械', filled: '機械', approval: '人' }
+const KIND_NAMES = { covered: 'Auto', refers: 'Auto', filled: 'Auto', approval: 'Human' }
 
 /**
  * @param {HTMLElement} view
@@ -206,30 +207,30 @@ export function renderGates(view, state, onTrace, phaseId) {
     <tr>
       <td class="rule-id">${esc(r.id)}</td>
       <td><div class="pair">${esc(kindLabel(r.from) || r.label)}${r.to ? `<span class="arrow">→</span>${esc(kindLabel(r.to))}` : ''}</div><div class="cond">${esc(r.label)}</div></td>
-      <td class="kind">${KIND_NAMES[r.kind] ?? ''}</td>
+      <td class="kind">${esc(t(KIND_NAMES[r.kind] ?? ''))}</td>
       <td class="kind">${esc(r.owner ?? '')}</td>
       <td>${ruleStatus(state, r)}</td>
     </tr>`).join('')
   view.innerHTML = `
-    <h1>リリースまでの残課題</h1>
-    <p class="lede">工程ごとに、ルールで見つかった漏れと、人の承認待ちを並べます。割合や点数は出しません。</p>
-    <div class="seg" role="group" aria-label="表示">
-      <button type="button" data-gate-view="timeline" aria-pressed="${shown === 'timeline'}" ${hasSchedule ? '' : 'disabled title="予定の期間が入っていないので使えません"'}>タイムライン</button>
-      <button type="button" data-gate-view="cards" aria-pressed="${shown === 'cards'}">カード</button>
+    <h1>${esc(t('Remaining work to release'))}</h1>
+    <p class="lede">${esc(t('For each phase, lists the gaps found by the rules and the approvals waiting on people. No percentages or scores.'))}</p>
+    <div class="seg" role="group" aria-label="${esc(t('View'))}">
+      <button type="button" data-gate-view="timeline" aria-pressed="${shown === 'timeline'}" ${hasSchedule ? '' : `disabled title="${esc(t('Not available: no scheduled dates are set'))}"`}>${esc(t('Timeline'))}</button>
+      <button type="button" data-gate-view="cards" aria-pressed="${shown === 'cards'}">${esc(t('Cards'))}</button>
     </div>
     ${shown === 'timeline' ? timelineHtml(state) : cardsHtml(state)}
     ${gate ? `<div class="gate-table-head">
-      <h2>${esc(gate.phase.name)} · 残っているルール ${remaining.length} 件 / 全 ${allRules.length} 件</h2>
+      <h2>${esc(gate.phase.name)} · ${esc(t('Remaining rules: {n} of {total}', { n: remaining.length, total: allRules.length }))}</h2>
       <span class="gate-filters">
-        ${getWho() ? `<span class="cond">${esc(getWho())} の分だけ</span>` : ''}
-        <label class="cond"><input type="checkbox" id="show-satisfied" ${showSatisfied ? 'checked' : ''}> 満たすルールも出す</label>
+        ${getWho() ? `<span class="cond">${esc(t('Only {who}', { who: getWho() }))}</span>` : ''}
+        <label class="cond"><input type="checkbox" id="show-satisfied" ${showSatisfied ? 'checked' : ''}> ${esc(t('Also show rules that are met'))}</label>
       </span>
     </div>
     <div class="panel"><table>
-      <thead><tr><th style="width:72px">ルール</th><th>何と何が</th><th style="width:64px">判定</th><th style="width:96px">担当</th><th>いまの状態（直し方）</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="5" class="cond">${allRules.length ? 'この工程に残っているルールはありません' : 'この工程にはルールがありません'}</td></tr>`}</tbody>
+      <thead><tr><th style="width:72px">${esc(t('Rule'))}</th><th>${esc(t('Between'))}</th><th style="width:64px">${esc(t('Judged by'))}</th><th style="width:96px">${esc(t('Owner'))}</th><th>${esc(t('Status (how to fix)'))}</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="5" class="cond">${esc(allRules.length ? t('No rules remain in this phase') : t('This phase has no rules'))}</td></tr>`}</tbody>
     </table>
-    ${listed.length > rulesShown ? `<button type="button" class="btn-ghost rules-more" id="gate-more">さらに ${Math.min(RULES_PAGE, listed.length - rulesShown)} 件（残り ${listed.length - rulesShown} 件）</button>` : ''}
+    ${listed.length > rulesShown ? `<button type="button" class="btn-ghost rules-more" id="gate-more">${esc(t('{n} more ({rest} left)', { n: Math.min(RULES_PAGE, listed.length - rulesShown), rest: listed.length - rulesShown }))}</button>` : ''}
     </div>` : ''}`
   const rerender = () => renderGates(view, state, onTrace)
   const satisfiedBox = /** @type {HTMLInputElement | null} */ (view.querySelector('#show-satisfied'))

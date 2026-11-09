@@ -1,3 +1,5 @@
+import { t } from '../i18n.js'
+
 /**
  * ほかの道具（md-business・git-qa など）を開くリンクの雛形。
  * 雛形は案件の .tadori/links.tsv に書く。開いたあとの動きは、その道具の実装に任せる（tadori は URL を作るだけ）。
@@ -39,7 +41,7 @@ const FORBIDDEN_SCHEMES = ['javascript', 'data', 'vbscript', 'file']
  */
 export function validateLinkTemplate(template: string): string | null {
   const scheme = template.trim().match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/)?.[1]?.toLowerCase()
-  if (!scheme) return `URL のスキーム（md-business:// など）がありません：${template}`
-  if (FORBIDDEN_SCHEMES.includes(scheme)) return `${scheme}: のリンクは使えません（押すと画面の中で命令が動くか、手元のファイルを直接開くため）`
+  if (!scheme) return t('The URL has no scheme (such as md-business://): {template}', { template })
+  if (FORBIDDEN_SCHEMES.includes(scheme)) return t('{scheme}: links are not allowed (clicking one would run code in the screen or open a local file directly)', { scheme })
   return null
 }

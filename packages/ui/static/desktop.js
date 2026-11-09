@@ -2,6 +2,7 @@
 // 帯をつかんで窓を動かす・ダブルクリックで最大化、左にメニュー（ファイル・表示・ヘルプ）、右に最小化・最大化・閉じる。
 // ブラウザで開いたときは何もしない（window.__TAURI__ が無い）。
 // 呼べるのは、窓の操作と、案件を開く 3 つの命令と、正本を OS のブラウザで開く命令だけ（それ以外は Tauri の側で断られる）
+import { t, lang, setLang } from './i18n.js'
 import { esc, toast } from './util.js'
 import { showUpdatePanel } from './update.js'
 
@@ -14,12 +15,14 @@ const tauri = window.__TAURI__
  * @param {Record<string, unknown>} [args]
  * @returns {Promise<T>}
  */
-const invoke = (command, args) => (tauri ? tauri.core.invoke(command, args) : Promise.reject(new Error('デスクトップアプリの窓ではありません')))
+const invoke = (command, args) => (tauri ? tauri.core.invoke(command, args) : Promise.reject(new Error(t('This is not the desktop app window'))))
 
 /** 押しても窓を動かさない所（欄・ボタン・リンク・メニュー） */
 const INTERACTIVE = 'input, button, a, select, textarea, label, .win-menu, .win-controls, .search-panel'
 
-const THEMES = [['light', 'ライト'], ['dark', 'ダーク'], ['system', 'OS に合わせる']]
+const THEMES = [['light', 'Light'], ['dark', 'Dark'], ['system', 'Match OS']]
+/** 言語の選び方。名前はどの言語でも、その言語自身の書き方で出す（訳さない） */
+const LANG_CHOICES = [['en', 'English'], ['ja', '日本語']]
 
 export function initDesktop() {
   if (!tauri?.window || !tauri?.core) return
@@ -34,16 +37,16 @@ export function initDesktop() {
     invoke('open_external', { url: link.href }).catch(error => toast(String(error)))
   })
 
-  topbar.insertAdjacentHTML('afterbegin', `<div class="win-menu" role="menubar" aria-label="メニュー">
-    <button type="button" data-menu="file" aria-haspopup="true" aria-expanded="false">ファイル</button>
-    <button type="button" data-menu="view" aria-haspopup="true" aria-expanded="false">表示</button>
-    <button type="button" data-menu="help" aria-haspopup="true" aria-expanded="false">ヘルプ</button>
+  topbar.insertAdjacentHTML('afterbegin', `<div class="win-menu" role="menubar" aria-label="${esc(t('Menu'))}">
+    <button type="button" data-menu="file" aria-haspopup="true" aria-expanded="false">${esc(t('File'))}</button>
+    <button type="button" data-menu="view" aria-haspopup="true" aria-expanded="false">${esc(t('View'))}</button>
+    <button type="button" data-menu="help" aria-haspopup="true" aria-expanded="false">${esc(t('Help'))}</button>
     <div class="menu-panel" role="menu" hidden></div>
   </div>`)
   topbar.insertAdjacentHTML('beforeend', `<div class="win-controls">
-    <button type="button" data-win="minimize" title="最小化" aria-label="最小化"><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></button>
-    <button type="button" data-win="maximize" title="最大化 / 元に戻す" aria-label="最大化 / 元に戻す"><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7"/></svg></button>
-    <button type="button" data-win="close" class="close" title="閉じる" aria-label="閉じる"><svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></button>
+    <button type="button" data-win="minimize" title="${esc(t('Minimize'))}" aria-label="${esc(t('Minimize'))}"><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></button>
+    <button type="button" data-win="maximize" title="${esc(t('Maximize / Restore'))}" aria-label="${esc(t('Maximize / Restore'))}"><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7"/></svg></button>
+    <button type="button" data-win="close" class="close" title="${esc(t('Close'))}" aria-label="${esc(t('Close'))}"><svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></button>
   </div>`)
 
   // 帯の空いている所をつかむと窓が動く。ダブルクリックで最大化 / 元に戻す
@@ -103,19 +106,22 @@ async function menuHtml(key) {
     const recent = await invoke('recent_projects').catch(() => [])
     const items = recent.map(([path, name], i) =>
       `<button type="button" role="menuitem" data-action="open" data-value="${esc(path)}" title="${esc(path)}">${i === 0 ? '<span class="check">✓</span>' : '<span class="check"></span>'}${esc(name)}</button>`).join('')
-    return `<button type="button" role="menuitem" data-action="pick"><span class="check"></span>案件を開く…</button>
-      <button type="button" role="menuitem" data-action="pick"><span class="check"></span>新しく始める…</button>
-      ${items ? `<div class="menu-sep"></div><div class="menu-head">最近の案件</div>${items}` : ''}`
+    return `<button type="button" role="menuitem" data-action="pick"><span class="check"></span>${esc(t('Open project…'))}</button>
+      <button type="button" role="menuitem" data-action="pick"><span class="check"></span>${esc(t('New project…'))}</button>
+      ${items ? `<div class="menu-sep"></div><div class="menu-head">${esc(t('Recent projects'))}</div>${items}` : ''}`
   }
   if (key === 'view') {
     const current = window.tadoriTheme?.choice() ?? 'light'
     return THEMES.map(([value, label]) =>
-      `<button type="button" role="menuitemradio" aria-checked="${value === current}" data-action="theme" data-value="${value}"><span class="check">${value === current ? '✓' : ''}</span>${label}</button>`).join('')
-      + '<div class="menu-sep"></div><button type="button" role="menuitem" data-action="reload"><span class="check"></span>読み直す</button>'
+      `<button type="button" role="menuitemradio" aria-checked="${value === current}" data-action="theme" data-value="${value}"><span class="check">${value === current ? '✓' : ''}</span>${esc(t(label))}</button>`).join('')
+      + '<div class="menu-sep"></div>'
+      + LANG_CHOICES.map(([value, label]) =>
+        `<button type="button" role="menuitemradio" aria-checked="${value === lang}" data-action="lang" data-value="${value}"><span class="check">${value === lang ? '✓' : ''}</span>${label}</button>`).join('')
+      + `<div class="menu-sep"></div><button type="button" role="menuitem" data-action="reload"><span class="check"></span>${esc(t('Reload'))}</button>`
   }
-  return `<button type="button" role="menuitem" data-action="glossary"><span class="check"></span>用語</button>
-    <button type="button" role="menuitem" data-action="version"><span class="check"></span>バージョンと更新…</button>
-    <button type="button" role="menuitem" data-action="about"><span class="check"></span>tadori について</button>`
+  return `<button type="button" role="menuitem" data-action="glossary"><span class="check"></span>${esc(t('Glossary'))}</button>
+    <button type="button" role="menuitem" data-action="version"><span class="check"></span>${esc(t('Version and updates…'))}</button>
+    <button type="button" role="menuitem" data-action="about"><span class="check"></span>${esc(t('About tadori'))}</button>`
 }
 
 /**
@@ -126,8 +132,9 @@ function runAction(action, value) {
   if (action === 'pick') invoke('pick_project').catch(error => toast(String(error)))
   if (action === 'open') invoke('open_project', { path: value }).catch(error => toast(String(error)))
   if (action === 'theme') window.tadoriTheme?.set(value ?? '')
+  if (action === 'lang' && (value === 'en' || value === 'ja') && value !== lang) setLang(value)
   if (action === 'reload') location.reload()
   if (action === 'glossary') location.hash = '#glossary'
   if (action === 'version') void showUpdatePanel()
-  if (action === 'about') toast('tadori — 仕様から試験・指摘までのつながりと、リリースまでの残課題を出す道具（判定は CLI と同じ核）', 4000)
+  if (action === 'about') toast(t('tadori — shows the links from specs to tests and findings, and the remaining work to release (checks use the same core as the CLI)'), 4000)
 }

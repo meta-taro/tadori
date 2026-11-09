@@ -1,33 +1,35 @@
 # tadori
 
-> tadori（辿り）は、仕様の 1 文から試験ケース・実施の記録・指摘・再発防止までを ID でつなぐ、git 上の台帳です。工程ごとのルールで「つながりが無い所（漏れ）」を出し、リリースまでの残課題と、誰がどのファイルの何行目に何を書けば消えるかを示します。オープンソース（MIT）・手元で動くデスクトップアプリ（macOS・Windows）です。
+> tadori is a ledger on git that links every sentence of a spec to its test cases, test runs, findings and preventive actions — by ID. Per-phase rules show where a link is missing (a "gap"), the remaining work to release, and who should write what, in which line of which file, to close each gap. Open source (MIT) desktop app (macOS, Windows) that runs on your own machine.
 
-## 要点
+Japanese version: https://meta-taro.github.io/tadori/ja/
 
-- つながりは台帳に書かれた ID だけで決め、推測でつながない
-- 漏れを認めるのは人。tadori は「漏れを埋めた」と判定しない。承認と試験の合否も人が記録する
-- 割合や点数は出さない。出すのは漏れの中身と件数・承認待ち・ステータス・遅れた日数という事実だけ
-- 正本（設計書・検証シート）は元の道具に置いたまま。台帳には場所だけを書く
-- データは案件のフォルダの TSV（git 管理）。画面は PC の中（127.0.0.1）だけで開き、外へ同期しない
-- ルールの判定は 4 種類：covered（下流がある）・refers（上流を元にしている）・filled（列が埋まっている）・approval（人の承認）
-- AI エージェントは MCP で使い方・残課題・漏れ・つながりを読める。画面の中の専用カーソルで、人のマウスを使わずに画面を指して案内できる
-- 担当ごとの 1 日の進行（今日・次の作業日・相談）の下書きを、WBS の状態の変化・台帳の差分・チェックの記録から作る。各担当はそれを見ながら、エージェントと MCP で行を足す・直す・作業の状態を進める
-- 動かすには Node.js 22 以上。macOS（Apple シリコン・Intel）と Windows（x64・ARM）のインストーラーがある
+## Key points
 
-## ページ
+- Links are decided only by the IDs written in the ledger, never by guesswork
+- People confirm the gaps. tadori never decides that a gap has been fixed. Approvals and test results are recorded by people
+- No percentages or scores. Only facts: what the gaps are and how many, pending approvals, statuses and days overdue
+- No new source of truth: design documents and verification sheets stay in their own tools; the ledger only records where they are
+- Data lives in TSV files in the project folder (managed with git). The screen opens only on your machine (127.0.0.1) and never syncs with outside services
+- Four kinds of rule check: covered (has something downstream), refers (is based on something upstream), filled (a column is filled), approval (human approval)
+- AI agents can read the usage guide, remaining work, gaps and links over MCP. With the agent cursor inside the app, an agent can point at the screen to guide people without using their mouse
+- Daily progress per person (today, next working day, questions) is drafted from WBS status changes, ledger diffs and the check log. Each person reviews it and, with an agent over MCP, adds and edits rows and moves tasks forward
+- Requires Node.js 22 or later. Installers for macOS (Apple silicon, Intel) and Windows (x64, ARM)
 
-- [トップ](https://meta-taro.github.io/tadori/): できることと、よくある質問
-- [ダウンロード](https://meta-taro.github.io/tadori/download.html): OS と CPU ごとのインストーラー
-- [過去の版](https://meta-taro.github.io/tadori/releases.html): これまでの版の一覧
-- [ロードマップ](https://meta-taro.github.io/tadori/roadmap.html): 段と、続けるかどうかの判断の条件
-- [事例：改修後の対応の書き漏れ](https://meta-taro.github.io/tadori/cases/design-change-gap.html)
-- [事例：受入の指摘から辿る](https://meta-taro.github.io/tadori/cases/trace-from-finding.html)
-- [事例：前の工程が終わる前の着手](https://meta-taro.github.io/tadori/cases/early-start.html)
-- [事例：エージェントに案内させる](https://meta-taro.github.io/tadori/cases/agent-guide.html)
-- [事例：1 日の進行をエージェントと回す](https://meta-taro.github.io/tadori/cases/daily-with-agent.html)
+## Pages
 
-## ソース
+- [Home](https://meta-taro.github.io/tadori/): features and FAQ
+- [Download](https://meta-taro.github.io/tadori/download.html): installers per OS and CPU
+- [Past versions](https://meta-taro.github.io/tadori/releases.html): list of released versions
+- [Roadmap](https://meta-taro.github.io/tadori/roadmap.html): stages, and the condition for deciding whether to continue
+- [Use case: missing post-change impact](https://meta-taro.github.io/tadori/cases/design-change-gap.html)
+- [Use case: trace from an acceptance finding](https://meta-taro.github.io/tadori/cases/trace-from-finding.html)
+- [Use case: starting before the previous phase is done](https://meta-taro.github.io/tadori/cases/early-start.html)
+- [Use case: let an agent guide you](https://meta-taro.github.io/tadori/cases/agent-guide.html)
+- [Use case: run daily progress with an agent](https://meta-taro.github.io/tadori/cases/daily-with-agent.html)
 
-- [GitHub リポジトリ](https://github.com/meta-taro/tadori)
-- [使い方（MCP の how_to と同じ中身）](https://github.com/meta-taro/tadori/blob/main/packages/cli/guide.md)
-- [決めたことと理由](https://github.com/meta-taro/tadori/blob/main/docs/decisions.md)
+## Source
+
+- [GitHub repository](https://github.com/meta-taro/tadori)
+- [Usage guide (same content as the MCP tool how_to)](https://github.com/meta-taro/tadori/blob/main/packages/cli/guide.md)
+- [Decisions and their reasons (Japanese)](https://github.com/meta-taro/tadori/blob/main/docs/decisions.md)

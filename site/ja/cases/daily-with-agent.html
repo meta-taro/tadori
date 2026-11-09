@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>担当ごとの 1 日の進行を、エージェントと回す — tadori の事例</title>
+<meta name="description" content="WBS の状態の変化・台帳の差分・チェックの記録から、担当ごとの 1 日の進行の下書きを作り、各担当がそれを見ながら AI エージェントと仕事を進める事例。">
+<link rel="canonical" href="https://meta-taro.github.io/tadori/ja/cases/daily-with-agent.html">
+<link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/daily-with-agent.html">
+<link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/daily-with-agent.html">
+<link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/daily-with-agent.html">
+<link rel="icon" href="../../assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../../assets/favicon-32.png" sizes="32x32" type="image/png">
+<meta name="theme-color" content="#4f5bd5">
+<meta property="og:type" content="article">
+<meta property="og:title" content="担当ごとの 1 日の進行を、エージェントと回す">
+<meta property="og:url" content="https://meta-taro.github.io/tadori/ja/cases/daily-with-agent.html">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/daily.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../../assets/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "TechArticle", "headline": "担当ごとの 1 日の進行を、エージェントと回す", "inLanguage": "ja", "dateModified": "2026-11-09",
+      "about": { "@id": "https://meta-taro.github.io/tadori/ja/#app" }, "image": "https://meta-taro.github.io/tadori/img/daily.png",
+      "description": "1 日の進行の下書きを材料から作り、各担当が画面で見ながら、エージェントと MCP で行を足す・直す・状態を進める。" },
+    { "@type": "BreadcrumbList", "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "tadori", "item": "https://meta-taro.github.io/tadori/ja/" },
+      { "@type": "ListItem", "position": 2, "name": "事例", "item": "https://meta-taro.github.io/tadori/ja/cases/" },
+      { "@type": "ListItem", "position": 3, "name": "1 日の進行をエージェントと回す" } ] }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../"><img src="../../assets/icon.svg" alt="" width="28" height="28">tadori</a>
+    <nav class="site-nav" aria-label="サイト">
+      <a href="../#features">できること</a><a href="./" aria-current="page">事例</a><a href="../download.html">ダウンロード</a><a href="../roadmap.html">ロードマップ</a><a class="lang" href="../../cases/daily-with-agent.html" hreflang="en" lang="en">English</a><a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap article">
+      <p class="crumbs"><a href="../">tadori</a> / <a href="./">事例</a></p>
+      <h1>担当ごとの 1 日の進行を、エージェントと回す</h1>
+      <p class="lede">プロダクト単位の残課題とは別に、<strong>人単位</strong>で「今日やったこと・次にやること・相談」を見る場面です。
+        下書きは tadori が材料から作り、各担当はそれを画面で見ながら、自分のエージェントと仕事を進めます。</p>
+      <dl class="summary-box">
+        <dt>下書きの材料</dt><dd>WBS の状態の変化（git の履歴）・台帳の差分・チェックの記録</dd>
+        <dt>使う MCP の道具</dt><dd>daily（読む）・daily_generate・daily_add / daily_update / daily_remove・task_update・screen</dd>
+        <dt>エージェントがしないこと</dt><dd>承認・「漏れを埋めた」の判定・push</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap article">
+      <h2>1. 下書きは、材料から作る</h2>
+      <p>朝会・夕会のたびに、誰かが記憶から書き起こす必要はありません。tadori は、WBS の状態が変わった日（git の履歴）、台帳を足した・直した人（commit の作者を人の表で引く）、チェックの記録を読み、担当ごとの「今日・次の作業日・相談」の下書きを作ります。</p>
+      <p>台帳の整備（行を足した・直した）は、成果物の作業と読み違えないよう別の見出しに分けます。行の頭には「済・作業中・予定・確認」などの印が付きます。</p>
+      <figure class="shot"><img src="../../img/daily.png" width="1426" height="893" loading="lazy" alt="1 日の進行の画面。今日の欄にエージェントがルール R4・R9 を確かめた行、次の作業日の欄に担当ごとの予定の行が並び、エージェントの専用カーソルが W-03 を指して「設計担当の次の作業です。W-03 はレビュー中のまま、予定より遅れています」と札を出している"></figure>
+
+      <h2>2. 各担当は、自分の分だけを見る</h2>
+      <p>上の帯の「担当」で人を選ぶと、どの画面もその人の分だけに絞られます。役割（設計担当など）で書かれた行も、人の表の役割で見分けます。</p>
+      <p>下の「文の形」は、見出し・番号付きの一覧・印の札で読みやすく描き、WBS や課題の番号を押すとその場所へ移ります。「文をコピー」で、そのまま朝会・夕会に貼れる文になります。</p>
+      <figure class="shot"><img src="../../img/daily-text.png" width="1426" height="893" loading="lazy" alt="設計担当で絞った 1 日の進行。文の形の欄に、今日・次の作業日・相談・補足の見出しと、予定の札が付いた番号付きの行が並ぶ"></figure>
+
+      <h2>3. エージェントと、その場で進める</h2>
+      <p>各担当のエージェントは MCP で同じ 1 日の進行を読み、頼まれたら行を足す・直す・消すを道具で行います。作業の状態を進めるのは <code>task_update</code> で、その場で commit するので、翌日の下書きの「状態が変わった日」もずれません。</p>
+<pre><code>{ "tool": "task_update", "id": "W-03", "status": "done" }
+{ "tool": "daily_add", "section": "consult", "who": "設計担当", "text": "W-04 のレビューを誰に頼むか決めたい" }</code></pre>
+      <p>エージェントは専用カーソルで画面を指しながら説明できます。人のマウスは使いません。直した行・足した行・消した行は、下書きを作り直しても残ります。</p>
+
+      <h2>4. 決めるのは人</h2>
+      <p>1 日の進行は記録で、判定ではありません。承認や「漏れを埋めた」の判断を書く口は、画面にも MCP にもありません。push も人が中身を確かめてから行います。</p>
+
+      <div class="next-cases">
+        <h2>ほかの事例</h2>
+        <div class="cards">
+          <a class="card" href="agent-guide.html"><div class="card-body"><h3>エージェントに案内させる</h3><p>専用カーソルで画面を指す。</p><span class="more">読む →</span></div></a>
+          <a class="card" href="early-start.html"><div class="card-body"><h3>前の工程が終わる前の着手</h3><p>差し戻しのまま次の工程へ。</p><span class="more">読む →</span></div></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div><a class="brand" href="../"><img src="../../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>仕様から試験・指摘までのつながりと、リリースまでの残課題。MIT ライセンス。</p></div>
+    <nav aria-label="フッター"><a href="./">事例</a><a href="../download.html">ダウンロード</a><a href="../releases.html">過去の版</a><a href="../roadmap.html">ロードマップ</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { t } from '../i18n.js'
 import { PATHS } from './repository.js'
 
 /**
@@ -14,44 +15,45 @@ function templates(name: string): ReadonlyArray<readonly [string, string]> {
   return [
     [PATHS.project, `name\n${name}\n`],
     [PATHS.phases, [
-      '# 工程。会社・案件に合わせて書き換える（画面の「設定」からも変えられる）',
+      `# ${t('Phases. Rewrite them to fit your organization and project (you can also change them from "Settings" on the screen)')}`,
       'id\tname\torder',
-      'design\t設計\t1',
-      'impl\t実装\t2',
-      'test\t試験\t3',
-      'rel\tリリース\t4',
+      `design\t${t('Design')}\t1`,
+      `impl\t${t('Implementation')}\t2`,
+      `test\t${t('Testing')}\t3`,
+      `rel\t${t('Release')}\t4`,
     ].join('\n') + '\n'],
     [PATHS.statuses, [
-      '# WBS のタスクのステータス。tone：none（色なし）・wait（待ち）・hole（止まっている）・ok（済み）',
+      `# ${t('Statuses of WBS tasks. tone: none (no color), wait (waiting), hole (stuck), ok (done)')}`,
       'id\tname\ttone',
-      'todo\t未着手\tnone',
-      'doing\t進行中\twait',
-      'review\tレビュー中\twait',
-      'hold\t保留\thole',
-      'done\t完了\tok',
+      `todo\t${t('Not started')}\tnone`,
+      `doing\t${t('In progress')}\twait`,
+      `review\t${t('In review')}\twait`,
+      `hold\t${t('On hold')}\thole`,
+      `done\t${t('Done')}\tok`,
     ].join('\n') + '\n'],
     [STARTER_RULESET, [
-      '# 工程ごとのルール。エージェントが書き、画面で読む。kind は 4 種類：',
-      '#   covered  その種類のどの行にも、それを元にした下流の行がある',
-      '#   refers   その種類のどの行も、上流の行を元にしている',
-      '#   filled   その種類のどの行にも、field の列の値が入っている',
-      '#   approval 人の承認が要る（承認の記録は ledger/approvals.tsv）',
-      '# 例（行頭の # を外すと効く）：',
-      '#R1\tdesign\tcovered\tSPEC\tTC\t\t\t検証担当\t仕様の節ごとに試験ケースがある',
-      '#R2\tdesign\tapproval\t\t\t\t\tレビュー担当\t設計書をレビュー担当が承認した',
+      `# ${t('Rules for each phase. An agent writes them and the screen reads them. There are 4 kinds:')}`,
+      `#   covered  ${t('every row of that kind has a downstream row based on it')}`,
+      `#   refers   ${t('every row of that kind is based on an upstream row')}`,
+      `#   filled   ${t('every row of that kind has a value in the field column')}`,
+      `#   approval ${t('a person must approve (approvals are recorded in ledger/approvals.tsv)')}`,
+      `# ${t('Examples (remove the leading # to enable):')}`,
+      `#R1\tdesign\tcovered\tSPEC\tTC\t\t\t${t('QA owner')}\t${t('Every spec section has a test case')}`,
+      `#R2\tdesign\tapproval\t\t\t\t\t${t('Reviewer')}\t${t('The reviewer approved the design document')}`,
       'id\tphase\tkind\tfrom\tto\tfield\tonly\towner\tlabel',
     ].join('\n') + '\n'],
     [PATHS.items, [
-      '# 台帳。refs は「この行が元にしている行の ID」。、か , で区切って複数書ける',
-      '# kind は自由に決める（例：SPEC=仕様の節・TC=試験ケース）。読み方は .tadori/kinds.tsv に書ける',
+      `# ${t('The ledger. refs are "the IDs of the rows this row is based on". Separate several with 、 or ,')}`,
+      `# ${t('Choose kinds freely (e.g. SPEC = spec section, TC = test case). You can give them readable names in .tadori/kinds.tsv')}`,
       'id\tkind\ttitle\tsource\trefs',
     ].join('\n') + '\n'],
     [PATHS.wbs, [
-      '# WBS のタスク。台帳の行（種類 W）としても辿れる。日付は YYYY-MM-DD',
+      `# ${t('WBS tasks. They can also be traced as ledger rows (kind W). Dates are YYYY-MM-DD')}`,
       'id\tphase\tname\tstart\tend\tstatus',
     ].join('\n') + '\n'],
     [PATHS.approvals, [
-      '# 人の承認の記録。status は「承認」か、それ以外（差し戻しなど）。tadori は代わりに承認しない',
+      // 状態の値（承認・差し戻し）は人が書くデータなので、英語の文でも訳さない
+      `# ${t('Approvals by people. status is "承認" (approved) or anything else (e.g. 差し戻し, sent back). tadori never approves on anyone\'s behalf')}`,
       'rule\tstatus\twho\twhen',
     ].join('\n') + '\n'],
   ]

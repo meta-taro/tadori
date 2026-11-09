@@ -1,4 +1,5 @@
 // 用語：glossary.tsv（用語集の正本）を読んで並べる。言葉で絞り込める
+import { glossaryRow, t } from './i18n.js'
 import { esc, messageOf } from './util.js'
 
 let query = ''
@@ -13,7 +14,8 @@ function parseTsv(text) {
   const [head, ...body] = lines
   if (!head) return []
   const header = head.split('\t')
-  return body.map(line => Object.fromEntries(header.map((h, i) => [h, line.split('\t')[i] ?? ''])))
+  // いまの言語の列（英語なら term_en など）で返す
+  return body.map(line => glossaryRow(Object.fromEntries(header.map((h, i) => [h, line.split('\t')[i] ?? '']))))
 }
 
 /** @param {ReadonlyArray<Record<string, string>>} entries */
@@ -21,11 +23,11 @@ function rowsHtml(entries) {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
   const shown = entries.filter(e => words.every(w => `${e.term} ${e.meaning} ${e.example}`.toLowerCase().includes(w)))
   const groups = [...new Set(shown.map(e => e.group))]
-  if (!groups.length) return '<div class="cond">合う言葉がありません</div>'
+  if (!groups.length) return `<div class="cond">${esc(t('No matching terms'))}</div>`
   return groups.map(g => `
     <h2>${esc(g)}</h2>
     <div class="panel"><table class="glossary">
-      <thead><tr><th style="width:190px">言葉</th><th>意味</th><th style="width:180px">画面のどこ</th><th style="width:240px">例</th></tr></thead>
+      <thead><tr><th style="width:190px">${esc(t('Term'))}</th><th>${esc(t('Meaning'))}</th><th style="width:180px">${esc(t('Where on screen'))}</th><th style="width:240px">${esc(t('Example'))}</th></tr></thead>
       <tbody>${shown.filter(e => e.group === g).map(e => `<tr>
         <td class="pair">${esc(e.term)}</td><td>${esc(e.meaning)}</td><td class="cond">${esc(e.where)}</td><td class="cond">${esc(e.example)}</td></tr>`).join('')}</tbody>
     </table></div>`).join('')
@@ -34,15 +36,15 @@ function rowsHtml(entries) {
 /** @param {HTMLElement} view */
 export async function renderGlossary(view) {
   view.innerHTML = `
-    <h1>用語</h1>
-    <p class="lede">tadori の画面と文書で使う言葉です。エージェントが画面を説明するときも、この言葉を使います。</p>
-    <input id="glossary-query" class="glossary-query" type="search" placeholder="言葉で探す（例：漏れ、タスク）" value="${esc(query)}" aria-label="言葉で探す">
-    <div id="glossary-body"><div class="cond">読み込み中…</div></div>`
+    <h1>${esc(t('Glossary'))}</h1>
+    <p class="lede">${esc(t('The words used in the tadori screens and documents. The agent uses the same words when it explains the screen.'))}</p>
+    <input id="glossary-query" class="glossary-query" type="search" placeholder="${esc(t('Search terms (e.g. gap, task)'))}" value="${esc(query)}" aria-label="${esc(t('Search terms'))}">
+    <div id="glossary-body"><div class="cond">${esc(t('Loading…'))}</div></div>`
   // 直前に描いた中にかならずある
   const body = /** @type {HTMLElement} */ (view.querySelector('#glossary-body'))
   try {
     const res = await fetch('/glossary.tsv')
-    if (!res.ok) throw new Error(`用語集を読めませんでした（${res.status}）`)
+    if (!res.ok) throw new Error(t('Could not read the glossary ({status})', { status: res.status }))
     const entries = parseTsv(await res.text())
     body.innerHTML = rowsHtml(entries)
     const queryInput = /** @type {HTMLInputElement} */ (view.querySelector('#glossary-query'))

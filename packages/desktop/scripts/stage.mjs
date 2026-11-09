@@ -34,7 +34,9 @@ await mkdir(join(out, 'cli'), { recursive: true })
 await mkdir(join(out, 'node_modules', '@tadori', 'core'), { recursive: true })
 
 await copyDir(join(packages, 'cli', 'dist'), join(out, 'cli', 'dist'))
+// 使い方は英語（guide.md）と日本語（guide.ja.md）の両方を入れる（言語に合わせて how_to が選ぶ）
 await cp(join(packages, 'cli', 'guide.md'), join(out, 'cli', 'guide.md'))
+await cp(join(packages, 'cli', 'guide.ja.md'), join(out, 'cli', 'guide.ja.md'))
 await packageJson(join(packages, 'cli', 'package.json'), join(out, 'cli', 'package.json'), ['name', 'version', 'type', 'license'])
 
 await copyDir(join(packages, 'core', 'dist'), join(out, 'node_modules', '@tadori', 'core', 'dist'))

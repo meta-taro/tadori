@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ロードマップ — tadori のこれまでとこれから</title>
+<meta name="description" content="tadori の開発の段と、いま取り組んでいること・次にやること。実案件 2 件で「確かにそこが漏れていた」と言えるかを、続けるかどうかの判断にしています。">
+<link rel="canonical" href="https://meta-taro.github.io/tadori/ja/roadmap.html">
+<link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/roadmap.html">
+<link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/roadmap.html">
+<link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/roadmap.html">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../assets/favicon-32.png" sizes="32x32" type="image/png">
+<meta name="theme-color" content="#4f5bd5">
+<meta property="og:type" content="article">
+<meta property="og:title" content="tadori のロードマップ">
+<meta property="og:url" content="https://meta-taro.github.io/tadori/ja/roadmap.html">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/timeline.png">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../assets/icon.svg" alt="" width="28" height="28">tadori</a>
+    <nav class="site-nav" aria-label="サイト">
+      <a href="./#features">できること</a>
+      <a href="cases/">事例</a>
+      <a href="download.html">ダウンロード</a>
+      <a href="roadmap.html" aria-current="page">ロードマップ</a>
+      <a class="lang" href="../roadmap.html" hreflang="en" lang="en">English</a>
+      <a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow">2026 年 11 月 9 日 更新</span>
+      <h1>ロードマップ</h1>
+      <p class="lede">段ごとに「次へ進んでよい条件」を置いて進めています。
+        tadori が役に立つかどうかは、実際の案件で人が<strong>「確かにそこが漏れていた」</strong>と言えるかで決めます。言えなければ、開発をやめて公開を畳みます。</p>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap road">
+      <article class="stage">
+        <span class="state chip ok">済み</span>
+        <h3>1. 手元で起動する（MVP）</h3>
+        <ul>
+          <li class="done">判定の核：下流がある・上流を元にしている・列が埋まっている・人の承認、の 4 種類のルールと、存在しない ID</li>
+          <li class="done">工程ごとの完了判定（漏れと承認待ち）と、1 件から上下に辿る</li>
+          <li class="done">コマンド：<code>check</code>（記録を残す）・<code>why</code>・<code>serve</code>・<code>init</code></li>
+          <li class="done">画面：リリースまでの残課題（タイムライン／カード）・プロダクト（WBS）・ルールセット・チェックの記録・つながりを辿る・設定・用語</li>
+          <li class="done">架空の見本の案件</li>
+        </ul>
+        <p class="gate"><b>次へ進んでよい条件：</b>手元で起動して、残課題とつながりの画面で状況が読めると言えた → 達成</p>
+      </article>
+
+      <article class="stage now">
+        <span class="state chip wait">いま</span>
+        <h3>2. エージェントと一緒に進める</h3>
+        <ul>
+          <li class="done">MCP の読む道具：使い方・用語・残課題・漏れ（担当と直し方つき）・つながり・台帳の行を探す</li>
+          <li class="done">画面の中の専用カーソル：エージェントが人のマウスを使わずに、指す・押す・打つ</li>
+          <li class="done">デスクトップアプリ（自作の上の帯・ライト／ダーク・案件の切り替え・新しく始める）</li>
+          <li class="done">md-business・git-qa を開く URL の雛形（漏れの横の md / qa のアイコン）</li>
+          <li class="done">macOS（Apple シリコン・Intel）と Windows（x64・ARM）のインストーラー</li>
+          <li class="done">MCP の書く道具：台帳の行・WBS のタスク・ルール・人の表・工程・記録つきのチェック・案件の切り替え（人の承認には口を作らない）</li>
+          <li class="done">画面を TypeScript で型の検査にかけ、画面のテスト（Playwright）を push のたびに回す</li>
+          <li class="done">ルールを画面から足す・直す・消す</li>
+          <li class="done">人単位の 1 日の進行（WBS の変化・台帳の差分・チェックの記録から下書きし、正本へのリンクを付ける）</li>
+          <li class="done">新しい版の確認と知らせ。server の例外を手元に残し、エージェントが読める</li>
+          <li>英語と日本語の両方（紹介ページと README は済み。画面と文は作業中）</li>
+          <li>値で判定するルール（例：試験結果が NG なら不具合票につながっている）</li>
+          <li>md-business の検証シートを直接読む、指定した行へ移って開く</li>
+        </ul>
+      </article>
+
+      <article class="stage">
+        <span class="state chip hole">次</span>
+        <h3>3. 実案件 2 件で回す</h3>
+        <ul>
+          <li>実際の案件の中で、既存の指摘を 2 案件分、台帳に起こす（実案件のデータはこのリポジトリには入れない）</li>
+          <li><code>check</code> が出した漏れを人が読む。列の形が 2 件目で崩れたら、列を直して見本も直す</li>
+        </ul>
+        <p class="gate"><b>止めどころ：</b>人が「確かにそこが漏れていた」と言えたか。言えなければ、開発をやめて公開を畳みます。</p>
+      </article>
+
+      <article class="stage">
+        <span class="state chip">その後</span>
+        <h3>4. 広げる</h3>
+        <ul>
+          <li>リリース前の確認（<code>tadori before</code>）・同じ漏れの繰り返しを見る（<code>tadori repeat</code>）・ほかの台帳から取り込む（<code>tadori import</code>）</li>
+          <li>承認のあとに対象の文書が変わったら、承認待ちに戻す（どの版を確かめたかを残す）</li>
+          <li>複数のプロダクト・プロジェクトの一覧と切り替え</li>
+          <li>インストーラーのコード署名、Node.js を同梱した版</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="soft">
+    <div class="wrap">
+      <div class="section-head"><h2>作らないもの</h2><p>役に立ちそうでも、tadori は次のものを作りません。</p></div>
+      <ul class="facts">
+        <li><b>「漏れを埋めた」の判定</b><span>直ったと認めるのは人。</span></li>
+        <li><b>承認の代行</b><span>MCP にも人の承認の口は作らない。</span></li>
+        <li><b>割合・点数</b><span>形だけの行を増やすもとになるため。</span></li>
+        <li><b>外の道具との同期</b><span>読んだ時点の記録を残し、正本は元の道具に置く。</span></li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div><a class="brand" href="./"><img src="../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>仕様から試験・指摘までのつながりと、リリースまでの残課題。MIT ライセンス。</p></div>
+    <nav aria-label="フッター"><a href="cases/">事例</a><a href="download.html">ダウンロード</a><a href="releases.html">過去の版</a><a href="roadmap.html">ロードマップ</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,9 +1,10 @@
+import './i18n.js'
 import { readFile } from 'node:fs/promises'
 import { createInterface } from 'node:readline'
-import { parseTsv, trace } from '@tadori/core'
-import { formatCheck, formatTrace, originText } from './format.js'
+import { currentLang, parseTsv, t, trace } from '@tadori/core'
+import { fixText, formatCheck, formatTrace, originText } from './format.js'
 import { howTo } from './guide.js'
-import { writeTools, type WriteContext } from './mcp-write.js'
+import { committed, writeTools, type WriteContext } from './mcp-write.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 import { loadState, localToday } from './state.js'
 import { defaultLogDir, readServerErrors } from './error-log.js'
@@ -11,6 +12,7 @@ import { defaultLogDir, readServerErrors } from './error-log.js'
 /**
  * tadori の MCP の口（標準入出力・1 行 1 つの JSON-RPC）。
  * 画面でできることを順に足していく。人の承認には口を作らない（承認するのは人だけ）。
+ * 道具の説明はエージェントが読む。メッセージのたびに道具を組み立て、そのときの言語の文にする。
  */
 
 const PROTOCOL_VERSION = '2025-06-18'
@@ -61,70 +63,85 @@ const MAX_FOUND = 30
 
 const text = (body: string, isError = false): ToolResult => ({ content: [{ type: 'text', text: body }], ...(isError ? { isError } : {}) })
 
+/** 案件のフォルダが無いときの返事 */
+const noProject = () => text(t('Start with a project folder (e.g. tadori mcp examples/lend-v12)'), true)
+
 /** 用語集を読み、言葉で絞って Markdown にする */
+/** 用語集の見出し（日本語で書いてある）の英語。画面（ui/static/i18n.js）と同じ */
+const GLOSSARY_GROUPS_EN: Readonly<Record<string, string>> = { WBS: 'WBS', ルール: 'Rules', 全体: 'General', 台帳: 'Ledger', 案件による: 'Per project', 結果: 'Results', 試験: 'Testing' }
+
 async function glossaryText(path: string, query: string): Promise<string> {
-  const entries = parseTsv(await readFile(path, 'utf8')).rows
+  // 英語なら term_en などの英語の列を使う（空なら日本語のまま）。見出し（group）は日本語で書いてあるので英語に読み替える
+  const isEnglish = currentLang() === 'en'
+  const entries = parseTsv(await readFile(path, 'utf8')).rows.map(row => (isEnglish ? {
+    ...row,
+    group: GLOSSARY_GROUPS_EN[row.group ?? ''] ?? row.group,
+    term: row.term_en || row.term,
+    meaning: row.meaning_en || row.meaning,
+    where: row.where_en || row.where,
+    example: row.example_en || row.example,
+  } : row))
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
   const shown = entries.filter(e => words.every(w => `${e.term} ${e.meaning} ${e.example}`.toLowerCase().includes(w)))
-  if (!shown.length) return `「${query}」に合う言葉がありません。query を空にすると、全部の言葉を返します。`
+  if (!shown.length) return t('No term matches "{query}". Leave query empty to get every term.', { query })
   const groups = [...new Set(shown.map(e => e.group ?? ''))]
   return groups.map(group => [
     `## ${group}`,
     ...shown.filter(e => e.group === group).map(e =>
-      `- **${e.term}**：${e.meaning}${e.where ? `（画面：${e.where}）` : ''}${e.example ? `　例：${e.example}` : ''}`),
+      `${t('- **{term}**: {meaning}', { term: e.term ?? '', meaning: e.meaning ?? '' })}${e.where ? t(' (screen: {where})', { where: e.where }) : ''}${e.example ? t('  e.g. {example}', { example: e.example }) : ''}`),
   ].join('\n')).join('\n\n')
 }
 
 /** 案件を読む道具。画面・CLI と同じ判定の核を通す（MCP だけの判定を作らない） */
 function buildProjectTools(options: McpOptions): Tool[] {
   const withState = async <T>(use: (loaded: Awaited<ReturnType<typeof loadState>>) => T): Promise<T | ToolResult> => {
-    if (!options.projectDir) return text('案件のフォルダを指定して起動してください（例：tadori mcp examples/lend-v12）', true)
+    if (!options.projectDir) return noProject()
     return use(await loadState(options.projectDir, options.today ?? localToday()))
   }
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
   return [
     {
       name: 'get_remaining',
-      description: '工程ごとの残課題（漏れと人の承認待ち）・遅れた日数・前の完了判定より前に着手しているかを返す。画面の「リリースまでの残課題」と同じ中身。割合や点数は出さない。',
+      description: t('Return the remaining work per phase (gaps and pending human approvals), days late, and whether work started before the previous phase gate. Same content as the screen\'s "Remaining work until release". No percentages or scores.'),
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
       run: async () => withState(({ state }) => text(formatCheck(state))),
     },
     {
       name: 'list_leaks',
-      description: '漏れ（ルールが求めるつながりや列が無い所）の一覧を返す。phase に工程の ID（例：dd）を渡すと、その工程のルールの漏れだけにする。',
-      inputSchema: { type: 'object', properties: { phase: { type: 'string', description: '工程の ID（例：bd・dd・it）。空なら全部' } }, additionalProperties: false },
+      description: t('Return the list of gaps (places where a link or column a rule requires is missing). Pass a phase ID (e.g. dd) as phase to get only the gaps of that phase\'s rules.'),
+      inputSchema: { type: 'object', properties: { phase: { type: 'string', description: t('Phase ID (e.g. bd, dd, it). Empty for all') } }, additionalProperties: false },
       run: async args => withState(({ state }) => {
         const phase = str(args.phase)
         const ruleIds = new Set(state.rules.filter(r => !phase || r.phase === phase).map(r => r.id))
         const leaks = state.leaks.filter(l => !phase || ruleIds.has(l.rule))
         // 漏れごとに、担当と、どこをどう直せば消えるかを添える（エージェントが人に伝えやすいように）
-        const lines = leaks.map(l => `- ${l.rule}·${l.itemId} ${l.message}${l.fix ? `\n  ${l.owner ? `担当：${l.owner}　` : ''}直し方：${l.fix}` : ''}`)
-        return text(lines.length ? lines.join('\n') : '漏れはありません')
+        const lines = leaks.map(l => `- ${l.rule}·${l.itemId} ${l.message}${l.fix ? `\n  ${fixText(l.fix, l.owner)}` : ''}`)
+        return text(lines.length ? lines.join('\n') : t('No gaps'))
       }),
     },
     {
       name: 'trace',
-      description: '台帳の 1 行（指摘・試験ケース・設計書の章など）から上流と下流のつながりを辿り、切れている所（✗）を返す。つながりは台帳の ID だけで判定し、推測でつながない。'
-        + '「確かにそこが漏れていた」と認めるのは人なので、結果は人に見せて判断してもらうこと。',
-      inputSchema: { type: 'object', properties: { id: { type: 'string', description: '辿り始めの行の ID（例：F-02）' } }, required: ['id'], additionalProperties: false },
+      description: t('Follow the upstream and downstream links from one ledger row (a finding, a test case, a design section, etc.) and return where they break (✗). Links are judged only by ledger IDs, never by guessing. '
+        + 'Only a person can confirm "yes, that was a gap", so show the result to a person and let them judge.'),
+      inputSchema: { type: 'object', properties: { id: { type: 'string', description: t('ID of the row to start from (e.g. F-02)') } }, required: ['id'], additionalProperties: false },
       run: async args => withState(({ project, state }) => {
         const result = trace(project, str(args.id))
-        return result ? text(formatTrace(result, state.origins)) : text(`${str(args.id)} は台帳にありません。find_items で探してください`, true)
+        return result ? text(formatTrace(result, state.origins)) : text(t('{id} is not in the ledger. Search with find_items', { id: str(args.id) }), true)
       }),
     },
     {
       name: 'find_items',
-      description: '台帳の行を ID か名前で探す（空白で区切ると、全部を含むもの）。trace に渡す ID を見つけるのに使う。',
-      inputSchema: { type: 'object', properties: { query: { type: 'string', description: '探す言葉（例：延滞、TC-07）' } }, required: ['query'], additionalProperties: false },
+      description: t('Search ledger rows by ID or name (separate words with spaces to require all of them). Use it to find an ID to pass to trace.'),
+      inputSchema: { type: 'object', properties: { query: { type: 'string', description: t('Words to search for (e.g. overdue, TC-07)') } }, required: ['query'], additionalProperties: false },
       run: async args => withState(({ state }) => {
         const words = str(args.query).trim().toLowerCase().split(/\s+/).filter(Boolean)
         const found = state.items.filter(i => words.every(w => `${i.id} ${i.title}`.toLowerCase().includes(w)))
-        if (!found.length) return text(`「${str(args.query)}」に合う行がありません`)
+        if (!found.length) return text(t('No row matches "{query}"', { query: str(args.query) }))
         const lines = found.slice(0, MAX_FOUND).map(i => {
           const origin = state.origins[i.id]
-          return `- ${i.id}（${state.labels.kinds[i.kind] ?? i.kind}）${i.title}${origin ? `\n  ${originText(origin)}` : ''}`
+          return `${t('- {id} ({kind}) {title}', { id: i.id, kind: state.labels.kinds[i.kind] ?? i.kind, title: i.title })}${origin ? `\n  ${originText(origin)}` : ''}`
         })
-        if (found.length > MAX_FOUND) lines.push(`ほか ${found.length - MAX_FOUND} 件。言葉を足して絞ってください`)
+        if (found.length > MAX_FOUND) lines.push(t('{count} more. Add words to narrow it down', { count: found.length - MAX_FOUND }))
         return text(lines.join('\n'))
       }),
     },
@@ -132,29 +149,44 @@ function buildProjectTools(options: McpOptions): Tool[] {
   ]
 }
 
+/** 1 日の進行の道具の入力の形（説明はそのときの言語で） */
+function dailySchemas() {
+  const SECTION = { type: 'string', enum: ['today', 'next', 'consult', 'upkeep'], description: t('today = Today / next = Next working day / consult = Questions / upkeep = Ledger upkeep (not work on deliverables)') }
+  const DATE = { type: 'string', description: t('Date (YYYY-MM-DD). Empty for today') }
+  const ENTRY_FIELDS = {
+    who: { type: 'string', description: t('Owner (for two or more, "A・B")') },
+    text: { type: 'string', description: t('Text (without the number or the trailing WBS. Put places and URLs in the notes)') },
+    wbs: { type: 'array', items: { type: 'string' }, description: t('IDs of the related WBS tasks (e.g. W-03)') },
+    links: {
+      type: 'array', maxItems: 8,
+      items: {
+        type: 'object',
+        properties: {
+          label: { type: 'string', description: t('Display name (e.g. QA sheet, MR, design doc 3.2.5)') },
+          url: { type: 'string', description: t('An http or https URL') },
+          anchor: { type: 'string', description: t('A word in the text. The screen turns that word into the link (not shown at the end of the line). If the word is not in the text, it shows "display name ↗" at the end of the line') },
+          nth: { type: 'number', description: t('Which occurrence, when the same word appears more than once (default 1)') },
+        },
+        required: ['label', 'url'], additionalProperties: false,
+      },
+      description: t('The places in the source of truth touched by this work. The screen shows "display name ↗" at the end of the line and opens it on click. Not included in the text read aloud; shown in the notes. When editing, pass all of them again'),
+    },
+    issue: { type: 'string', description: t('Issue ID (a ledger row)') },
+    note: { type: 'string', description: t('A short remark to add to the notes (read when asked)') },
+    tag: { type: 'string', enum: ['', 'done', 'doing', 'plan', 'upkeep', 'checked'], description: t('Line tag: done = finished / doing = in progress / plan = planned / upkeep = ledger upkeep / checked = checked (empty for no tag)') },
+  }
+  return { SECTION, DATE, ENTRY_FIELDS }
+}
+
 /** 1 日の進行の道具：読む・作る・足す・直す・消す。人の承認には関わらない（1 日の進行は人とエージェントが書く記録） */
 function dailyTools(options: McpOptions): Tool[] {
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
-  const SECTION = { type: 'string', enum: ['today', 'next', 'consult', 'upkeep'], description: 'today＝今日 / next＝次の作業日 / consult＝相談 / upkeep＝台帳の整備（成果物の作業ではないもの）' }
-  const DATE = { type: 'string', description: '日付（YYYY-MM-DD）。空なら今日' }
-  const ENTRY_FIELDS = {
-    who: { type: 'string', description: '担当（2 人以上は「A・B」）' },
-    text: { type: 'string', description: '本文（番号と末尾の WBS は付けない。場所や URL は補足へ）' },
-    wbs: { type: 'array', items: { type: 'string' }, description: 'つながる WBS の ID（例：W-03）' },
-    links: {
-      type: 'array', maxItems: 8,
-      items: { type: 'object', properties: { label: { type: 'string', description: '表示名（例：QA表・MR・設計書 3.2.5）' }, url: { type: 'string', description: 'http か https の URL' }, anchor: { type: 'string', description: '本文の中の語。画面ではその語をリンクにする（行末には出さない）。本文に無ければ行末に「表示名 ↗」で出す' }, nth: { type: 'number', description: '同じ語が何回も出るとき、何回目か（既定 1）' } }, required: ['label', 'url'], additionalProperties: false },
-      description: 'その作業でさわった正本の場所。画面では行の末尾に「表示名 ↗」で出て押すと開く。読み上げる文には入れず、補足に出す。直すときは全件を渡し直す',
-    },
-    issue: { type: 'string', description: '課題の ID（台帳の行）' },
-    note: { type: 'string', description: '補足に足す一言（聞かれたら読むもの）' },
-    tag: { type: 'string', enum: ['', 'done', 'doing', 'plan', 'upkeep', 'checked'], description: '行の印：done＝やり終えた / doing＝作業中 / plan＝予定 / upkeep＝台帳の整備 / checked＝確かめた（空なら印なし）' },
-  }
+  const { SECTION, DATE, ENTRY_FIELDS } = dailySchemas()
   /** 案件・日付を確かめてから、本体を動かす。入力の誤りは isError で返す */
   const withDay = async (args: Record<string, unknown>, work: (dir: string, date: string) => Promise<ToolResult>): Promise<ToolResult> => {
-    if (!options.projectDir) return text('案件のフォルダを指定して起動してください（例：tadori mcp examples/lend-v12）', true)
+    if (!options.projectDir) return noProject()
     const date = str(args.date).trim() || (options.today ?? localToday())
-    if (!isDay(date)) return text('date は YYYY-MM-DD で渡してください', true)
+    if (!isDay(date)) return text(t('Give date as YYYY-MM-DD'), true)
     try {
       return await work(options.projectDir, date)
     } catch (error: unknown) {
@@ -162,56 +194,56 @@ function dailyTools(options: McpOptions): Tool[] {
       throw error
     }
   }
-  const committed = (c: { committed: boolean; reason?: string }) => (c.committed ? 'commit しました（push は人）' : (c.reason ?? ''))
+  const withWarnings = (head: string, warnings: readonly string[]) => text([head, ...warnings.map(w => t('Note: {warning}', { warning: w }))].join('\n'))
   return [
     {
       name: 'daily',
-      description: '人単位の「1 日の進行」を返す（今日・次の作業日・相談・補足）と、行の一覧（[ID] 付き）。who に担当を渡すと、その人の分だけ。'
-        + '材料（WBS の状態の変化・台帳の差分・チェックの記録）から作った下書きと、人やエージェントが直した行を合わせたもの。'
-        + '文を直す・相談を書くのは daily_update / daily_add で。',
-      inputSchema: { type: 'object', properties: { who: { type: 'string', description: '担当。空なら全員' }, date: DATE }, additionalProperties: false },
+      description: t('Return a person\'s "daily progress" (Today, Next working day, Questions, Notes) and the list of lines (with [ID]). Pass an owner as who to get only that person\'s lines. '
+        + 'It combines a draft built from the inputs (WBS status changes, ledger diffs, check records) with lines that people or agents edited. '
+        + 'To edit the text or write a question, use daily_update / daily_add.'),
+      inputSchema: { type: 'object', properties: { who: { type: 'string', description: t('Owner. Empty for everyone') }, date: DATE }, additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
         const daily = await loadDaily(dir, date, str(args.who).trim() || undefined)
-        const rows = daily.entries.map(e => `- [${e.id}] ${e.section} · ${e.who || '担当なし'} · ${e.text}${e.origin === 'auto' ? '' : `（${e.origin === 'manual' ? '足した行' : '直した行'}）`}`)
-        const where = daily.saved ? 'ファイルに置いてある' : 'まだ置いていない下書き。daily_generate で置く'
-        return text(`${daily.text}\n\n行の一覧（${where}）：\n${rows.join('\n')}`)
+        const rows = daily.entries.map(e => `- [${e.id}] ${e.section} · ${e.who || t('no owner')} · ${e.text}${e.origin === 'auto' ? '' : e.origin === 'manual' ? t(' (added line)') : t(' (edited line)')}`)
+        const where = daily.saved ? t('saved in the file') : t('a draft not saved yet; save it with daily_generate')
+        return text(t('{text}\n\nLines ({where}):\n{rows}', { text: daily.text, where, rows: rows.join('\n') }))
       }),
     },
     {
       name: 'daily_generate',
-      description: '材料から下書きを作り、日ごとのファイル（.tadori/daily/YYYY-MM-DD.tsv）に置いて commit する。作り直しても、直した行・足した行・消した行は上書きしない。',
+      description: t('Build a draft from the inputs, save it to the per-day file (.tadori/daily/YYYY-MM-DD.tsv) and commit. Rebuilding never overwrites edited, added or removed lines.'),
       inputSchema: { type: 'object', properties: { date: DATE }, additionalProperties: false },
-      run: async args => withDay(args, async (dir, date) => text(`${date} の下書きを置きました。${committed(await generateDaily(dir, date))}`)),
+      run: async args => withDay(args, async (dir, date) => text(t('Saved the draft for {date}. {commit}', { date, commit: committed(await generateDaily(dir, date)) }))),
     },
     {
       name: 'daily_add',
-      description: '1 日の進行に行を足す（相談や、材料に出ない作業）。足した行は作り直しても残る。',
+      description: t('Add a line to daily progress (a question, or work that does not show up in the inputs). Added lines stay when the draft is rebuilt.'),
       inputSchema: { type: 'object', properties: { date: DATE, section: SECTION, ...ENTRY_FIELDS }, required: ['section', 'text'], additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
         const { entry, commit, warnings } = await addDaily(dir, date, args)
-        return text([`[${entry.id}] を足しました。${committed(commit)}`, ...warnings.map(w => `注意：${w}`)].join('\n'))
+        return withWarnings(t('Added [{id}]. {commit}', { id: entry.id, commit: committed(commit) }), warnings)
       }),
     },
     {
       name: 'daily_update',
-      description: '1 日の進行の行を直す（id は daily の [ID]）。渡した項目だけ変わる。空文字（links・wbs は空の配列）を渡すと、その欄を空にする（本文は空にできない。行ごと消すなら daily_remove）。自動の行は「直した行」になり、作り直しても上書きされない。',
+      description: t('Edit a daily progress line (id is the [ID] from daily). Only the fields you pass change. Passing an empty string (an empty array for links and wbs) clears that field (the text cannot be cleared; use daily_remove to delete the line). An automatic line becomes an "edited line" and is not overwritten when the draft is rebuilt.'),
       inputSchema: { type: 'object', properties: { date: DATE, id: { type: 'string' }, section: SECTION, ...ENTRY_FIELDS }, required: ['id'], additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
         const { entry, commit, warnings } = await updateDaily(dir, date, str(args.id), args)
-        return text([`[${entry.id}] を直しました。${committed(commit)}`, ...warnings.map(w => `注意：${w}`)].join('\n'))
+        return withWarnings(t('Edited [{id}]. {commit}', { id: entry.id, commit: committed(commit) }), warnings)
       }),
     },
     {
       name: 'daily_remove',
-      description: '1 日の進行の行を消す（id は daily の [ID]）。自動の行は、作り直しても戻ってこない。',
+      description: t('Remove a daily progress line (id is the [ID] from daily). An automatic line does not come back when the draft is rebuilt.'),
       inputSchema: { type: 'object', properties: { date: DATE, id: { type: 'string' } }, required: ['id'], additionalProperties: false },
-      run: async args => withDay(args, async (dir, date) => text(`[${str(args.id)}] を消しました。${committed((await removeDaily(dir, date, str(args.id))).commit)}`)),
+      run: async args => withDay(args, async (dir, date) => text(t('Removed [{id}]. {commit}', { id: str(args.id), commit: committed((await removeDaily(dir, date, str(args.id))).commit) }))),
     },
   ]
 }
 
 async function howToText(path: string | undefined, topic: string): Promise<ToolResult> {
-  if (!path) return text('使い方の文書が見つかりません（guidePath が渡されていません）', true)
+  if (!path) return text(t('The how-to document was not found (no guidePath was given)'), true)
   const result = await howTo(path, topic)
   return text(result.text, result.isError)
 }
@@ -222,43 +254,47 @@ async function sendToScreen(screenUrl: string, args: Record<string, unknown>): P
   try {
     res = await fetch(`${screenUrl}/api/agent`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-tadori': '1' },
+      // 画面の server にも、いまの言語で誤りを返してもらう
+      headers: { 'content-type': 'application/json', 'x-tadori': '1', 'x-tadori-lang': currentLangHeader() },
       body: JSON.stringify(args),
     })
   } catch {
-    return text(`tadori が立ち上がっていません（${screenUrl}）。デスクトップアプリを開くか、tadori serve で立ち上げてください`, true)
+    return text(t('tadori is not running ({url}). Open the desktop app or start it with tadori serve', { url: screenUrl }), true)
   }
   const body = await res.json().catch(() => ({})) as { error?: string; screens?: number }
-  if (!res.ok) return text(body.error ?? `画面へ届けられませんでした（${res.status}）`, true)
-  return text(`画面（${body.screens ?? 1} つ）へ届けました。人の画面で、専用カーソルが動きます`)
+  if (!res.ok) return text(body.error ?? t('Could not reach the screen ({status})', { status: res.status }), true)
+  return text(t('Delivered to {count} screen(s). The dedicated cursor moves on the person\'s screen', { count: body.screens ?? 1 }))
 }
+
+/** いまの言語（server へ渡す） */
+const currentLangHeader = (): string => currentLang()
 
 function buildTools(options: McpOptions): Tool[] {
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
   // 書く道具は、open_project で替えた案件を読むので、同じ入れ物（options）を渡す
   return [...buildProjectTools(options), ...writeTools(options as WriteContext), {
     name: 'how_to',
-    description: 'tadori の使い方を返す（はじめ方・台帳とルールの書き方・確かめ方・画面の案内の仕方・エージェントが守ること）。'
-      + 'topic を空にすると話題の一覧。初めて使うときは start と agent-rules を読むこと。',
+    description: t('Return how to use tadori (getting started, writing the ledger and rules, checking, guiding a person on the screen, what agents must follow). '
+      + 'Leave topic empty for the list of topics. When you first use tadori, read start and agent-rules.'),
     inputSchema: {
       type: 'object',
-      properties: { topic: { type: 'string', description: '話題（start・ledger・rules・check・daily・write・screen・links・sources・agent-rules）。空なら一覧' } },
+      properties: { topic: { type: 'string', description: t('Topic (start, ledger, rules, check, daily, write, screen, links, sources, agent-rules). Empty for the list') } },
       additionalProperties: false,
     },
     run: async args => howToText(options.guidePath, str(args.topic).trim()),
   }, {
     name: 'screen',
-    description: '人が開いている tadori の画面を、画面の中の専用カーソルで操作して見せる（人のマウスは使わない）。'
-      + 'action は point（指す）・click（押す）・type（欄に打つ）・go（画面を移る）・say（一言）・filter（画面を人で絞る。value に人の名前、空なら全員）。使い方は how_to の screen。'
-      + '押せるのは人が画面で押せるものだけ。Windows のダイアログは操作できないので人に頼むこと。',
+    description: t('Show things to a person by operating the tadori screen they have open with a dedicated on-screen cursor (the person\'s mouse is not used). '
+      + 'action is point, click, type (into a field), go (move to another view), say (a short remark) or filter (filter the screen by person: a name in value, empty for everyone). See how_to screen. '
+      + 'You can only press what a person could press on the screen. Windows dialogs cannot be operated, so ask the person.'),
     inputSchema: {
       type: 'object',
       properties: {
         action: { type: 'string', enum: ['point', 'click', 'type', 'go', 'say', 'filter'] },
-        target: { type: 'string', description: '画面に出ている文字・ボタンの名前（例：ルールセット・ファイル・探す）' },
-        value: { type: 'string', description: 'type で打つ文字。filter では人の名前（空なら全員）' },
-        hash: { type: 'string', description: 'go の移り先（例：#rules・#trace-F-02）' },
-        message: { type: 'string', description: '人に見せる一言（黄色の札に出る）' },
+        target: { type: 'string', description: t('Text or button name shown on the screen (e.g. Rulesets, File, Search)') },
+        value: { type: 'string', description: t('Text to type for type. For filter, a person\'s name (empty for everyone)') },
+        hash: { type: 'string', description: t('Where go moves to (e.g. #rules, #trace-F-02)') },
+        message: { type: 'string', description: t('A short remark to show the person (shown on a yellow note)') },
       },
       required: ['action'],
       additionalProperties: false,
@@ -266,26 +302,26 @@ function buildTools(options: McpOptions): Tool[] {
     run: async args => sendToScreen(options.screenUrl ?? DEFAULT_SCREEN_URL, args),
   }, {
     name: 'glossary',
-    description: 'tadori の画面と文書で使う言葉（工程・完了判定・残課題・タスク・漏れ・承認待ち・つながりなど）の意味と、画面のどこに出るかを返す。'
-      + '人に画面を説明するときは、ここの言葉を使うこと。query を空にすると全部の言葉を返す。',
+    description: t('Return the meaning of the words used on the tadori screen and in its documents (phase, phase gate, remaining work, task, gap, pending approval, link, etc.) and where they appear on the screen. '
+      + 'Use these words when you explain the screen to a person. Leave query empty to get every term.'),
     inputSchema: {
       type: 'object',
-      properties: { query: { type: 'string', description: '探す言葉（空白で区切ると、全部を含むものだけ）。例：漏れ、タスク 遅れ' } },
+      properties: { query: { type: 'string', description: t('Words to search for (separate with spaces to require all). e.g. gap, task late') } },
       additionalProperties: false,
     },
     run: async args => text(await glossaryText(options.glossaryPath, typeof args.query === 'string' ? args.query : '')),
   }, {
     name: 'server_errors',
-    description: '画面の裏で動いている tadori serve の中で起きた例外（画面に「サーバーの中で問題が起きました」と出たもの）を、新しい順に返す。'
-      + '時刻・API・例外の種類と文・落ちた所（呼び出しの頭の数行）だけで、送られた本文は残していない。直すときは、この結果を人に見せてから。',
-    inputSchema: { type: 'object', properties: { limit: { type: 'number', description: '何件まで（既定 10・最大 50）' } }, additionalProperties: false },
+    description: t('Return, newest first, the errors raised inside tadori serve behind the screen (the ones the screen showed as "Something went wrong inside the server"). '
+      + 'Only the time, API, error type and message, and where it failed (the top lines of the call stack) are kept; request bodies are not. Show the result to a person before fixing anything.'),
+    inputSchema: { type: 'object', properties: { limit: { type: 'number', description: t('How many (default 10, max 50)') } }, additionalProperties: false },
     run: async args => {
       const dir = options.logDir ?? defaultLogDir()
       const limit = Math.min(MAX_ERRORS, Math.max(1, typeof args.limit === 'number' ? Math.floor(args.limit) : DEFAULT_ERRORS))
       const errors = await readServerErrors(dir, limit)
-      if (!errors.length) return text(`server の例外の記録はありません（記録の場所：${dir}）`)
-      const lines = errors.map(e => [`- ${e.at} ${e.method} ${e.path}（案件：${e.project}）`, `  ${e.name}: ${e.message}`, ...e.stack.map(s => `    ${s}`)].join('\n'))
-      return text([`server の例外 ${errors.length} 件（新しい順・記録の場所：${dir}）`, ...lines].join('\n'))
+      if (!errors.length) return text(t('No server errors recorded (log location: {dir})', { dir }))
+      const lines = errors.map(e => [t('- {at} {method} {path} (project: {project})', { at: e.at, method: e.method, path: e.path, project: e.project }), `  ${e.name}: ${e.message}`, ...e.stack.map(s => `    ${s}`)].join('\n'))
+      return text([t('{count} server errors (newest first, log location: {dir})', { count: errors.length, dir }), ...lines].join('\n'))
     },
   }]
 }
@@ -297,11 +333,12 @@ const MAX_ERRORS = 50
 export function createMcpHandler(options: McpOptions): (message: JsonRpcMessage) => Promise<JsonRpcResponse | null> {
   // 開く案件は open_project で替わるので、呼び出し元の options は変えずに写しを持つ
   const context: { -readonly [K in keyof McpOptions]: McpOptions[K] } = { ...options }
-  const tools = buildTools(context)
   return async message => {
     if (message.id === undefined) return null
     const id = message.id
     const ok = (result: unknown): JsonRpcResponse => ({ jsonrpc: '2.0', id, result })
+    // 道具の説明と返事の言葉は、このメッセージを受けたときの言語にする（組み立ては軽い）
+    const tools = buildTools(context)
     switch (message.method) {
       case 'initialize': {
         const requested = (message.params as { protocolVersion?: unknown } | undefined)?.protocolVersion
@@ -317,18 +354,18 @@ export function createMcpHandler(options: McpOptions): (message: JsonRpcMessage)
         return ok({ tools: tools.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) })
       case 'tools/call': {
         const params = (message.params ?? {}) as { name?: unknown; arguments?: unknown }
-        const tool = tools.find(t => t.name === params.name)
-        if (!tool) return ok(text(`知らない道具です：${String(params.name)}`, true))
+        const tool = tools.find(each => each.name === params.name)
+        if (!tool) return ok(text(t('Unknown tool: {name}', { name: String(params.name) }), true))
         try {
           const args = params.arguments && typeof params.arguments === 'object' ? params.arguments as Record<string, unknown> : {}
           return ok(await tool.run(args))
         } catch (error: unknown) {
           // 道具の中の失敗は、エージェントが読めるように結果として返す
-          return ok(text(`${tool.name} に失敗しました：${error instanceof Error ? error.message : String(error)}`, true))
+          return ok(text(t('{tool} failed: {reason}', { tool: tool.name, reason: error instanceof Error ? error.message : String(error) }), true))
         }
       }
       default:
-        return { jsonrpc: '2.0', id, error: { code: -32601, message: `知らないメソッドです：${message.method}` } }
+        return { jsonrpc: '2.0', id, error: { code: -32601, message: t('Unknown method: {method}', { method: String(message.method) }) } }
     }
   }
 }
@@ -343,7 +380,7 @@ export function serveMcp(options: McpOptions): void {
     try {
       message = JSON.parse(line) as JsonRpcMessage
     } catch {
-      process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'JSON として読めませんでした' } })}\n`)
+      process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: t('Could not read it as JSON') } })}\n`)
       return
     }
     handle(message)

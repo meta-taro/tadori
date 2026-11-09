@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ダウンロード — tadori（macOS・Windows のインストーラー）</title>
+<meta name="description" content="tadori のデスクトップアプリのインストーラー。macOS（Apple シリコン・Intel）と Windows（x64・ARM）向け。無料・MIT ライセンス。Node.js 22 以上が要ります。">
+<link rel="canonical" href="https://meta-taro.github.io/tadori/ja/download.html">
+<link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/download.html">
+<link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/download.html">
+<link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/download.html">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../assets/favicon-32.png" sizes="32x32" type="image/png">
+<meta name="theme-color" content="#4f5bd5">
+<meta property="og:type" content="website">
+<meta property="og:title" content="tadori をダウンロード">
+<meta property="og:description" content="macOS（Apple シリコン・Intel）と Windows（x64・ARM）向けのインストーラー。">
+<meta property="og:url" content="https://meta-taro.github.io/tadori/ja/download.html">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/timeline.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../assets/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "tadori を入れて使い始める",
+  "inLanguage": "ja",
+  "supply": [{ "@type": "HowToSupply", "name": "Node.js 22 以上" }],
+  "step": [
+    { "@type": "HowToStep", "name": "インストーラーを選ぶ", "text": "macOS は Apple シリコンか Intel、Windows は x64（Intel / AMD）か ARM を選んでダウンロードする。" },
+    { "@type": "HowToStep", "name": "入れる", "text": "macOS は .dmg を開いて tadori をアプリケーションへ移す。Windows は .msi か .exe を実行する。" },
+    { "@type": "HowToStep", "name": "案件を始める", "text": "tadori を開き「ファイル › 新しく始める…」で案件のフォルダを選ぶ。" }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../assets/icon.svg" alt="" width="28" height="28">tadori</a>
+    <nav class="site-nav" aria-label="サイト">
+      <a href="./#features">できること</a>
+      <a href="cases/">事例</a>
+      <a href="download.html" aria-current="page">ダウンロード</a>
+      <a href="roadmap.html">ロードマップ</a>
+      <a class="lang" href="../download.html" hreflang="en" lang="en">English</a>
+      <a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap">
+      <span class="eyebrow">無料・MIT ライセンス</span>
+      <h1>tadori をダウンロード</h1>
+      <p class="lede">お使いの PC に合うものを選んでください。見ている PC が分かれば「この PC」と印を付けています。</p>
+      <p data-release-status class="muted">最新の版を GitHub から読んでいます…</p>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap" data-downloads>
+      <div class="dl-grid">
+        <article class="dl" data-kind="mac-arm">
+          <h3>macOS</h3>
+          <p class="cpu">Apple シリコン（M1・M2・M3・M4 など）</p>
+          <div class="files"><a class="btn btn-ghost" href="https://github.com/meta-taro/tadori/releases/latest">リリースのページから選ぶ</a></div>
+        </article>
+        <article class="dl" data-kind="mac-intel">
+          <h3>macOS</h3>
+          <p class="cpu">Intel の CPU</p>
+          <div class="files"><a class="btn btn-ghost" href="https://github.com/meta-taro/tadori/releases/latest">リリースのページから選ぶ</a></div>
+        </article>
+        <article class="dl" data-kind="win-x64">
+          <h3>Windows</h3>
+          <p class="cpu">x64（Intel・AMD の CPU。ふつうの Windows はこちら）</p>
+          <div class="files"><a class="btn btn-ghost" href="https://github.com/meta-taro/tadori/releases/latest">リリースのページから選ぶ</a></div>
+        </article>
+        <article class="dl" data-kind="win-arm">
+          <h3>Windows</h3>
+          <p class="cpu">ARM（Snapdragon などの CPU）</p>
+          <div class="files"><a class="btn btn-ghost" href="https://github.com/meta-taro/tadori/releases/latest">リリースのページから選ぶ</a></div>
+        </article>
+      </div>
+      <p style="margin-top:20px"><a href="releases.html">過去の版はこちら →</a></p>
+    </div>
+  </section>
+
+  <section class="soft">
+    <div class="wrap">
+      <div class="section-head"><h2>入れる前に</h2></div>
+      <div class="note"><b>Node.js 22 以上が要ります。</b> tadori の判定とサーバーは Node.js で動きます。入っていなければ、<a href="https://nodejs.org/ja">Node.js の公式サイト</a>から LTS 版を入れてください。</div>
+      <h3 style="margin-top:28px">どちらの CPU か分からないとき</h3>
+      <ul>
+        <li><b>macOS</b>：アップルメニュー ›「この Mac について」の「チップ」が Apple M… なら Apple シリコン、「プロセッサ」が Intel… なら Intel です。</li>
+        <li><b>Windows</b>：設定 › システム ›「バージョン情報」の「システムの種類」が「x64 ベース」なら x64、「ARM ベース」なら ARM です。</li>
+      </ul>
+      <h3 style="margin-top:28px">初めて開くときの確認</h3>
+      <p>いまのインストーラーにはコード署名がありません。初めて開くとき、OS やウイルス対策ソフトが確認を求めることがあります。</p>
+      <ul>
+        <li><b>macOS</b>：「開発元を確認できない」と出たら、Finder で tadori を右クリック ›「開く」を選びます。</li>
+        <li><b>Windows</b>：「Windows によって PC が保護されました」と出たら、「詳細情報」›「実行」を選びます。</li>
+      </ul>
+      <p>中身は <a href="https://github.com/meta-taro/tadori">GitHub のソース</a>から、GitHub Actions で作っています。気になるときはソースから作ることもできます。</p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div><a class="brand" href="./"><img src="../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>仕様から試験・指摘までのつながりと、リリースまでの残課題。MIT ライセンス。</p></div>
+    <nav aria-label="フッター"><a href="cases/">事例</a><a href="download.html">ダウンロード</a><a href="releases.html">過去の版</a><a href="roadmap.html">ロードマップ</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
+  </div>
+</footer>
+<script type="module" src="../assets/site.js"></script>
+</body>
+</html>

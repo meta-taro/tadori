@@ -1,17 +1,21 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>エージェントに、画面を指しながら案内させる — tadori の事例</title>
-<meta name="description" content="AI エージェントを tadori の MCP につなぎ、使い方・残課題・漏れを読ませ、画面の中の専用カーソルで人のマウスを使わずに画面を指しながら案内させる事例。">
+<title>Let an agent guide you by pointing at the screen — tadori use case</title>
+<meta name="description" content="Connect an AI agent to tadori over MCP, let it read the usage guide, remaining work and gaps, and have it guide you by pointing at the screen with its own agent cursor — without using your mouse.">
 <link rel="canonical" href="https://meta-taro.github.io/tadori/cases/agent-guide.html">
+<link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/agent-guide.html">
+<link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/agent-guide.html">
+<link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/agent-guide.html">
 <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 <link rel="icon" href="../assets/favicon-32.png" sizes="32x32" type="image/png">
 <meta name="theme-color" content="#4f5bd5">
 <meta property="og:type" content="article">
-<meta property="og:title" content="エージェントに、画面を指しながら案内させる">
+<meta property="og:title" content="Let an agent guide you by pointing at the screen">
 <meta property="og:url" content="https://meta-taro.github.io/tadori/cases/agent-guide.html">
+<meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://meta-taro.github.io/tadori/img/agent.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../assets/site.css">
@@ -19,24 +23,24 @@
 {
   "@context": "https://schema.org",
   "@graph": [
-    { "@type": "TechArticle", "headline": "エージェントに、画面を指しながら案内させる", "inLanguage": "ja", "dateModified": "2026-11-09",
+    { "@type": "TechArticle", "headline": "Let an agent guide you by pointing at the screen", "inLanguage": "en", "dateModified": "2026-11-09",
       "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/agent.png",
-      "description": "MCP の how_to・list_leaks・screen を使い、エージェントが専用カーソルで画面を指して説明する。" },
+      "description": "Using the MCP tools how_to, list_leaks and screen, an agent explains by pointing at the screen with its agent cursor." },
     { "@type": "BreadcrumbList", "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "tadori", "item": "https://meta-taro.github.io/tadori/" },
-      { "@type": "ListItem", "position": 2, "name": "事例", "item": "https://meta-taro.github.io/tadori/cases/" },
-      { "@type": "ListItem", "position": 3, "name": "エージェントに案内させる" } ] }
+      { "@type": "ListItem", "position": 2, "name": "Use cases", "item": "https://meta-taro.github.io/tadori/cases/" },
+      { "@type": "ListItem", "position": 3, "name": "Let an agent guide you" } ] }
   ]
 }
 </script>
 </head>
 <body>
-<a class="skip" href="#main">本文へ</a>
+<a class="skip" href="#main">Skip to content</a>
 <header class="site-head">
   <div class="wrap">
     <a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="28" height="28">tadori</a>
-    <nav class="site-nav" aria-label="サイト">
-      <a href="../#features">できること</a><a href="./" aria-current="page">事例</a><a href="../download.html">ダウンロード</a><a href="../roadmap.html">ロードマップ</a><a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="../#features">Features</a><a href="./" aria-current="page">Use cases</a><a href="../download.html">Download</a><a href="../roadmap.html">Roadmap</a><a class="lang" href="../ja/cases/agent-guide.html" hreflang="ja" lang="ja">日本語</a><a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
     </nav>
   </div>
 </header>
@@ -44,45 +48,45 @@
 <main id="main">
   <section class="hero">
     <div class="wrap article">
-      <p class="crumbs"><a href="../">tadori</a> / <a href="./">事例</a></p>
-      <h1>エージェントに、画面を指しながら案内させる</h1>
-      <p class="lede">新しくチームに入った人に「いまリリースを止めているのは何か」を説明する場面です。
-        AI エージェントに tadori を読ませ、画面の中の<strong>専用カーソル</strong>で指しながら説明させます。人のマウスは使いません。</p>
+      <p class="crumbs"><a href="../">tadori</a> / <a href="./">Use cases</a></p>
+      <h1>Let an agent guide you by pointing at the screen</h1>
+      <p class="lede">Someone new has joined the team, and you need to explain what is blocking the release right now.
+        Let an AI agent read tadori and explain while pointing with its own <strong>agent cursor</strong> inside the app. It never uses your mouse.</p>
       <dl class="summary-box">
-        <dt>使う MCP の道具</dt><dd>how_to（使い方）・get_remaining（残課題）・list_leaks（漏れと直し方）・trace（辿る）・screen（専用カーソル）</dd>
-        <dt>エージェントがしないこと</dt><dd>承認・「漏れを埋めた」の判定・試験の合否の記入・push</dd>
+        <dt>MCP tools used</dt><dd>how_to (usage guide), get_remaining (remaining work), list_leaks (gaps and fixes), trace, screen (agent cursor)</dd>
+        <dt>What the agent doesn't do</dt><dd>Approve, decide that a gap is fixed, record test results, push</dd>
       </dl>
     </div>
   </section>
 
   <section style="padding-top:0">
     <div class="wrap article">
-      <h2>1. エージェントをつなぐ</h2>
-      <p>Claude Code なら、次の 1 行で案件のフォルダを指して tadori の MCP をつなげます。</p>
-<pre><code>claude mcp add tadori -- node &lt;tadori&gt;/packages/cli/dist/main.js mcp &lt;案件のフォルダ&gt;</code></pre>
-      <p>つないだエージェントは、まず <code>how_to</code> の <code>start</code>（はじめ方）と <code>agent-rules</code>（守ること）を読みます。守ることには「承認しない」「漏れを埋めたと判定しない」「割合や点数を作らない」が書いてあります。</p>
+      <h2>1. Connect the agent</h2>
+      <p>With Claude Code, one line connects tadori's MCP server, pointed at your project folder.</p>
+<pre><code>claude mcp add tadori -- node &lt;tadori&gt;/packages/cli/dist/main.js mcp &lt;project-folder&gt;</code></pre>
+      <p>A connected agent first reads <code>start</code> (getting started) and <code>agent-rules</code> (the rules it must follow) from <code>how_to</code>. The rules include “don't approve”, “don't decide that a gap is fixed” and “don't make up percentages or scores”.</p>
 
-      <h2>2. 残課題と漏れを読む</h2>
-      <p><code>get_remaining</code> は工程ごとの漏れと承認待ち、<code>list_leaks</code> は漏れごとの担当と直し方を返します。画面と同じ判定の核を通すので、画面と結果が食い違いません。</p>
-<pre><code>- R4·DD-2.3 DD-2.3「貸出上限の判定」の改修後の対応が空
-  担当：設計担当　直し方：ledger/items.tsv の DD-2.3 の行（6 行目）の「改修後の対応」列に書く</code></pre>
+      <h2>2. Read the remaining work and the gaps</h2>
+      <p><code>get_remaining</code> returns the gaps and pending approvals per phase, and <code>list_leaks</code> returns the owner and fix for each gap. They go through the same checking core as the screen, so the results never disagree with it.</p>
+<pre><code>- R4·DD-2.3 DD-2.3 “Lending limit check” has an empty post-change impact
+  Owner: Designer   Fix: write in the “post-change impact” column of the DD-2.3 row (line 6) of ledger/items.tsv</code></pre>
 
-      <h2>3. 画面を指して説明する</h2>
-      <p><code>screen</code> に「指す・押す・打つ・移る・話す」を渡すと、人が開いている tadori の画面で、エージェントの専用カーソルが動きます。黄色の枠と一言で「ここです」と示してから、ページの中で押します。</p>
+      <h2>3. Explain by pointing at the screen</h2>
+      <p>Pass “point, click, type, go, say” to <code>screen</code> and the agent cursor moves on the tadori screen the person has open. It first shows “here” with a yellow frame and a short note, then clicks within the page.</p>
 <pre><code>{ "action": "go", "hash": "#phases-dd" }
-{ "action": "point", "target": "R4·DD-2.3", "message": "この漏れは設計担当が直します" }</code></pre>
-      <figure class="shot"><img src="../img/agent.png" width="1426" height="893" loading="lazy" alt="エージェントの専用カーソルが漏れ R4·DD-2.3 を黄色の枠で囲み「この漏れは設計担当が直します」と札を出している"></figure>
-      <p>人は自分のマウスで、同じ画面を同時に触っていて構いません。押せるのは人が画面で押せるものだけで、判定や保存の近道はありません。フォルダ選びのような OS の画面は操作できないので、そこは人に頼みます。</p>
+{ "action": "point", "target": "R4·DD-2.3", "message": "The designer will fix this gap" }</code></pre>
+      <figure class="shot"><img src="../img/agent.png" width="1426" height="893" loading="lazy" alt="The agent cursor frames gap R4·DD-2.3 in yellow, with a note saying the designer will fix this gap"></figure>
+      <p>You can keep using the same screen with your own mouse at the same time. The agent can only click what a person could click on screen — there are no shortcuts to checks or saving. It can't operate OS dialogs such as folder pickers, so it asks a person to do those.</p>
 
-      <h2>4. 言葉をそろえる</h2>
-      <p><code>glossary</code> で、画面で使う言葉（漏れ・完了判定・残課題・タスク・つながりを辿る）の意味と、画面のどこに出るかを引けます。エージェントが人に説明するときは、この言葉を使います。</p>
-      <figure class="shot"><img src="../img/glossary.png" width="1426" height="893" loading="lazy" alt="用語の画面。漏れ・完了判定・残課題などの言葉と、その意味、画面のどこに出るかが並んでいる"></figure>
+      <h2>4. Use the same words</h2>
+      <p><code>glossary</code> looks up the words used on screen (gap, phase gate, remaining work, task, trace), what they mean, and where they appear. When the agent explains things to people, it uses these words.</p>
+      <figure class="shot"><img src="../img/glossary.png" width="1426" height="893" loading="lazy" alt="The glossary screen. Words such as gap, phase gate and remaining work are listed with their meaning and where they appear on screen"></figure>
 
       <div class="next-cases">
-        <h2>ほかの事例</h2>
+        <h2>More use cases</h2>
         <div class="cards">
-          <a class="card" href="design-change-gap.html"><div class="card-body"><h3>改修後の対応の書き漏れ</h3><p>空の列を行番号まで出す。</p><span class="more">読む →</span></div></a>
-          <a class="card" href="trace-from-finding.html"><div class="card-body"><h3>受入の指摘から辿る</h3><p>実施の記録が無い試験ケースに行き着く。</p><span class="more">読む →</span></div></a>
+          <a class="card" href="design-change-gap.html"><div class="card-body"><h3>Missing post-change impact</h3><p>Empty columns, down to the line number.</p><span class="more">Read →</span></div></a>
+          <a class="card" href="trace-from-finding.html"><div class="card-body"><h3>Trace from an acceptance finding</h3><p>Arrive at a test case with no test run.</p><span class="more">Read →</span></div></a>
         </div>
       </div>
     </div>
@@ -91,8 +95,8 @@
 
 <footer class="site-foot">
   <div class="wrap">
-    <div><a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>仕様から試験・指摘までのつながりと、リリースまでの残課題。MIT ライセンス。</p></div>
-    <nav aria-label="フッター"><a href="./">事例</a><a href="../download.html">ダウンロード</a><a href="../releases.html">過去の版</a><a href="../roadmap.html">ロードマップ</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
+    <div><a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>The links from spec to tests and findings, and the remaining work to release. MIT license.</p></div>
+    <nav aria-label="Footer"><a href="./">Use cases</a><a href="../download.html">Download</a><a href="../releases.html">Past versions</a><a href="../roadmap.html">Roadmap</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
   </div>
 </footer>
 </body>

@@ -5,3 +5,6 @@
 for (const key of Object.keys(process.env)) {
   if (key.startsWith('GIT_')) delete process.env[key]
 }
+
+// これまでのテストは日本語の文を確かめている。言語を日本語に固定する（英語の文は、言語を指定したテストで見る）
+process.env.TADORI_LANG = 'ja'

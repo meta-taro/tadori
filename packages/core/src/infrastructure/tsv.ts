@@ -1,3 +1,5 @@
+import { t } from '../i18n.js'
+
 /**
  * TSV を読む。1 行目（# と空行を除く）が見出し。
  * セルの値は加工しない（前後の空白も残す）。空のセルは空文字のまま。
@@ -53,7 +55,7 @@ const cleanCell = (value: string) => value.replace(/[\t\r\n]+/g, ' ')
  */
 export function upsertRow(text: string, keyColumn: string, key: string, values: Readonly<Record<string, string>>): string {
   const { bom, newline, lines, headerIndex, header: original } = splitTsv(text)
-  if (headerIndex < 0) throw new Error('TSV にヘッダの行がありません')
+  if (headerIndex < 0) throw new Error(t('The TSV has no header row'))
   const header = [...original, ...Object.keys({ [keyColumn]: key, ...values }).filter(c => !original.includes(c))]
   const keyAt = header.indexOf(keyColumn)
   const widen = (cells: string[]) => Array.from({ length: header.length }, (_, c) => cells[c] ?? '')

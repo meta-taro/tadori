@@ -1,41 +1,42 @@
 # tadori の用語集。画面の「用語」と README から読む（ここが正本。言葉を足すときはここに 1 行足す）
 # group は画面での見出し。並びはこのファイルの順
-group	term	meaning	where	example
-全体	プロダクト	作っているもの（アプリやサービス）。プロジェクトの束	プロダクト	備品貸出アプリ
-全体	プロジェクト	プロダクトに対する 1 回の開発・改修。案件のリポジトリ 1 つに当たる	プロダクト・左上	改修 v1.2
-全体	工程	プロジェクトを区切る段階。並びは企業・プロダクトごとに違い、設定で決める	残課題・設定	基本設計 → 詳細設計 → 実装 → 結合テスト → リリース
-全体	完了判定	工程の出口（カードの終わり）で「この工程は終わったと言ってよいか」を確かめること。その工程のルールの漏れが無く、人の承認が済んでいれば通過	リリースまでの残課題（ひし形）	詳細設計の完了判定
-全体	残課題	完了判定を止めているもの。漏れと承認待ちをまとめた呼び名	リリースまでの残課題	詳細設計の残課題：漏れ 2 件
-WBS	タスク	WBS の 1 行。予定の期間・ステータスを持つ。ID は W から始める	プロダクト（WBS）	W-03 基本設計レビュー
-WBS	ステータス	タスクの状態。名前・並び・色の意味は設定で決める	プロダクト・設定	未着手 / 進行中 / レビュー中 / 保留 / 完了
-WBS	遅れ	終わっていないタスクが、終了予定を過ぎた日数。青から赤へ色が変わる（14 日で真っ赤）	プロダクト・残課題	16 日遅れ
-WBS	いまのタスク	工程の中で、終わっていないタスクのうち最初のもの	リリースまでの残課題（タイムライン）	W-03 レビュー中
-WBS	前の完了判定より前に着手	前の工程の完了判定を通る前に、次の工程のタスクが動いていること。帯に斜線で出す	リリースまでの残課題（タイムライン）	基本設計の完了判定より前に着手
-台帳	台帳	設計書の章・節、commit、観点、試験ケース、試験の記録、指摘などを 1 行ずつ ID で並べたもの（ledger/items.tsv）	つながりを辿る
-台帳	種類	台帳の行が何かを表す短い記号。読み方は案件ごとに .tadori/kinds.tsv で決める（列の読み方は columns.tsv）	つながりを辿る・ルールセット	BD=基本設計の章 / DD=詳細設計の節 / TC=試験ケース / F=指摘
-台帳	つながり	台帳の行どうしの線。refs 列に「元にしている行の ID」を書いて作る。推測ではつながない	つながりを辿る	DD-3.2 の refs に BD-3
-台帳	上流・下流	ある行が元にしている行が上流、その行を元にしている行が下流	つながりを辿る	BD-3 は DD-3.2 の上流
-台帳	正本	情報の元になっている記録。tadori は正本を増やさず、読んでつなぐだけ		設計書は md-business の文書、試験の記録は git-qa の run.json
-ルール	ルールセット	工程ごとのルールの束（.tadori/rulesets/*.tsv）。エージェントは作業の前に読んで守る	ルールセット	詳細設計のルールセット
-ルール	ルール	「何と何がつながっていなければならないか」の決まり 1 つ。判定は 4 種類	ルールセット	R9 試験ケースに実施の記録がある
-ルール	下流が出ている（covered）	その種類のどの行にも、それを元にした下流の行があるか	ルールセット	観点ごとに試験ケースがある
-ルール	上流を元にしている（refers）	その種類のどの行も、上流の行を元にしているか	ルールセット	どの基本設計の章にも WBS のタスクが紐づいている
-ルール	列が埋まっている（filled）	その種類のどの行にも、決めた列の値が入っているか	ルールセット	詳細設計の節に改修後の対応が書いてある
-ルール	人の承認（approval）	人が確かめて承認するルール。tadori は承認の記録を見るだけで、代わりに承認しない	ルールセット・残課題	基本設計書をレビュー担当が承認した
-ルール	担当	ルールごとの担当の役割（ルールセットの owner 列）。漏れを直す人・承認する人。名前は案件ごとに自由に書く	残課題（担当で絞れる）・ルールセット	設計担当 / 開発担当 / 検証担当 / レビュー担当 / PM / リーダー
-結果	直し方	漏れ・承認待ちごとに、どのファイルの、どの行の、何を直せば消えるかを 1 行で出す。画面・tadori check・MCP で同じ文	残課題	ledger/items.tsv の DD-2.3 の行の「改修後の対応」列に書く
-結果	漏れ	ルールが求めるつながりが無い箇所。開くたびに台帳から数え直すので、直せば消える（直した記録は git の commit に残る）。tadori が出すのは漏れの一覧まで	残課題・つながりを辿る	TC-07 に試験の記録が無い
-結果	承認待ち	人の承認のルールで、まだ承認されていないもの（差し戻しも含む）	残課題	R2 差し戻し
-結果	対応済み	前のチェック（チェックの記録）では漏れだったが、いまは漏れの無い行。記録を読むだけで、tadori が「直った」と判定するのではない	つながりを辿る	10/30 のチェックでは漏れ（R4）→ いまは満たす
-結果	漏れなし	いまも前のチェックでも漏れの無い行。✓ で出す	つながりを辿る
-結果	漏れの呼び名	漏れを「ルール ID·行 ID」で呼ぶ。ルールと行が変わらない限り同じ呼び名なので、会議で「R4 の DD-2.3」と言える	リリースまでの残課題・つながりを辿る	R4·DD-2.3
-全体	ID で開く	画面の上の欄に ID（タスク・台帳の行・漏れの呼び名）を打つと、その行を開く。「/」キーで欄へ。URL（#browse-W-03・#trace-DD-2.3）でも開ける	画面の上	W-03
-結果	切れ目	つながりを辿ったとき、ルールが求める先の行が無い所。赤で出す	つながりを辿る	試験の記録が無い
-結果	チェックの記録	ルールをチェックするたびに足す記録。いつ・誰が・何を・どこで・なぜ・どうやって・結果（5W1H）	チェックの記録	.tadori/checks.tsv
-結果	確かにそこが漏れていた	漏れや切れ目を見た人が、それを認める言葉。認めるのは人で、tadori やエージェントは代わりに言わない	つながりを辿る
-試験	観点	何を確かめるかの切り口	つながりを辿る	V-03 延滞の境界（当日・翌日）
-試験	試験ケース	観点を確かめる具体的な手順と期待結果	つながりを辿る	TC-07 延滞中の人は借りられない
-試験	試験の記録	試験ケースを実施した証跡（git-qa の run.json）	つながりを辿る	RUN-0012
-試験	指摘	レビューや試験・受入で見つかった問題	つながりを辿る	F-02 延滞中なのに借りられた
-試験	再発防止	指摘から作った、次に同じことを起こさないための決まり	つながりを辿る
-案件による	突合	2 つの成果物（例：基本設計書と詳細設計書）に食い違いがないかを確かめること。突合のある案件だけ、タスクとして WBS に足し、完了判定で待たせたいときは人の承認のルールも足す	プロダクト・ルールセット	W-12 基本設計と詳細設計の突合
+# term・meaning・where・example は日本語、term_en・meaning_en・where_en・example_en は英語（group は日本語の見出しのまま）
+group	term	meaning	where	example	term_en	meaning_en	where_en	example_en
+全体	プロダクト	作っているもの（アプリやサービス）。プロジェクトの束	プロダクト	備品貸出アプリ	Product	What you are building (an app or a service). A bundle of projects	Product	Equipment lending app
+全体	プロジェクト	プロダクトに対する 1 回の開発・改修。案件のリポジトリ 1 つに当たる	プロダクト・左上	改修 v1.2	Project	One round of development or modification of a product. Corresponds to one project repository	Product, top left	Update v1.2
+全体	工程	プロジェクトを区切る段階。並びは企業・プロダクトごとに違い、設定で決める	残課題・設定	基本設計 → 詳細設計 → 実装 → 結合テスト → リリース	Phase	A stage that divides a project. The order differs by company and product, and is set in the settings	Remaining work, Settings	Basic design → Detailed design → Implementation → Integration test → Release
+全体	完了判定	工程の出口（カードの終わり）で「この工程は終わったと言ってよいか」を確かめること。その工程のルールの漏れが無く、人の承認が済んでいれば通過	リリースまでの残課題（ひし形）	詳細設計の完了判定	Phase gate	The check at the exit of a phase (the end of its card) of whether the phase can be called finished. It passes when the phase's rules have no gaps and people's approvals are done	Remaining work until release (diamond)	Phase gate of detailed design
+全体	残課題	完了判定を止めているもの。漏れと承認待ちをまとめた呼び名	リリースまでの残課題	詳細設計の残課題：漏れ 2 件	Remaining work	What is holding a phase gate back. A collective name for gaps and pending approvals	Remaining work until release	Remaining work of detailed design: 2 gaps
+WBS	タスク	WBS の 1 行。予定の期間・ステータスを持つ。ID は W から始める	プロダクト（WBS）	W-03 基本設計レビュー	Task	One line of the WBS. It has a planned period and a status. Its ID starts with W	Product (WBS)	W-03 Basic design review
+WBS	ステータス	タスクの状態。名前・並び・色の意味は設定で決める	プロダクト・設定	未着手 / 進行中 / レビュー中 / 保留 / 完了	Status	The state of a task. Names, order and the meaning of colors are set in the settings	Product, Settings	Not started / In progress / In review / On hold / Done
+WBS	遅れ	終わっていないタスクが、終了予定を過ぎた日数。青から赤へ色が変わる（14 日で真っ赤）	プロダクト・残課題	16 日遅れ	Delay	The number of days an unfinished task is past its planned end. The color shifts from blue to red (fully red at 14 days)	Product, Remaining work	16 days late
+WBS	いまのタスク	工程の中で、終わっていないタスクのうち最初のもの	リリースまでの残課題（タイムライン）	W-03 レビュー中	Current task	The first unfinished task in a phase	Remaining work until release (timeline)	W-03 In review
+WBS	前の完了判定より前に着手	前の工程の完了判定を通る前に、次の工程のタスクが動いていること。帯に斜線で出す	リリースまでの残課題（タイムライン）	基本設計の完了判定より前に着手	Started before the previous phase gate	A task in the next phase is moving before the previous phase has passed its phase gate. Shown as hatching on the bar	Remaining work until release (timeline)	Started before the basic design phase gate
+台帳	台帳	設計書の章・節、commit、観点、試験ケース、試験の記録、指摘などを 1 行ずつ ID で並べたもの（ledger/items.tsv）	つながりを辿る		Ledger	Design document chapters and sections, commits, viewpoints, test cases, test records, findings and so on, listed one per line by ID (ledger/items.tsv)	Trace	
+台帳	種類	台帳の行が何かを表す短い記号。読み方は案件ごとに .tadori/kinds.tsv で決める（列の読み方は columns.tsv）	つながりを辿る・ルールセット	BD=基本設計の章 / DD=詳細設計の節 / TC=試験ケース / F=指摘	Kind	A short code for what a ledger row is. How to read it is set per project in .tadori/kinds.tsv (columns are read via columns.tsv)	Trace, Ruleset	BD = basic design chapter / DD = detailed design section / TC = test case / F = finding
+台帳	つながり	台帳の行どうしの線。refs 列に「元にしている行の ID」を書いて作る。推測ではつながない	つながりを辿る	DD-3.2 の refs に BD-3	Link	A line between ledger rows. Made by writing the IDs of the rows it is based on in the refs column. Never linked by guessing	Trace	BD-3 in the refs of DD-3.2
+台帳	上流・下流	ある行が元にしている行が上流、その行を元にしている行が下流	つながりを辿る	BD-3 は DD-3.2 の上流	Upstream / downstream	The rows a row is based on are upstream; the rows based on it are downstream	Trace	BD-3 is upstream of DD-3.2
+台帳	正本	情報の元になっている記録。tadori は正本を増やさず、読んでつなぐだけ		設計書は md-business の文書、試験の記録は git-qa の run.json	Source of truth	The record the information comes from. tadori never adds another source of truth; it only reads and links them		Design documents are md-business documents; test records are git-qa run.json
+ルール	ルールセット	工程ごとのルールの束（.tadori/rulesets/*.tsv）。エージェントは作業の前に読んで守る	ルールセット	詳細設計のルールセット	Ruleset	The bundle of rules for each phase (.tadori/rulesets/*.tsv). Agents read and follow it before working	Ruleset	Ruleset of detailed design
+ルール	ルール	「何と何がつながっていなければならないか」の決まり 1 つ。判定は 4 種類	ルールセット	R9 試験ケースに実施の記録がある	Rule	One statement of what must be linked to what. There are 4 kinds of check	Ruleset	R9 Each test case has a run record
+ルール	下流が出ている（covered）	その種類のどの行にも、それを元にした下流の行があるか	ルールセット	観点ごとに試験ケースがある	Has downstream (covered)	Whether every row of that kind has a downstream row based on it	Ruleset	Every viewpoint has a test case
+ルール	上流を元にしている（refers）	その種類のどの行も、上流の行を元にしているか	ルールセット	どの基本設計の章にも WBS のタスクが紐づいている	Based on upstream (refers)	Whether every row of that kind is based on an upstream row	Ruleset	Every basic design chapter is tied to a WBS task
+ルール	列が埋まっている（filled）	その種類のどの行にも、決めた列の値が入っているか	ルールセット	詳細設計の節に改修後の対応が書いてある	Column filled (filled)	Whether every row of that kind has a value in the chosen column	Ruleset	Each detailed design section states what changes after the update
+ルール	人の承認（approval）	人が確かめて承認するルール。tadori は承認の記録を見るだけで、代わりに承認しない	ルールセット・残課題	基本設計書をレビュー担当が承認した	Approval by a person (approval)	A rule that a person checks and approves. tadori only reads the approval record and never approves on anyone's behalf	Ruleset, Remaining work	The review owner approved the basic design document
+ルール	担当	ルールごとの担当の役割（ルールセットの owner 列）。漏れを直す人・承認する人。名前は案件ごとに自由に書く	残課題（担当で絞れる）・ルールセット	設計担当 / 開発担当 / 検証担当 / レビュー担当 / PM / リーダー	Owner	The role responsible for each rule (the owner column of the ruleset): who fixes the gap or who approves. Names are free to write per project	Remaining work (can filter by owner), Ruleset	Design owner / Development owner / Verification owner / Review owner / PM / Lead
+結果	直し方	漏れ・承認待ちごとに、どのファイルの、どの行の、何を直せば消えるかを 1 行で出す。画面・tadori check・MCP で同じ文	残課題	ledger/items.tsv の DD-2.3 の行の「改修後の対応」列に書く	How to fix	For each gap or pending approval, one line saying which line of which file to fix, and what, so it goes away. The same sentence on the screen, in tadori check and in MCP	Remaining work	Write in the "change after update" column of the DD-2.3 row in ledger/items.tsv
+結果	漏れ	ルールが求めるつながりが無い箇所。開くたびに台帳から数え直すので、直せば消える（直した記録は git の commit に残る）。tadori が出すのは漏れの一覧まで	残課題・つながりを辿る	TC-07 に試験の記録が無い	Gap	A place where a link the rules require is missing. It is recounted from the ledger every time you open it, so it goes away once fixed (the fix is recorded in a git commit). tadori only goes as far as listing the gaps	Remaining work, Trace	TC-07 has no test record
+結果	承認待ち	人の承認のルールで、まだ承認されていないもの（差し戻しも含む）	残課題	R2 差し戻し	Pending approval	An approval rule that has not been approved yet (including ones sent back)	Remaining work	R2 sent back
+結果	対応済み	前のチェック（チェックの記録）では漏れだったが、いまは漏れの無い行。記録を読むだけで、tadori が「直った」と判定するのではない	つながりを辿る	10/30 のチェックでは漏れ（R4）→ いまは満たす	Addressed	A row that was a gap in the previous check (check log) but has no gap now. tadori only reads the record; it does not decide that it is fixed	Trace	Gap in the 10/30 check (R4) → satisfied now
+結果	漏れなし	いまも前のチェックでも漏れの無い行。✓ で出す	つながりを辿る		No gap	A row with no gap now and in the previous check. Shown with ✓	Trace	
+結果	漏れの呼び名	漏れを「ルール ID·行 ID」で呼ぶ。ルールと行が変わらない限り同じ呼び名なので、会議で「R4 の DD-2.3」と言える	リリースまでの残課題・つながりを辿る	R4·DD-2.3	Gap name	A gap is called "rule ID·row ID". The name stays the same as long as the rule and the row do not change, so you can say "DD-2.3 of R4" in a meeting	Remaining work until release, Trace	R4·DD-2.3
+全体	ID で開く	画面の上の欄に ID（タスク・台帳の行・漏れの呼び名）を打つと、その行を開く。「/」キーで欄へ。URL（#browse-W-03・#trace-DD-2.3）でも開ける	画面の上	W-03	Open by ID	Type an ID (a task, a ledger row or a gap name) in the field at the top of the screen to open that row. The "/" key moves to the field. It also opens by URL (#browse-W-03, #trace-DD-2.3)	Top of the screen	W-03
+結果	切れ目	つながりを辿ったとき、ルールが求める先の行が無い所。赤で出す	つながりを辿る	試験の記録が無い	Break	When tracing, a place where the row a rule requires is missing. Shown in red	Trace	No test record
+結果	チェックの記録	ルールをチェックするたびに足す記録。いつ・誰が・何を・どこで・なぜ・どうやって・結果（5W1H）	チェックの記録	.tadori/checks.tsv	Check log	A record added every time the rules are checked: when, who, what, where, why, how and the result (5W1H)	Check log	.tadori/checks.tsv
+結果	確かにそこが漏れていた	漏れや切れ目を見た人が、それを認める言葉。認めるのは人で、tadori やエージェントは代わりに言わない	つながりを辿る		Yes, that really was a gap	What a person who saw a gap or a break says to confirm it. Only a person confirms it; tadori and agents never say it on their behalf	Trace	
+試験	観点	何を確かめるかの切り口	つながりを辿る	V-03 延滞の境界（当日・翌日）	Viewpoint	The angle of what to verify	Trace	V-03 Overdue boundary (same day, next day)
+試験	試験ケース	観点を確かめる具体的な手順と期待結果	つながりを辿る	TC-07 延滞中の人は借りられない	Test case	Concrete steps and expected results that verify a viewpoint	Trace	TC-07 A person with an overdue item cannot borrow
+試験	試験の記録	試験ケースを実施した証跡（git-qa の run.json）	つながりを辿る	RUN-0012	Test record	Evidence that a test case was run (git-qa run.json)	Trace	RUN-0012
+試験	指摘	レビューや試験・受入で見つかった問題	つながりを辿る	F-02 延滞中なのに借りられた	Finding	A problem found in a review, a test or acceptance	Trace	F-02 Could borrow while overdue
+試験	再発防止	指摘から作った、次に同じことを起こさないための決まり	つながりを辿る		Recurrence prevention	A rule made from a finding so the same thing does not happen again	Trace	
+案件による	突合	2 つの成果物（例：基本設計書と詳細設計書）に食い違いがないかを確かめること。突合のある案件だけ、タスクとして WBS に足し、完了判定で待たせたいときは人の承認のルールも足す	プロダクト・ルールセット	W-12 基本設計と詳細設計の突合	Cross-check	Checking that two deliverables (e.g. the basic design and the detailed design documents) do not contradict each other. Only for projects that do cross-checks: add it to the WBS as a task, and to make the phase gate wait for it, add an approval rule too	Product, Ruleset	W-12 Cross-check of basic design and detailed design

@@ -1,4 +1,5 @@
 // 画面で共通に使う小さな道具。データはすべて /api から読み、ここでは控えを持たない
+import { lang, t } from './i18n.js'
 
 /** @type {Readonly<Record<string, string>>} */
 const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
@@ -19,14 +20,14 @@ export const ICON_INFO = '<svg viewBox="0 0 16 16" fill="none" stroke="currentCo
  * @type {Readonly<Record<string, string>>}
  */
 export const KIND_LABELS = {
-  W: 'WBS のタスク', BD: '基本設計の章', DD: '詳細設計の節', Q: '未確認の項目', COMMIT: 'ソースの変更',
-  V: '観点', TC: '試験ケース', RUN: '試験の記録', F: '指摘', R: '再発防止',
+  W: 'WBS task', BD: 'basic design section', DD: 'detailed design section', Q: 'open question', COMMIT: 'source change',
+  V: 'test viewpoint', TC: 'test case', RUN: 'test run', F: 'finding', R: 'preventive action',
 }
 // 案件の設定（.tadori/kinds.tsv）の読み方を先に使い、無ければ既定の読み方、それも無ければ記号のまま
 /** @type {Readonly<Record<string, string>>} */
 let projectKinds = {}
 export const setKindLabels = (/** @type {Readonly<Record<string, string>> | undefined} */ kinds) => { projectKinds = kinds ?? {} }
-export const kindLabel = (/** @type {string} */ kind) => projectKinds[kind] ?? KIND_LABELS[kind] ?? kind
+export const kindLabel = (/** @type {string} */ kind) => projectKinds[kind] ?? (KIND_LABELS[kind] ? t(KIND_LABELS[kind] ?? '') : kind)
 
 /** 遅れの色：予定どおりは青、終了予定を過ぎた日数に応じて赤へ（14 日で真っ赤） */
 const RED_AT_LATE_DAYS = 14
@@ -107,14 +108,15 @@ export async function api(path, { method = 'GET', body } = {}) {
   const isWrite = method !== 'GET'
   const res = await fetch(path, {
     method,
-    headers: isWrite ? { 'content-type': 'application/json', 'x-tadori': '1' } : {},
+    // 画面で選んでいる言語を添える（サーバーの誤りの文などを、その言語で返してもらう）
+    headers: isWrite ? { 'content-type': 'application/json', 'x-tadori': '1', 'x-tadori-lang': lang } : { 'x-tadori-lang': lang },
     ...(isWrite ? { body: JSON.stringify(body ?? {}) } : {}),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     // server の中で落ちたときは、手元に残した記録の場所も出す（どこで何が落ちたかを後から確かめられるように）
-    const where = data.logFile ? `（記録：${data.logFile}）` : ''
-    throw new ApiError(`${data.error ?? `サーバーが ${res.status} を返しました`}${where}`, data.problems ?? [])
+    const where = data.logFile ? t(' (log: {file})', { file: data.logFile }) : ''
+    throw new ApiError(`${data.error ?? t('The server returned {status}', { status: res.status })}${where}`, data.problems ?? [])
   }
   return data
 }
@@ -135,16 +137,16 @@ export function toast(message, durationMs = 4000) {
 
 /**
  * 保存の結果（commit したか、しなかった理由）を知らせる
- * @param {string} what
+ * @param {string} what 保存したもの（いまの言語に訳した名前。例：t('the rule')）
  * @param {import('./types').CommitResult} commit
  */
 export function toastCommit(what, commit) {
-  if (!commit.committed) { toast(`${what}を保存しました。${commit.reason}`); return }
+  if (!commit.committed) { toast(t('Saved {what}. {reason}', { what, reason: commit.reason ?? '' })); return }
   // tadori は push しない。push していない commit があることを知らせ、中身を確かめてから人が push する
   const pushNote = commit.unpushed === null || commit.unpushed === undefined
-    ? 'push 先が設定されていないので、push するときは設定してください'
-    : `push していない commit が ${commit.unpushed} 件あります。中身を確かめてから push してください`
-  toast(`${what}を保存して commit しました。${pushNote}`, 7000)
+    ? t('No push destination is set. Set one before you push.')
+    : t('{n} commits are not pushed yet. Check them before you push.', { n: commit.unpushed })
+  toast(t('Saved and committed {what}. {note}', { what, note: pushNote }), 7000)
 }
 
 /** http・https の URL だけを通す（正本の表に書かれた URL でも、画面で押せるのはこれだけ） */
@@ -161,11 +163,11 @@ export function originHtml(origin) {
   const url = webUrl(origin.url)
   const name = `${esc(origin.name)}${origin.place ? ` ${esc(origin.place)}` : ''}`
   const link = url
-    ? `<a class="origin-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="正本を開く：${esc(url)}">${name} ↗</a>`
+    ? `<a class="origin-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open the source of truth: {url}', { url }))}">${name} ↗</a>`
     : `<span>${name}</span>`
-  const when = origin.syncedAt ? `反映 ${esc(origin.syncedAt.slice(5, 16).replace('-', '/'))}${origin.syncedBy ? ` ${esc(origin.syncedBy)}` : ''}` : '反映の記録なし'
-  const title = origin.stale ? '正本から手元へ反映してから日が経っています（または記録がありません）。正本と見比べてください' : '正本から手元へ反映した日時'
-  return `<span class="origin ${origin.stale ? 'stale' : ''}">${link}<span class="origin-sync" title="${title}">${when}${origin.stale ? ' · 古い' : ''}</span></span>`
+  const when = origin.syncedAt ? `${esc(t('Synced'))} ${esc(origin.syncedAt.slice(5, 16).replace('-', '/'))}${origin.syncedBy ? ` ${esc(origin.syncedBy)}` : ''}` : esc(t('Never synced'))
+  const title = origin.stale ? t('It has been a while since this row was synced from its source of truth (or there is no record). Compare it with the source.') : t('When this row was synced from its source of truth')
+  return `<span class="origin ${origin.stale ? 'stale' : ''}">${link}<span class="origin-sync" title="${esc(title)}">${when}${origin.stale ? ` · ${esc(t('stale'))}` : ''}</span></span>`
 }
 
 /**
@@ -188,7 +190,7 @@ export function nthIndexOf(text, word, nth = 1) {
  */
 export function byId(id) {
   const el = document.getElementById(id)
-  if (!el) throw new Error(`画面に #${id} がありません`)
+  if (!el) throw new Error(`#${id} is missing from the page`)
   return el
 }
 
@@ -200,6 +202,7 @@ export function byId(id) {
  */
 export function within(root, selector) {
   const el = root.querySelector(selector)
-  if (!(el instanceof HTMLElement)) throw new Error(`画面に ${selector} がありません`)
+  if (!(el instanceof HTMLElement)) throw new Error(`${selector} is missing from the page`)
   return el
 }
+

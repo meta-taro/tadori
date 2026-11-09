@@ -1,7 +1,8 @@
 // エージェントの専用カーソル。人のマウスは使わない（奪わない）。
 // エージェントは tadori のサーバーへ指示を送り（POST /api/agent）、画面はこのカーソルを動かして、ページの中で指す・押す・打つ。
 // 人は自分のマウスで、同じ画面を同時に触っていてよい。
-import { messageOf, setWho } from './util.js'
+import { t } from './i18n.js'
+import { esc, messageOf, setWho } from './util.js'
 
 const MOVE_MS = 650 // カーソルが動く時間（style.css の .agent-cursor の transition と合わせる）
 const HIGHLIGHT_MS = 2600
@@ -24,7 +25,7 @@ function ensureCursor() {
   cursor.className = 'agent-cursor'
   cursor.hidden = true
   cursor.setAttribute('aria-hidden', 'true')
-  cursor.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 2l15 9.5-6.6 1.4L16 20.5l-3 1.3-3.5-7.6L4 18z" fill="#5e6ad2" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg><span class="tag">エージェント</span>'
+  cursor.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 2l15 9.5-6.6 1.4L16 20.5l-3 1.3-3.5-7.6L4 18z" fill="#5e6ad2" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg><span class="tag">' + esc(t('Agent')) + '</span>'
   document.body.appendChild(cursor)
   const box = document.createElement('div')
   box.className = 'hl-box'
@@ -114,7 +115,7 @@ function hideLater() {
   idleTimer = setTimeout(() => {
     if (!cursorEl) return
     cursorEl.hidden = true
-    setTag(cursorEl, 'エージェント')
+    setTag(cursorEl, t('Agent'))
   }, CURSOR_IDLE_MS)
 }
 
@@ -138,7 +139,7 @@ async function run(command, toast) {
     setWho(command.value)
     window.dispatchEvent(new Event('tadori-who'))
     const field = document.getElementById('who-filter')
-    if (field) await moveTo(field, command.value ? `${command.value} の分だけにしました` : '全員に戻しました')
+    if (field) await moveTo(field, command.value ? t('Showing only {who}', { who: command.value }) : t('Showing everyone again'))
     hideLater()
     return undefined
   }
@@ -148,7 +149,7 @@ async function run(command, toast) {
   }
   const el = findTarget(command.target)
   if (!el) {
-    toast(`エージェント：「${command.target}」が画面に見つかりませんでした`)
+    toast(t('Agent: could not find "{target}" on the screen', { target: command.target }))
     return undefined
   }
   await moveTo(el, command.message)
@@ -180,6 +181,6 @@ export function initAgent(events, toast) {
     /** @type {import('./types').AgentAction} */
     let command
     try { command = JSON.parse(e.data) } catch { return } // 壊れた知らせは捨てる（サーバーが検査済みの形しか流さない）
-    queue = queue.then(() => run(command, toast)).catch(error => toast(`エージェントの操作に失敗しました：${messageOf(error)}`))
+    queue = queue.then(() => run(command, toast)).catch(error => toast(t('The agent action failed: {error}', { error: messageOf(error) })))
   })
 }

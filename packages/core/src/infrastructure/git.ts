@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process'
 import { realpath } from 'node:fs/promises'
 import { promisify } from 'node:util'
+import { t } from '../i18n.js'
 
 const run = promisify(execFile)
 
@@ -54,16 +55,16 @@ async function isOwnRepository(dir: string): Promise<boolean> {
  */
 export async function commitFiles(dir: string, files: readonly string[], message: string): Promise<CommitResult> {
   if (!(await isOwnRepository(dir))) {
-    return { committed: false, reason: 'この案件のフォルダは、それ自身の git リポジトリではないので commit していません' }
+    return { committed: false, reason: t('Not committed: this project folder is not its own git repository') }
   }
   try {
     await run('git', ['add', '--', ...files], { cwd: dir })
     const { stdout } = await run('git', ['diff', '--cached', '--name-only', '--', ...files], { cwd: dir })
-    if (!stdout.trim()) return { committed: false, reason: '変更が無いので commit していません' }
+    if (!stdout.trim()) return { committed: false, reason: t('Not committed: there are no changes') }
     await run('git', ['commit', '-q', '-m', `chore(tadori): ${message}`, '--', ...files], { cwd: dir })
     return { committed: true, unpushed: await unpushedCount(dir) }
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message.split('\n').at(0) : String(error)
-    return { committed: false, reason: `git commit に失敗しました：${detail}` }
+    return { committed: false, reason: t('git commit failed: {detail}', { detail: String(detail) }) }
   }
 }

@@ -49,7 +49,7 @@ Update check: *Help › Version and updates* and, once a day at startup, tadori 
 
 ## Language
 
-English and Japanese. English support for the app's screens and messages is being added step by step: the app will follow your OS / browser language and can be switched from the *View* menu. Everything you write in a project (phase names, column names, the daily-report wording, …) is kept exactly as you wrote it.
+English and Japanese. The app's screens, messages, the CLI, the MCP tools and the usage guide follow your OS / browser language (Japanese → Japanese, anything else → English). Switch it from the desktop app's *View* menu, with `--lang en|ja` on the CLI, or with `TADORI_LANG=en|ja`. Everything you write in a project (phase names, column names, the daily-report wording, …) is kept exactly as you wrote it.
 
 ## Commands
 

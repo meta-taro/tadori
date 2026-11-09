@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,28 +12,28 @@
   <aside>
     <div class="brand"><span class="brand-mark" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 10 L6 2 L10 10" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>tadori</div>
     <div class="project">
-      <div class="label">プロジェクト</div>
-      <div class="name" id="side-project">読み込み中…</div>
+      <div class="label" data-i18n="Project">Project</div>
+      <div class="name" id="side-project" data-i18n="Loading…">Loading…</div>
     </div>
-    <nav aria-label="画面">
-      <a href="#browse" data-view="browse"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6"/><path d="M6 2.8v10.4M10 2.8v10.4"/></svg>プロダクト</a>
-      <a href="#phases" data-view="phases"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="3" cy="8" r="1.8"/><circle cx="8" cy="8" r="1.8"/><circle cx="13" cy="8" r="1.8"/><path d="M4.8 8h1.4M9.8 8h1.4"/></svg>リリースまでの残課題</a>
-      <a href="#daily" data-view="daily"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="5" r="2.4"/><path d="M3.2 13.6c.6-2.6 2.5-4 4.8-4s4.2 1.4 4.8 4"/></svg>1 日の進行</a>
-      <a href="#rules" data-view="rules"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h10M3 8h10M3 12h6"/></svg>ルールセット</a>
-      <a href="#log" data-view="log"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 4.5l1.2 1.2L6 3.4M2.5 10.5l1.2 1.2L6 9.4M8 4.6h5.5M8 10.6h5.5"/></svg>チェックの記録</a>
-      <a href="#trace" data-view="trace"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5" cy="3.5" r="1.6"/><circle cx="5" cy="12.5" r="1.6"/><path d="M5 5.1v5.8M5 8h4.5"/><circle cx="11" cy="8" r="1.6"/></svg>つながりを辿る</a>
+    <nav aria-label="Screens" data-i18n-label="Screens">
+      <a href="#browse" data-view="browse"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6"/><path d="M6 2.8v10.4M10 2.8v10.4"/></svg><span data-i18n="Product">Product</span></a>
+      <a href="#phases" data-view="phases"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="3" cy="8" r="1.8"/><circle cx="8" cy="8" r="1.8"/><circle cx="13" cy="8" r="1.8"/><path d="M4.8 8h1.4M9.8 8h1.4"/></svg><span data-i18n="Remaining work to release">Remaining work to release</span></a>
+      <a href="#daily" data-view="daily"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="5" r="2.4"/><path d="M3.2 13.6c.6-2.6 2.5-4 4.8-4s4.2 1.4 4.8 4"/></svg><span data-i18n="Daily progress">Daily progress</span></a>
+      <a href="#rules" data-view="rules"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h10M3 8h10M3 12h6"/></svg><span data-i18n="Rulesets">Rulesets</span></a>
+      <a href="#log" data-view="log"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 4.5l1.2 1.2L6 3.4M2.5 10.5l1.2 1.2L6 9.4M8 4.6h5.5M8 10.6h5.5"/></svg><span data-i18n="Check log">Check log</span></a>
+      <a href="#trace" data-view="trace"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5" cy="3.5" r="1.6"/><circle cx="5" cy="12.5" r="1.6"/><path d="M5 5.1v5.8M5 8h4.5"/><circle cx="11" cy="8" r="1.6"/></svg><span data-i18n="Trace">Trace</span></a>
     </nav>
-    <nav aria-label="設定" class="nav-bottom">
-      <a href="#settings" data-view="settings"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4 5 11M11 5l1.4-1.4"/></svg>設定</a>
-      <a href="#glossary" data-view="glossary"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2.5h7.5a2 2 0 0 1 2 2V14H5a2 2 0 0 1-2-2z"/><path d="M3 12a2 2 0 0 1 2-2h7.5"/></svg>用語</a>
+    <nav aria-label="Settings" data-i18n-label="Settings" class="nav-bottom">
+      <a href="#settings" data-view="settings"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4 5 11M11 5l1.4-1.4"/></svg><span data-i18n="Settings">Settings</span></a>
+      <a href="#glossary" data-view="glossary"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2.5h7.5a2 2 0 0 1 2 2V14H5a2 2 0 0 1-2-2z"/><path d="M3 12a2 2 0 0 1 2-2h7.5"/></svg><span data-i18n="Glossary">Glossary</span></a>
     </nav>
   </aside>
   <div class="main">
     <div class="topbar">
       <div class="crumb"><span id="crumb-project"></span> / <b id="crumb-view"></b></div>
-      <form class="jump" id="jump" role="search"><input id="jump-input" type="search" placeholder="探す（ID・名前・漏れ・ルール・用語）　/" aria-label="探す" autocomplete="off"></form>
-      <label class="who-filter" title="どの画面でも、この人の分だけに絞る（役割で書かれた漏れは、人の表の役割で見分ける）">担当
-        <select id="who-filter" class="inline-select" aria-label="担当で絞る"><option value="">全員</option></select></label>
+      <form class="jump" id="jump" role="search"><input id="jump-input" type="search" placeholder="Search (ID, name, gap, rule, term)  /" data-i18n-placeholder="Search (ID, name, gap, rule, term)  /" aria-label="Search" data-i18n-label="Search" autocomplete="off"></form>
+      <label class="who-filter" title="Show only this person's items on every screen (gaps written with a role are matched by the roles in the people table)" data-i18n-title="Show only this person's items on every screen (gaps written with a role are matched by the roles in the people table)"><span data-i18n="Owner">Owner</span>
+        <select id="who-filter" class="inline-select" aria-label="Filter by owner" data-i18n-label="Filter by owner"><option value="" data-i18n="Everyone">Everyone</option></select></label>
       <div class="chips" id="summary"></div>
     </div>
     <main id="view"></main>

@@ -1,6 +1,7 @@
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { Phase, StatusDef } from '../domain/model.js'
+import { t } from '../i18n.js'
 import { commitFiles, type CommitResult } from './git.js'
 import { PATHS } from './repository.js'
 import { parseTsv, toTsv, updateCell } from './tsv.js'
@@ -40,7 +41,7 @@ export async function saveTaskStatus(dir: string, taskId: string, status: string
   const next = updateCell(await readFile(path, 'utf8'), 'id', taskId, 'status', status)
   if (next === null) return null
   await writeFile(path, next, 'utf8')
-  return commitFiles(dir, [PATHS.wbs], `${taskId} のステータスを ${status} に変更`)
+  return commitFiles(dir, [PATHS.wbs], t('Change the status of {id} to {status}', { id: taskId, status }))
 }
 
 /** チェックの記録（5W1H）の 1 行 */
@@ -80,7 +81,7 @@ export async function readChecks(dir: string): Promise<CheckRecord[]> {
  * 見出しの列が決まった形と違うときは、列をずらして書かないよう止める。
  */
 export async function appendChecks(dir: string, records: readonly CheckRecord[], message: string): Promise<CommitResult> {
-  if (!records.length) return { committed: false, reason: '足す行が無いので commit していません' }
+  if (!records.length) return { committed: false, reason: t('Not committed: there are no rows to add') }
   const body = toTsv(CHECK_COLUMNS, records.map(r => ({ ...r })))
   const text = await readChecksText(dir)
   const header = text === null ? [] : parseTsv(text).header
@@ -90,7 +91,7 @@ export async function appendChecks(dir: string, records: readonly CheckRecord[],
     await writeText(dir, PATHS.checks, `${text ?? ''}${text && !text.endsWith('\n') ? '\n' : ''}${body}`)
   } else {
     if (header.join('\t') !== CHECK_COLUMNS.join('\t')) {
-      throw new Error(`${PATHS.checks} の見出しが決まった形（${CHECK_COLUMNS.join(' ')}）と違うので、追記しません`)
+      throw new Error(t('Not appending: the header of {file} differs from the expected one ({columns})', { file: PATHS.checks, columns: CHECK_COLUMNS.join(' ') }))
     }
     const separator = text.endsWith('\n') ? '' : '\n' // 末尾に改行が無いと、前の行にくっついてしまう
     await appendFile(join(dir, PATHS.checks), separator + body.split('\n').slice(1).join('\n'), 'utf8')

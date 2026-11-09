@@ -1,13 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://meta-taro.github.io/tadori/</loc><lastmod>2026-11-09</lastmod><priority>1.0</priority></url>
-  <url><loc>https://meta-taro.github.io/tadori/download.html</loc><lastmod>2026-11-09</lastmod><priority>0.9</priority></url>
-  <url><loc>https://meta-taro.github.io/tadori/cases/</loc><lastmod>2026-11-09</lastmod><priority>0.8</priority></url>
-  <url><loc>https://meta-taro.github.io/tadori/cases/design-change-gap.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority></url>
-  <url><loc>https://meta-taro.github.io/tadori/cases/trace-from-finding.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority></url>
-  <url><loc>https://meta-taro.github.io/tadori/cases/early-start.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority></url>
-  <url><loc>https://meta-taro.github.io/tadori/cases/agent-guide.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority></url>
-  <url><loc>https://meta-taro.github.io/tadori/cases/daily-with-agent.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority></url>
-  <url><loc>https://meta-taro.github.io/tadori/roadmap.html</loc><lastmod>2026-11-09</lastmod><priority>0.6</priority></url>
-  <url><loc>https://meta-taro.github.io/tadori/releases.html</loc><lastmod>2026-11-09</lastmod><priority>0.5</priority></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url><loc>https://meta-taro.github.io/tadori/</loc><lastmod>2026-11-09</lastmod><priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/</loc><lastmod>2026-11-09</lastmod><priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/download.html</loc><lastmod>2026-11-09</lastmod><priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/download.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/download.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/download.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/download.html</loc><lastmod>2026-11-09</lastmod><priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/download.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/download.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/download.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/cases/</loc><lastmod>2026-11-09</lastmod><priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/cases/</loc><lastmod>2026-11-09</lastmod><priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/cases/design-change-gap.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/design-change-gap.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/design-change-gap.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/design-change-gap.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/cases/design-change-gap.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/design-change-gap.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/design-change-gap.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/design-change-gap.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/cases/trace-from-finding.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/trace-from-finding.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/trace-from-finding.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/trace-from-finding.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/cases/trace-from-finding.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/trace-from-finding.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/trace-from-finding.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/trace-from-finding.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/cases/early-start.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/early-start.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/early-start.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/early-start.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/cases/early-start.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/early-start.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/early-start.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/early-start.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/cases/agent-guide.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/agent-guide.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/agent-guide.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/agent-guide.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/cases/agent-guide.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/agent-guide.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/agent-guide.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/agent-guide.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/cases/daily-with-agent.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/daily-with-agent.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/daily-with-agent.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/daily-with-agent.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/cases/daily-with-agent.html</loc><lastmod>2026-11-09</lastmod><priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/daily-with-agent.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/daily-with-agent.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/daily-with-agent.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/roadmap.html</loc><lastmod>2026-11-09</lastmod><priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/roadmap.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/roadmap.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/roadmap.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/roadmap.html</loc><lastmod>2026-11-09</lastmod><priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/roadmap.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/roadmap.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/roadmap.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/releases.html</loc><lastmod>2026-11-09</lastmod><priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/releases.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/releases.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/releases.html"/></url>
+  <url><loc>https://meta-taro.github.io/tadori/ja/releases.html</loc><lastmod>2026-11-09</lastmod><priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/releases.html"/><xhtml:link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/releases.html"/><xhtml:link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/releases.html"/></url>
 </urlset>

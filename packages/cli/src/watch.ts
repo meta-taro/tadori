@@ -1,5 +1,7 @@
 import { watch, type FSWatcher } from 'node:fs'
 import type { ServerResponse } from 'node:http'
+import './i18n.js'
+import { t } from '@tadori/core'
 
 /** 保存は短い間に何度も起きる（書き込み・名前の付け替え）ので、まとめて 1 回だけ知らせる */
 const DEBOUNCE_MS = 300
@@ -42,7 +44,7 @@ export function watchProject(dir: string): ChangeNotifier {
     })
   } catch (error: unknown) {
     // 見張れない環境でも、画面に戻ったときの読み直しは働くので止めない。理由は残す
-    process.stderr.write(`tadori serve: 案件のフォルダを見張れません（画面に戻ったときだけ読み直します）：${error instanceof Error ? error.message : String(error)}\n`)
+    process.stderr.write(`${t('tadori serve: cannot watch the project folder (the screen reloads only when you return to it): {reason}', { reason: error instanceof Error ? error.message : String(error) })}\n`)
   }
 
   const heartbeat = setInterval(() => { for (const res of clients) res.write(': keep-alive\n\n') }, HEARTBEAT_MS)

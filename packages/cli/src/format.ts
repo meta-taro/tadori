@@ -1,34 +1,41 @@
-import type { Origin, TraceResult } from '@tadori/core'
+import './i18n.js'
+import { t, type Origin, type TraceResult } from '@tadori/core'
+import { listJoin } from './i18n.js'
 import type { ProjectState } from './state.js'
+
+/** 担当と直し方の 1 行（例：担当：設計担当　直し方：…）。check と MCP の list_leaks が同じものを使う */
+export function fixText(fix: string, owner?: string): string {
+  return `${owner ? t('Owner: {owner}  ', { owner }) : ''}${t('How to fix: {fix}', { fix })}`
+}
 
 /** tadori check の出力。工程ごとの漏れと承認待ちの中身だけを出す（割合や点数は出さない） */
 export function formatCheck(state: ProjectState): string {
-  const lines = [`${state.project.name}  （${state.today} 時点）`, '']
+  const lines = [t('{name}  (as of {today})', { name: state.project.name, today: state.today }), '']
   for (const gate of state.gates) {
     const counts = [
-      gate.leaks.length ? `漏れ ${gate.leaks.length}` : '',
-      gate.pendingApprovals.length ? `承認待ち ${gate.pendingApprovals.length}（${gate.pendingApprovals.map(r => r.id).join('・')}）` : '',
-    ].filter(Boolean).join(' / ') || (gate.rules.length ? '残りなし' : 'ルールなし（まだ判定していません）')
-    const early = gate.startedBefore ? `  ← ${gate.startedBefore.name}の完了判定より前に着手` : ''
-    const late = gate.maxLateDays ? `  ${gate.maxLateDays} 日遅れ` : ''
+      gate.leaks.length ? t('Gaps {count}', { count: gate.leaks.length }) : '',
+      gate.pendingApprovals.length ? t('Pending approval {count} ({ids})', { count: gate.pendingApprovals.length, ids: listJoin(gate.pendingApprovals.map(r => r.id)) }) : '',
+    ].filter(Boolean).join(' / ') || (gate.rules.length ? t('Nothing left') : t('No rules (not checked yet)'))
+    const early = gate.startedBefore ? t('  ← started before the {phase} phase gate', { phase: gate.startedBefore.name }) : ''
+    const late = gate.maxLateDays ? t('  {days} days late', { days: gate.maxLateDays }) : ''
     lines.push(`■ ${gate.phase.name}  ${counts}${late}${early}`)
     for (const leak of gate.leaks) {
       lines.push(`    ${leak.rule} ${leak.message}`)
       // 誰が・どこをどう直せば消えるか
-      if (leak.fix) lines.push(`        ${leak.owner ? `担当：${leak.owner}　` : ''}直し方：${leak.fix}`)
+      if (leak.fix) lines.push(`        ${fixText(leak.fix, leak.owner)}`)
     }
-    for (const p of gate.pending) lines.push(`    ${p.rule.id} 承認待ち（${p.status}）　直し方：${p.fix}`)
+    for (const p of gate.pending) lines.push(`    ${t('{rule} pending approval ({status})  How to fix: {fix}', { rule: p.rule.id, status: p.status, fix: p.fix })}`)
   }
   // 同じ漏れかは、ルールと行の ID で見る（画面向けにリンクを足した写しと、工程が持つ元の漏れは別の物なので、物の同一では比べない）
   const keyOf = (l: { rule: string; itemId: string }) => `${l.rule}\t${l.itemId}`
   const inPhase = new Set(state.gates.flatMap(g => g.leaks.map(keyOf)))
   const dangling = state.leaks.filter(l => !inPhase.has(keyOf(l)))
   if (dangling.length) {
-    lines.push('■ どの工程にも属さない漏れ')
+    lines.push(t('■ Gaps not in any phase'))
     for (const leak of dangling) lines.push(`    ${leak.rule} ${leak.message}`)
   }
   const waits = state.gates.reduce((n, g) => n + g.pendingApprovals.length, 0)
-  lines.push('', `漏れ ${state.leaks.length} 件 / 承認待ち ${waits} 件`)
+  lines.push('', t('Gaps: {leaks} / Pending approval: {waits}', { leaks: state.leaks.length, waits }))
   return lines.join('\n')
 }
 
@@ -38,15 +45,15 @@ export function formatTrace(result: TraceResult, origins: Readonly<Record<string
   const shownAsGap = new Set(result.steps.flatMap(s => (s.type === 'missing' ? [`${s.rule}:${s.after ?? s.before}`] : [])))
   return result.steps.flatMap(step => {
     if (step.type === 'missing') {
-      const where = step.before ? '上流の' : ''
-      return [`    ✗ ${where}${step.kind} が無い（${step.rule}）  ← ここで切れている`]
+      const vars = { kind: step.kind, rule: step.rule }
+      return [step.before ? t('    ✗ No upstream {kind} ({rule})  ← broken here', vars) : t('    ✗ No {kind} ({rule})  ← broken here', vars)]
     }
     const other = step.leaks.filter(l => !shownAsGap.has(`${l.rule}:${l.itemId}`))
     const mark = step.item.id === result.start.id ? '▶' : other.length ? '✗' : '・'
     return [
-      `${mark} ${step.item.kind.padEnd(6)} ${step.item.id}  ${step.item.title}  （${step.item.source}）`,
+      t('{mark} {kind} {id}  {title}  ({source})', { mark, kind: step.item.kind.padEnd(6), id: step.item.id, title: step.item.title, source: step.item.source }),
       // つながり以外の漏れ（列が空など）は、その行の下に出す
-      ...other.map(l => `      漏れ ${l.rule}：${l.message}`),
+      ...other.map(l => t('      Gap {rule}: {message}', { rule: l.rule, message: l.message })),
       ...(origins[step.item.id] ? [`      ${originText(origins[step.item.id] as Origin)}`] : []),
     ]
   }).join('\n')
@@ -55,6 +62,6 @@ export function formatTrace(result: TraceResult, origins: Readonly<Record<string
 /** 正本の URL と、正本から手元へ反映した記録を 1 行で（例：正本：https://…（反映 2026-11-08 09:00 検証担当）） */
 export function originText(origin: Origin): string {
   const who = origin.syncedBy ? ` ${origin.syncedBy}` : ''
-  const synced = origin.syncedAt ? `反映 ${origin.syncedAt}${who}` : '反映の記録なし'
-  return `正本：${origin.url}（${synced}${origin.stale ? '・古い' : ''}）`
+  const synced = origin.syncedAt ? t('synced {at}{who}', { at: origin.syncedAt, who }) : t('no sync record')
+  return t('Source of truth: {url} ({synced}{stale})', { url: origin.url, synced, stale: origin.stale ? t(', stale') : '' })
 }

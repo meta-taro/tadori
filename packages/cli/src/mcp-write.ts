@@ -1,8 +1,9 @@
 import { readFile, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import './i18n.js'
 import {
-  loadProject, removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveSettings, saveTask,
+  loadProject, removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveSettings, saveTask, t,
   validatePhases, WriteRefused, type CommitResult,
 } from '@tadori/core'
 import { runCheck } from './check-log.js'
@@ -35,15 +36,16 @@ export interface WriteContext {
 const reply = (body: string, isError = false): ToolResult => ({ content: [{ type: 'text', text: body }], ...(isError ? { isError } : {}) })
 const str = (v: unknown) => (typeof v === 'string' ? v : undefined)
 const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : undefined)
-const committed = (c: CommitResult) => (c.committed ? 'commit しました（push は人）' : (c.reason ?? ''))
+/** commit したかの一言（MCP の書く道具が共通で使う） */
+export const committed = (c: { committed: boolean; reason?: string }): string => (c.committed ? t('Committed (a person pushes)') : (c.reason ?? ''))
 
 /** 案件を確かめてから書く。断られたら理由を isError で返す */
 async function writing(ctx: WriteContext, done: string, work: (dir: string) => Promise<CommitResult>): Promise<ToolResult> {
-  if (!ctx.projectDir) return reply('開く案件が決まっていません。open_project で開いてください', true)
+  if (!ctx.projectDir) return reply(t('No project is open. Open one with open_project'), true)
   try {
-    return reply(`${done}。${committed(await work(ctx.projectDir))}`)
+    return reply(t('{done}. {commit}', { done, commit: committed(await work(ctx.projectDir)) }))
   } catch (error: unknown) {
-    if (error instanceof WriteRefused) return reply(`書きませんでした（ファイルは元のまま）：\n- ${error.problems.join('\n- ')}`, true)
+    if (error instanceof WriteRefused) return reply(t('Nothing was written (the files are unchanged):\n- {problems}', { problems: error.problems.join('\n- ') }), true)
     throw error
   }
 }
@@ -65,10 +67,23 @@ function syncedBy(who: unknown): { synced?: { at: string; who: string } } {
   return name ? { synced: { at: localMinute(), who: name } } : {}
 }
 
+// 道具の説明はエージェントが読む。tools/list のたびに組み立て、そのときの言語の文にする
 const S = (description: string) => ({ type: 'string', description })
-const ITEM = { id: S('行の ID'), kind: S('種類（例：DD・TC・RUN）'), title: S('名前'), source: S('原本の場所（中身は写さない）'), refs: { type: 'array', items: { type: 'string' }, description: '元にしている行の ID（台帳にあるものだけ）' }, fields: { type: 'object', additionalProperties: { type: 'string' }, description: 'そのほかの列（例：{"change":"変わる"}）' } }
-const TASK = { id: S('作業の ID（W で始める）'), phase: S('工程の ID'), name: S('作業の名前'), start: S('開始日 YYYY-MM-DD'), end: S('終了日 YYYY-MM-DD'), status: S('状態（設定にあるもの）'), owner: S('担当（2 人以上は「A・B」）'), issue: S('課題の ID（台帳の行）') }
-const RULE = { id: S('ルールの ID'), phase: S('工程の ID'), kind: S('covered・refers・filled・approval'), from: S('元の種類'), to: S('先の種類'), field: S('filled で見る列'), only: S('対象を絞る「列名=値」'), owner: S('直す担当（役割）'), label: S('人が読む一文') }
+const itemSchema = () => ({
+  id: S(t('Row ID')), kind: S(t('Kind (e.g. DD, TC, RUN)')), title: S(t('Name')), source: S(t('Where the original lives (do not copy its contents)')),
+  refs: { type: 'array', items: { type: 'string' }, description: t('IDs of the rows this one is based on (only IDs in the ledger)') },
+  fields: { type: 'object', additionalProperties: { type: 'string' }, description: t('Other columns (e.g. {"change":"yes"})') },
+})
+const TASK_KEYS = ['id', 'phase', 'name', 'start', 'end', 'status', 'owner', 'issue'] as const
+const taskSchema = () => ({
+  id: S(t('Task ID (starts with W)')), phase: S(t('Phase ID')), name: S(t('Task name')), start: S(t('Start date YYYY-MM-DD')), end: S(t('End date YYYY-MM-DD')),
+  status: S(t('Status (one from the settings)')), owner: S(t('Owner (for two or more, "A・B")')), issue: S(t('Issue ID (a ledger row)')),
+})
+const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'owner', 'label'] as const
+const ruleSchema = () => ({
+  id: S(t('Rule ID')), phase: S(t('Phase ID')), kind: S(t('covered, refers, filled or approval')), from: S(t('Source kind')), to: S(t('Target kind')),
+  field: S(t('Column that filled checks')), only: S(t('Narrow the targets with "column=value"')), owner: S(t('Owner who fixes it (a role)')), label: S(t('One sentence for people to read')),
+})
 
 /** デスクトップアプリが覚えている最近の案件（OS ごとの置き場所） */
 function recentFile(): string {
@@ -88,103 +103,106 @@ async function isProject(dir: string): Promise<boolean> {
 }
 
 export function writeTools(ctx: WriteContext): Tool[] {
+  const ITEM = itemSchema()
+  const TASK = taskSchema()
+  const RULE = ruleSchema()
   return [
     {
       name: 'item_add',
-      description: '台帳（ledger/items.tsv）に行を足す。refs は台帳にある ID だけ（推測でつながない）。source には原本の場所だけを書き、中身を写さない。',
+      description: t('Add a row to the ledger (ledger/items.tsv). refs may only use IDs already in the ledger (never link by guessing). Put only the location of the original in source; do not copy its contents.'),
       inputSchema: { type: 'object', properties: ITEM, required: ['id', 'kind', 'title'], additionalProperties: false },
-      run: async a => writing(ctx, `台帳に ${str(a.id)} を足しました`, dir => saveItem(dir, { ...pick(a, ['id', 'kind', 'title', 'source']), id: str(a.id) ?? '', ...(list(a.refs) ? { refs: list(a.refs) as string[] } : {}), ...(a.fields ? { fields: a.fields as Record<string, string> } : {}) }, { create: true })),
+      run: async a => writing(ctx, t('Added {id} to the ledger', { id: str(a.id) ?? '' }), dir => saveItem(dir, { ...pick(a, ['id', 'kind', 'title', 'source']), id: str(a.id) ?? '', ...(list(a.refs) ? { refs: list(a.refs) as string[] } : {}), ...(a.fields ? { fields: a.fields as Record<string, string> } : {}) }, { create: true })),
     },
     {
       name: 'item_update',
-      description: '台帳の行を直す（渡した項目だけ変わる）。正本を見て手元へ反映したなら synced_by に自分（または頼んだ人）の名前を付ける。日時は道具が入れる。',
-      inputSchema: { type: 'object', properties: { ...ITEM, synced_by: S('正本から反映した人（付けると synced_at・synced_by 列に、いまの日時とこの名前を書く）') }, required: ['id'], additionalProperties: false },
-      run: async a => writing(ctx, `台帳の ${str(a.id)} を直しました`, dir => saveItem(dir, { ...pick(a, ['kind', 'title', 'source']), id: str(a.id) ?? '', ...(list(a.refs) ? { refs: list(a.refs) as string[] } : {}), ...(a.fields ? { fields: a.fields as Record<string, string> } : {}) }, { create: false, ...syncedBy(a.synced_by) })),
+      description: t('Edit a ledger row (only the fields you pass change). If you checked the source of truth and brought the row up to date, set synced_by to your name (or the name of the person who asked). The tool fills in the date and time.'),
+      inputSchema: { type: 'object', properties: { ...ITEM, synced_by: S(t('Who synced it from the source of truth (writes the current date and time and this name into the synced_at and synced_by columns)')) }, required: ['id'], additionalProperties: false },
+      run: async a => writing(ctx, t('Edited {id} in the ledger', { id: str(a.id) ?? '' }), dir => saveItem(dir, { ...pick(a, ['kind', 'title', 'source']), id: str(a.id) ?? '', ...(list(a.refs) ? { refs: list(a.refs) as string[] } : {}), ...(a.fields ? { fields: a.fields as Record<string, string> } : {}) }, { create: false, ...syncedBy(a.synced_by) })),
     },
     {
       name: 'item_synced',
-      description: '台帳の行を正本と見比べて、手元がいまの正本どおりだと確かめたときに呼ぶ（中身は変えない）。synced_at にいまの日時、synced_by に who を書く。画面では、反映が古い行が目立つ。',
-      inputSchema: { type: 'object', properties: { id: ITEM.id, who: S('確かめた人（エージェントなら自分の名前）') }, required: ['id', 'who'], additionalProperties: false },
+      description: t('Call this after comparing a ledger row with the source of truth and confirming the local row matches it (the contents do not change). Writes the current date and time into synced_at and who into synced_by. On the screen, rows with an old sync stand out.'),
+      inputSchema: { type: 'object', properties: { id: ITEM.id, who: S(t('Who checked it (an agent uses its own name)')) }, required: ['id', 'who'], additionalProperties: false },
       run: async a => {
-        if (!str(a.who)?.trim()) return reply('who（確かめた人）が要ります', true)
-        return writing(ctx, `台帳の ${str(a.id)} に、正本から反映した記録を付けました`, dir => saveItem(dir, { id: str(a.id) ?? '' }, { create: false, ...syncedBy(a.who) }))
+        if (!str(a.who)?.trim()) return reply(t('who (the person who checked) is required'), true)
+        return writing(ctx, t('Recorded that {id} in the ledger was synced from the source of truth', { id: str(a.id) ?? '' }), dir => saveItem(dir, { id: str(a.id) ?? '' }, { create: false, ...syncedBy(a.who) }))
       },
     },
     {
       name: 'item_remove',
-      description: '台帳の行を消す。ほかの行の refs や WBS の issue が指している行は消さない（つながりが切れるため）。',
+      description: t("Remove a ledger row. A row that other rows' refs or a WBS issue point to is not removed (that would break the links)."),
       inputSchema: { type: 'object', properties: { id: ITEM.id }, required: ['id'], additionalProperties: false },
-      run: async a => writing(ctx, `台帳の ${str(a.id)} を消しました`, dir => removeItem(dir, str(a.id) ?? '')),
+      run: async a => writing(ctx, t('Removed {id} from the ledger', { id: str(a.id) ?? '' }), dir => removeItem(dir, str(a.id) ?? '')),
     },
     {
       name: 'task_add',
-      description: 'WBS（ledger/wbs.tsv）に作業を足す。',
+      description: t('Add a task to the WBS (ledger/wbs.tsv).'),
       inputSchema: { type: 'object', properties: TASK, required: ['id', 'phase', 'name', 'status'], additionalProperties: false },
-      run: async a => writing(ctx, `WBS に ${str(a.id)} を足しました`, dir => saveTask(dir, { ...pick(a, Object.keys(TASK)), id: str(a.id) ?? '' }, { create: true })),
+      run: async a => writing(ctx, t('Added {id} to the WBS', { id: str(a.id) ?? '' }), dir => saveTask(dir, { ...pick(a, TASK_KEYS), id: str(a.id) ?? '' }, { create: true })),
     },
     {
       name: 'task_update',
-      description: 'WBS の作業の状態・日付・担当・課題などを直す（その場で commit するので、1 日の進行の「状態が変わった日」がずれない）。',
+      description: t('Edit the status, dates, owner, issue and so on of a WBS task (it commits right away, so the "day the status changed" in daily progress stays correct).'),
       inputSchema: { type: 'object', properties: TASK, required: ['id'], additionalProperties: false },
-      run: async a => writing(ctx, `WBS の ${str(a.id)} を直しました`, dir => saveTask(dir, { ...pick(a, Object.keys(TASK)), id: str(a.id) ?? '' }, { create: false })),
+      run: async a => writing(ctx, t('Edited {id} in the WBS', { id: str(a.id) ?? '' }), dir => saveTask(dir, { ...pick(a, TASK_KEYS), id: str(a.id) ?? '' }, { create: false })),
     },
     {
       name: 'rule_add',
-      description: 'ルールを足す（.tadori/rulesets/rules.tsv）。判定は covered・refers・filled・approval。',
+      description: t('Add a rule (.tadori/rulesets/rules.tsv). The check kinds are covered, refers, filled and approval.'),
       inputSchema: { type: 'object', properties: RULE, required: ['id', 'phase', 'kind', 'label'], additionalProperties: false },
-      run: async a => writing(ctx, `ルール ${str(a.id)} を足しました`, dir => saveRule(dir, { ...pick(a, Object.keys(RULE)), id: str(a.id) ?? '' }, { create: true })),
+      run: async a => writing(ctx, t('Added rule {id}', { id: str(a.id) ?? '' }), dir => saveRule(dir, { ...pick(a, RULE_KEYS), id: str(a.id) ?? '' }, { create: true })),
     },
     {
       name: 'rule_update',
-      description: 'ルールを直す（書かれているファイルのまま）。',
+      description: t('Edit a rule (in the file it is written in).'),
       inputSchema: { type: 'object', properties: RULE, required: ['id'], additionalProperties: false },
-      run: async a => writing(ctx, `ルール ${str(a.id)} を直しました`, dir => saveRule(dir, { ...pick(a, Object.keys(RULE)), id: str(a.id) ?? '' }, { create: false })),
+      run: async a => writing(ctx, t('Edited rule {id}', { id: str(a.id) ?? '' }), dir => saveRule(dir, { ...pick(a, RULE_KEYS), id: str(a.id) ?? '' }, { create: false })),
     },
     {
       name: 'rule_remove',
-      description: 'ルールを消す。',
+      description: t('Remove a rule.'),
       inputSchema: { type: 'object', properties: { id: RULE.id }, required: ['id'], additionalProperties: false },
-      run: async a => writing(ctx, `ルール ${str(a.id)} を消しました`, dir => removeRule(dir, str(a.id) ?? '')),
+      run: async a => writing(ctx, t('Removed rule {id}', { id: str(a.id) ?? '' }), dir => removeRule(dir, str(a.id) ?? '')),
     },
     {
       name: 'member_set',
-      description: '人の表（.tadori/members.tsv）に人を足すか直す。roles はその人の役割（ルールの担当と同じ書き方）、git は git の作者名。',
-      inputSchema: { type: 'object', properties: { name: S('人の名前（WBS の担当と同じ書き方）'), git: S('git の作者名'), roles: { type: 'array', items: { type: 'string' } } }, required: ['name'], additionalProperties: false },
-      run: async a => writing(ctx, `人の表の ${str(a.name)} を直しました`, dir => saveMember(dir, { name: str(a.name) ?? '', ...(str(a.git) !== undefined ? { git: str(a.git) as string } : {}), ...(list(a.roles) ? { roles: list(a.roles) as string[] } : {}) })),
+      description: t("Add or edit a person in the people table (.tadori/members.tsv). roles are the person's roles (written the same way as a rule's owner); git is their git author name."),
+      inputSchema: { type: 'object', properties: { name: S(t("The person's name (written the same way as a WBS owner)")), git: S(t('git author name')), roles: { type: 'array', items: { type: 'string' } } }, required: ['name'], additionalProperties: false },
+      run: async a => writing(ctx, t('Edited {name} in the people table', { name: str(a.name) ?? '' }), dir => saveMember(dir, { name: str(a.name) ?? '', ...(str(a.git) !== undefined ? { git: str(a.git) as string } : {}), ...(list(a.roles) ? { roles: list(a.roles) as string[] } : {}) })),
     },
     {
       name: 'member_remove',
-      description: '人の表から人を消す。',
-      inputSchema: { type: 'object', properties: { name: S('人の名前') }, required: ['name'], additionalProperties: false },
-      run: async a => writing(ctx, `人の表から ${str(a.name)} を消しました`, dir => removeMember(dir, str(a.name) ?? '')),
+      description: t('Remove a person from the people table.'),
+      inputSchema: { type: 'object', properties: { name: S(t("The person's name")) }, required: ['name'], additionalProperties: false },
+      run: async a => writing(ctx, t('Removed {name} from the people table', { name: str(a.name) ?? '' }), dir => removeMember(dir, str(a.name) ?? '')),
     },
     {
       name: 'phase_set',
-      description: '工程を足すか、名前・順番を直す（.tadori/phases.tsv）。使われている工程は消せない。',
-      inputSchema: { type: 'object', properties: { id: S('工程の ID（英数字）'), name: S('工程の名前'), order: { type: 'number', description: '並び（小さいほど前）' } }, required: ['id', 'name'], additionalProperties: false },
-      run: async a => writing(ctx, `工程 ${str(a.id)} を直しました`, async dir => {
+      description: t('Add a phase, or edit its name or order (.tadori/phases.tsv). A phase that is in use cannot be removed.'),
+      inputSchema: { type: 'object', properties: { id: S(t('Phase ID (letters and digits)')), name: S(t('Phase name')), order: { type: 'number', description: t('Order (smaller comes first)') } }, required: ['id', 'name'], additionalProperties: false },
+      run: async a => writing(ctx, t('Edited phase {id}', { id: str(a.id) ?? '' }), async dir => {
         const project = await loadProject(dir)
         const id = str(a.id) ?? ''
         const order = typeof a.order === 'number' ? a.order : (project.phases.find(p => p.id === id)?.order ?? Math.max(0, ...project.phases.map(p => p.order)) + 1)
         const next = [...project.phases.filter(p => p.id !== id), { id, name: str(a.name) ?? '', order }].sort((x, y) => x.order - y.order)
         const problems = validatePhases(project, next)
         if (problems.length) throw new WriteRefused(problems)
-        return saveSettings(dir, { phases: next }, `工程 ${id} を直した`)
+        return saveSettings(dir, { phases: next }, t('Edit phase {id}', { id }))
       }),
     },
     {
       name: 'run_check',
-      description: 'check を回す。log を付けると、チェックの記録（.tadori/checks.tsv・5W1H）に足して commit する。who は確かめた人（エージェントなら自分の名前）、why は理由。',
-      inputSchema: { type: 'object', properties: { log: { type: 'boolean' }, who: S('確かめた人'), why: S('理由（例：夕会の前）') }, additionalProperties: false },
+      description: t('Run check. With log, add the results to the check records (.tadori/checks.tsv, 5W1H) and commit. who is the person who checked (an agent uses its own name); why is the reason.'),
+      inputSchema: { type: 'object', properties: { log: { type: 'boolean' }, who: S(t('Who checked')), why: S(t('Reason (e.g. before the evening meeting)')) }, additionalProperties: false },
       run: async a => {
-        if (!ctx.projectDir) return reply('開く案件が決まっていません。open_project で開いてください', true)
+        if (!ctx.projectDir) return reply(t('No project is open. Open one with open_project'), true)
         const run = await runCheck(ctx.projectDir, { today: ctx.today ?? localToday(), ...(a.log === true ? { log: true } : {}), ...(str(a.who) ? { who: str(a.who) as string } : {}), ...(str(a.why) ? { why: str(a.why) as string } : {}) })
-        return reply(`${run.text}${run.commit ? `\n\nチェックの記録を足しました。${committed(run.commit)}` : ''}`)
+        return reply(`${run.text}${run.commit ? `\n\n${t('Added the check records. {commit}', { commit: committed(run.commit) })}` : ''}`)
       },
     },
     {
       name: 'list_projects',
-      description: 'いま開いている案件と、デスクトップアプリの最近の案件を並べる。',
+      description: t("List the project open now and the desktop app's recent projects."),
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
       run: async () => {
         let recent: string[] = []
@@ -193,19 +211,19 @@ export function writeTools(ctx: WriteContext): Tool[] {
         } catch {
           // デスクトップアプリを使っていない PC：最近の案件は無い
         }
-        const lines = [...new Set([...(ctx.projectDir ? [ctx.projectDir] : []), ...recent])].map(p => `- ${p}${p === ctx.projectDir ? '（いま開いている）' : ''}`)
-        return reply(lines.length ? lines.join('\n') : '案件がありません。open_project で開いてください')
+        const lines = [...new Set([...(ctx.projectDir ? [ctx.projectDir] : []), ...recent])].map(p => `- ${p}${p === ctx.projectDir ? t(' (open now)') : ''}`)
+        return reply(lines.length ? lines.join('\n') : t('No projects. Open one with open_project'))
       },
     },
     {
       name: 'open_project',
-      description: 'この MCP の口で扱う案件を替える（.tadori のあるフォルダ）。以後の道具はその案件を読み書きする。',
-      inputSchema: { type: 'object', properties: { path: S('案件のフォルダ') }, required: ['path'], additionalProperties: false },
+      description: t('Switch the project this MCP server works on (a folder that has .tadori). Later tools read and write that project.'),
+      inputSchema: { type: 'object', properties: { path: S(t('Project folder')) }, required: ['path'], additionalProperties: false },
       run: async a => {
         const dir = resolve(str(a.path) ?? '')
-        if (!(await isProject(dir))) return reply(`${dir} には .tadori がありません。新しく始めるなら tadori init で`, true)
+        if (!(await isProject(dir))) return reply(t('{dir} has no .tadori. To start a new project, use tadori init', { dir }), true)
         ctx.projectDir = dir
-        return reply(`${dir} を開きました`)
+        return reply(t('Opened {dir}', { dir }))
       },
     },
   ]

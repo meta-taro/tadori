@@ -1,4 +1,5 @@
 // つながりを辿る：辿り始めの行を探す欄。台帳は数千行になりうるので、全件を並べない
+import { t } from './i18n.js'
 import { esc, isMine, kindLabel } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
@@ -36,11 +37,11 @@ function statusOf(state, id) {
   return 'ok'
 }
 
-/** @type {Record<RowStatus, string>} */
+/** @type {Record<RowStatus, () => string>} */
 const BADGES = {
-  leak: '<span class="chip hole"><span class="dot"></span>漏れ</span>',
-  resolved: '<span class="chip ok"><span class="dot"></span>対応済み</span>',
-  ok: '<span class="chip pick-ok">✓ 漏れなし</span>',
+  leak: () => `<span class="chip hole"><span class="dot"></span>${esc(t('Gap'))}</span>`,
+  resolved: () => `<span class="chip ok"><span class="dot"></span>${esc(t('Resolved'))}</span>`,
+  ok: () => `<span class="chip pick-ok">✓ ${esc(t('No gaps'))}</span>`,
 }
 
 /**
@@ -52,7 +53,7 @@ function rowHtml(state, item, startId) {
   return `<button type="button" class="pick-row ${item.id === startId ? 'on' : ''}" data-pick="${esc(item.id)}">
       <span class="mono">${esc(item.id)}</span>
       <span class="pick-kind">${esc(kindLabel(item.kind))}</span>
-      ${BADGES[statusOf(state, item.id)]}
+      ${BADGES[statusOf(state, item.id)]()}
       <span class="pick-title">${esc(item.title)}</span>
     </button>`
 }
@@ -71,9 +72,9 @@ function suggestionGroups(state) {
   const shown = new Set([...leak, ...resolved].map(i => i.id))
   const findings = state.items.filter(i => byKind(i) && i.kind === 'F' && !shown.has(i.id))
   return [
-    { heading: '漏れのある行', items: leak, tone: 'leak' },
-    { heading: '対応済み（前のチェックでは漏れ）', items: resolved, tone: 'resolved' },
-    { heading: '指摘', items: findings, tone: 'finding' },
+    { heading: esc(t('Rows with gaps')), items: leak, tone: 'leak' },
+    { heading: esc(t('Resolved (a gap at the previous check)')), items: resolved, tone: 'resolved' },
+    { heading: esc(t('Findings')), items: findings, tone: 'finding' },
   ].filter(g => g.items.length)
 }
 
@@ -85,16 +86,16 @@ function resultsHtml(state, startId) {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
   /** @type {PickGroup[]} */
   const groups = words.length
-    ? [{ heading: `「${esc(query.trim())}」に合う行`, items: state.items.filter(i => matches(i, words) && (kindFilter === 'all' || i.kind === kindFilter)) }]
+    ? [{ heading: esc(t('Rows matching “{query}”', { query: query.trim() })), items: state.items.filter(i => matches(i, words) && (kindFilter === 'all' || i.kind === kindFilter)) }]
     : suggestionGroups(state)
   if (!groups.some(g => g.items.length)) {
     // 漏れも指摘も無い案件では、故障に見えないよう、探せば辿れることを伝える
-    const empty = words.length || kindFilter !== 'all' ? '合う行がありません' : '漏れのある行も指摘もありません。ID か名前で探すと、どの行からでも辿れます'
+    const empty = esc(words.length || kindFilter !== 'all' ? t('No matching rows') : t('No rows with gaps and no findings. Search by ID or name to trace from any row.'))
     return `<div class="cond pick-more">${empty}</div>`
   }
   return groups.map(g => {
-    const rest = g.items.length > MAX_RESULTS ? `<div class="cond pick-more">ほか ${g.items.length - MAX_RESULTS} 件。もう少し絞ってください</div>` : ''
-    return `<div class="pick-head tone-${g.tone ?? 'search'}"><span>${g.heading}</span><span class="pick-count">${g.items.length} 件</span></div>${g.items.slice(0, MAX_RESULTS).map(i => rowHtml(state, i, startId)).join('')}${rest}`
+    const rest = g.items.length > MAX_RESULTS ? `<div class="cond pick-more">${esc(t('{n} more. Narrow the search.', { n: g.items.length - MAX_RESULTS }))}</div>` : ''
+    return `<div class="pick-head tone-${g.tone ?? 'search'}"><span>${g.heading}</span><span class="pick-count">${esc(t('{n} rows', { n: g.items.length }))}</span></div>${g.items.slice(0, MAX_RESULTS).map(i => rowHtml(state, i, startId)).join('')}${rest}`
   }).join('')
 }
 
@@ -107,11 +108,11 @@ function resultsHtml(state, startId) {
  */
 export function renderPicker(container, state, startId, onPick) {
   const kinds = [...new Set(state.items.map(i => i.kind))]
-  const kindButtons = ['all', ...kinds].map(k => `<button type="button" data-kind="${esc(k)}" aria-pressed="${k === kindFilter}">${k === 'all' ? 'すべて' : esc(kindLabel(k))}</button>`).join('')
+  const kindButtons = ['all', ...kinds].map(k => `<button type="button" data-kind="${esc(k)}" aria-pressed="${k === kindFilter}">${k === 'all' ? esc(t('All')) : esc(kindLabel(k))}</button>`).join('')
   container.innerHTML = `
     <div class="picker-box">
-      <input id="pick-query" type="search" placeholder="ID か名前で探す（例：F-02、延滞）" value="${esc(query)}" aria-label="辿り始めの行を探す">
-      <div class="seg pick-kinds" role="group" aria-label="種類で絞る">${kindButtons}</div>
+      <input id="pick-query" type="search" placeholder="${esc(t('Search by ID or name (e.g. F-02, overdue)'))}" value="${esc(query)}" aria-label="${esc(t('Find the row to trace from'))}">
+      <div class="seg pick-kinds" role="group" aria-label="${esc(t('Filter by kind'))}">${kindButtons}</div>
       <div class="pick-results" id="pick-results">${resultsHtml(state, startId)}</div>
     </div>`
   // どちらも直前に描いた中にかならずある

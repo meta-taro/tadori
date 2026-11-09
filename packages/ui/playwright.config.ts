@@ -17,6 +17,8 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     viewport: { width: 1440, height: 900 },
+    // 既存の画面のテストは日本語の画面で見る（英語の画面は i18n.spec.ts で見る）
+    locale: 'ja-JP',
     ...(useEdge ? { channel: 'msedge' } : {}),
   },
   webServer: {

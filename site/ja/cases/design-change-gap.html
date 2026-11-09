@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>改修後の対応の書き漏れを、行番号まで出す — tadori の事例</title>
+<meta name="description" content="改修案件で、詳細設計の節に「変わる／変わらない／未決」が書かれていない所を、tadori のルール（列が埋まっている）でファイルと行番号まで出す事例。">
+<link rel="canonical" href="https://meta-taro.github.io/tadori/ja/cases/design-change-gap.html">
+<link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/design-change-gap.html">
+<link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/design-change-gap.html">
+<link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/design-change-gap.html">
+<link rel="icon" href="../../assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../../assets/favicon-32.png" sizes="32x32" type="image/png">
+<meta name="theme-color" content="#4f5bd5">
+<meta property="og:type" content="article">
+<meta property="og:title" content="改修後の対応の書き漏れを、行番号まで出す">
+<meta property="og:url" content="https://meta-taro.github.io/tadori/ja/cases/design-change-gap.html">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/timeline.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../../assets/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "TechArticle", "headline": "改修後の対応の書き漏れを、行番号まで出す", "inLanguage": "ja", "dateModified": "2026-11-09",
+      "about": { "@id": "https://meta-taro.github.io/tadori/ja/#app" }, "image": "https://meta-taro.github.io/tadori/img/timeline.png",
+      "description": "詳細設計の節に改修後の対応が書かれていない所を、列が埋まっているかのルールで出し、担当と直し方を示す。" },
+    { "@type": "BreadcrumbList", "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "tadori", "item": "https://meta-taro.github.io/tadori/ja/" },
+      { "@type": "ListItem", "position": 2, "name": "事例", "item": "https://meta-taro.github.io/tadori/ja/cases/" },
+      { "@type": "ListItem", "position": 3, "name": "改修後の対応の書き漏れ" } ] }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">本文へ</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../"><img src="../../assets/icon.svg" alt="" width="28" height="28">tadori</a>
+    <nav class="site-nav" aria-label="サイト">
+      <a href="../#features">できること</a><a href="./" aria-current="page">事例</a><a href="../download.html">ダウンロード</a><a href="../roadmap.html">ロードマップ</a><a class="lang" href="../../cases/design-change-gap.html" hreflang="en" lang="en">English</a><a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap article">
+      <p class="crumbs"><a href="../">tadori</a> / <a href="./">事例</a></p>
+      <h1>改修後の対応の書き漏れを、行番号まで出す</h1>
+      <p class="lede">改修案件では、詳細設計の節ごとに「この改修で変わるのか、変わらないのか」を決めておかないと、実装と試験の範囲がぼやけます。
+        tadori は、それが書かれていない節を一覧にし、どの行のどの列を埋めればよいかまで示します。</p>
+      <dl class="summary-box">
+        <dt>使うルール</dt><dd>R4（詳細設計）列が埋まっている：詳細設計の節（DD）の「改修後の対応」列</dd>
+        <dt>見つかる漏れ</dt><dd>DD-2.3「貸出上限の判定」の改修後の対応が空</dd>
+        <dt>担当と直し方</dt><dd>設計担当が ledger/items.tsv の DD-2.3 の行（6 行目）の「改修後の対応」列に書く</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap article">
+      <h2>1. ルールを 1 行書く</h2>
+      <p>詳細設計の工程（dd）のルールセットに、「詳細設計の節には change 列が入っている」というルールを書きます。判定の種類は <code>filled</code>（列が埋まっている）です。</p>
+<pre><code>id	phase	kind	from	to	field	only	owner	label
+R4	dd	filled	DD		change		設計担当	詳細設計の節に改修後の対応（変わる／変わらない／未決）が書いてある</code></pre>
+
+      <h2>2. 台帳には、節と「何を元にしたか」だけ</h2>
+      <p>台帳（<code>ledger/items.tsv</code>）には節の ID・名前・原本の場所・元にした基本設計の章を書きます。設計書の中身は写しません。</p>
+      <table>
+        <thead><tr><th>id</th><th>title</th><th>source</th><th>refs</th><th>change</th></tr></thead>
+        <tbody>
+          <tr><td>DD-2.3</td><td>貸出上限の判定</td><td>docs/detail-design.md §2.3</td><td>BD-2</td><td><span class="chip hole">空</span></td></tr>
+          <tr><td>DD-3.1</td><td>返却期限の扱い</td><td>docs/detail-design.md §3.1</td><td>BD-3</td><td>変わらない</td></tr>
+          <tr><td>DD-3.2</td><td>延滞中の貸出拒否</td><td>docs/detail-design.md §3.2</td><td>BD-3</td><td>変わる</td></tr>
+        </tbody>
+      </table>
+
+      <h2>3. 残課題の画面で、担当と直し方を見る</h2>
+      <p>詳細設計の工程を選ぶと、R4 の漏れとして DD-2.3 が出ます。<strong>担当（設計担当）</strong>と、<strong>どのファイルの何行目のどの列に書けば消えるか</strong>が並びます。
+        md のアイコンからは、その行を md-business で開けます。</p>
+      <figure class="shot"><img src="../../img/timeline.png" width="1426" height="893" loading="lazy" alt="詳細設計を選んだ残課題の画面。R4 の漏れ DD-2.3 と、直し方「ledger/items.tsv の DD-2.3 の行（6 行目）の改修後の対応列に書く」が表示されている"></figure>
+
+      <h2>4. 「変わる」と決めた節だけ、次の工程で確かめる</h2>
+      <p>改修後の対応が「変わる」になった節は、実装の工程で commit から参照されているべきです。ルールの <code>only</code> 列で、対象を「変わる」の節だけに絞ります。「変わらない」節に commit を求めて、形だけの漏れを出すことはありません。</p>
+<pre><code>R6	impl	covered	DD	COMMIT		change=変わる	開発担当	改修後に「変わる」詳細設計の節が commit から参照されている</code></pre>
+
+      <h2>5. 直したら、もう一度確かめる</h2>
+      <p>設計担当が DD-2.3 に「変わる」などを書いて保存すると、画面はその場で描き直されます。<code>tadori check --log</code> で確かめた結果は、チェックの記録（5W1H）に残ります。
+        前のチェックで漏れだった行は、つながりを辿る画面で「対応済み」と出ます。直ったと認めるのは人です。</p>
+
+      <div class="next-cases">
+        <h2>ほかの事例</h2>
+        <div class="cards">
+          <a class="card" href="trace-from-finding.html"><div class="card-body"><h3>受入の指摘から辿る</h3><p>実施の記録が無い試験ケースに行き着く。</p><span class="more">読む →</span></div></a>
+          <a class="card" href="early-start.html"><div class="card-body"><h3>前の工程が終わる前の着手</h3><p>差し戻しのまま次へ進んでいることを見る。</p><span class="more">読む →</span></div></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div><a class="brand" href="../"><img src="../../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>仕様から試験・指摘までのつながりと、リリースまでの残課題。MIT ライセンス。</p></div>
+    <nav aria-label="フッター"><a href="./">事例</a><a href="../download.html">ダウンロード</a><a href="../releases.html">過去の版</a><a href="../roadmap.html">ロードマップ</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
+  </div>
+</footer>
+</body>
+</html>

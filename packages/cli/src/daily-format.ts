@@ -1,5 +1,7 @@
-import { entriesFromSheet, nextWorkday, originOf, type DailyEntry, type DailySheet, type Project } from '@tadori/core'
+import './i18n.js'
+import { entriesFromSheet, nextWorkday, originOf, t, type DailyEntry, type DailySheet, type Project } from '@tadori/core'
 import { originText } from './format.js'
+import { joinWords, listJoin, noteJoin } from './i18n.js'
 
 /**
  * 「1 日の進行」の文。形（見出しの言葉・WBS の番号の書き方・続く作業の印）は案件ごとに違うので、
@@ -46,28 +48,32 @@ export interface DailyFormat {
   readonly who_format: string
 }
 
+/**
+ * 既定の形。言葉（見出し・印など）は読むときの言語に合わせる（getter なので、写したときの言語の言葉になる）。
+ * 案件が .tadori/daily-format.tsv に書いた値は、そのまま使う（訳さない）
+ */
 export const DEFAULT_DAILY_FORMAT: DailyFormat = {
-  today: '今日（{date}）{count} 件',
-  next: '次の作業日（{date}）',
-  consult: '相談',
-  notes: '補足',
+  get today() { return t('Today ({date}): {count}') },
+  get next() { return t('Next working day ({date})') },
+  get consult() { return t('Questions') },
+  get notes() { return t('Notes') },
   wbs: '{id}',
   continued: '',
   numbering: 'continuous',
-  today_label: '今日',
-  next_label: '次の作業日',
-  consult_label: '相談',
+  get today_label() { return t('Today') },
+  get next_label() { return t('Next working day') },
+  get consult_label() { return t('Questions') },
   group_after: '3',
   intro: '',
-  upkeep: '台帳の整備',
+  get upkeep() { return t('Ledger upkeep') },
   upkeep_mode: 'show',
-  tag_done: '済',
-  tag_doing: '作業中',
-  tag_plan: '予定',
-  tag_upkeep: '整備',
-  tag_checked: '確認',
-  tag_format: '［{tag}］',
-  who_format: '{who}：',
+  get tag_done() { return t('Done') },
+  get tag_doing() { return t('In progress') },
+  get tag_plan() { return t('Planned') },
+  get tag_upkeep() { return t('Upkeep') },
+  get tag_checked() { return t('Checked') },
+  get tag_format() { return t('[{tag}] ') },
+  get who_format() { return t('{who}: ') },
 }
 
 /** 行の頭に付ける印（言葉が空なら付けない） */
@@ -83,11 +89,11 @@ export function dailyFormatOf(settings: Readonly<Record<string, string>>): Daily
   return { ...DEFAULT_DAILY_FORMAT, ...Object.fromEntries(keys.filter(k => k in settings).map(k => [k, settings[k] ?? ''])) }
 }
 
-const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 /** YYYY-MM-DD → M/D */
 const md = (day: string | undefined) => (day ? `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}` : '')
 /** YYYY-MM-DD → M/D 曜 */
-const mdWeekday = (day: string) => `${md(day)} ${WEEKDAYS[new Date(`${day}T00:00:00Z`).getUTCDay()]}`
+const mdWeekday = (day: string) => `${md(day)} ${t(WEEKDAYS[new Date(`${day}T00:00:00Z`).getUTCDay()] ?? '')}`
 const fill = (template: string, values: Readonly<Record<string, string>>) =>
   template.replace(/\{(\w+)\}/g, (all, key: string) => values[key] ?? all)
 
@@ -101,10 +107,10 @@ function statusName(project: Project, id: string): string {
 function wbsTail(project: Project, ids: readonly string[], format: DailyFormat): string {
   if (!ids.length) return ''
   const parts = ids.map(id => {
-    const t = project.tasks.find(task => task.id === id)
-    return t ? [wbsLabel(t.id, format), statusName(project, t.status), md(t.end)].filter(Boolean).join(' ') : wbsLabel(id, format)
+    const task = project.tasks.find(each => each.id === id)
+    return task ? [wbsLabel(task.id, format), statusName(project, task.status), md(task.end)].filter(Boolean).join(' ') : wbsLabel(id, format)
   })
-  return `（${parts.join('・')}）`
+  return t(' ({list})', { list: listJoin(parts) })
 }
 
 /** 課題の正本へのリンクと反映の記録（正本の表に無ければ空） */
@@ -118,16 +124,20 @@ function noteLine(project: Project, entry: DailyEntry, no: number, format: Daily
   const phaseName = (id: string) => project.phases.find(p => p.id === id)?.name ?? id
   const issue = entry.issue ? project.items.find(i => i.id === entry.issue) : undefined
   const parts = [
-    ...(issue ? [`課題 ${issue.id}：${issue.title}（${issue.source}）${originNote(project, issue, date)}`] : entry.issue ? [`課題 ${entry.issue}`] : []),
+    ...(issue
+      ? [joinWords(t('Issue {id}: {title} ({source})', { id: issue.id, title: issue.title, source: issue.source }), originNote(project, issue, date))]
+      : entry.issue ? [t('Issue {id}', { id: entry.issue })] : []),
     ...entry.wbs.map(id => {
-      const t = project.tasks.find(task => task.id === id)
-      return t ? `${wbsLabel(t.id, format)}：${t.name}（${[phaseName(t.phase), t.start && t.end ? `${md(t.start)}〜${md(t.end)}` : ''].filter(Boolean).join('・')}）` : wbsLabel(id, format)
+      const task = project.tasks.find(each => each.id === id)
+      if (!task) return wbsLabel(id, format)
+      const span = task.start && task.end ? t('{start}–{end}', { start: md(task.start), end: md(task.end) }) : ''
+      return t('{wbs}: {name} ({detail})', { wbs: wbsLabel(task.id, format), name: task.name, detail: listJoin([phaseName(task.phase), span].filter(Boolean)) })
     }),
     ...(entry.note ? [entry.note] : []),
     // 行のリンクは読み上げる行には入れず、補足に「表示名：URL」で出す（聞かれたら開くもの）
-    ...[...new Set((entry.links ?? []).map(l => `${l.label}：${l.url}`))], // 同じ表示名と URL は 1 回だけ
+    ...[...new Set((entry.links ?? []).map(l => t('{label}: {url}', { label: l.label, url: l.url })))], // 同じ表示名と URL は 1 回だけ
   ]
-  return parts.length ? `${no}. ${parts.join('／')}` : null
+  return parts.length ? `${no}. ${noteJoin(parts)}` : null
 }
 
 /** 読み上げる行の頭に付ける担当名（例：設計担当：）。担当が無いか、書き方が空なら付けない */

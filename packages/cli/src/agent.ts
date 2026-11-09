@@ -1,3 +1,6 @@
+import './i18n.js'
+import { t } from '@tadori/core'
+
 /**
  * エージェントが、画面の中の専用カーソルで tadori を操作するための指示。
  * 人のマウスは使わない（奪わない）。画面は自分のカーソルをその場所へ動かし、ページの中でボタンを押す。
@@ -23,17 +26,17 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 function text(body: Record<string, unknown>, key: string, required: boolean): string | undefined {
   const value = body[key]
   if (value === undefined && !required) return undefined
-  if (typeof value !== 'string' || !value.trim()) throw new AgentActionError(`${key} を文字で書いてください`)
-  if (value.length > MAX_TEXT) throw new AgentActionError(`${key} が長すぎます（${MAX_TEXT} 文字まで）`)
+  if (typeof value !== 'string' || !value.trim()) throw new AgentActionError(t('{key} must be non-empty text', { key }))
+  if (value.length > MAX_TEXT) throw new AgentActionError(t('{key} is too long (up to {max} characters)', { key, max: MAX_TEXT }))
   return value
 }
 
 /** 受けた JSON を、画面に流してよい指示にする。おかしければ理由つきで断る */
 export function parseAgentAction(body: unknown): AgentAction {
-  if (!isRecord(body)) throw new AgentActionError('指示は JSON のオブジェクトで送ってください')
+  if (!isRecord(body)) throw new AgentActionError(t('Send the instruction as a JSON object'))
   const action = body.action
   if (!ACTIONS.includes(action as (typeof ACTIONS)[number])) {
-    throw new AgentActionError(`知らない動きです：${String(action)}（使えるのは ${ACTIONS.join(' / ')}）`)
+    throw new AgentActionError(t('Unknown action: {action} (available: {list})', { action: String(action), list: ACTIONS.join(' / ') }))
   }
   const message = text(body, 'message', action === 'say')
   const withMessage = message === undefined ? {} : { message }
@@ -41,7 +44,7 @@ export function parseAgentAction(body: unknown): AgentAction {
     case 'filter': {
       // 人の名前（空なら全員）。絞るだけで、何も書き換えない
       const value = body.value ?? ''
-      if (typeof value !== 'string' || value.length > MAX_TEXT) throw new AgentActionError('value は人の名前を文字で（空なら全員）')
+      if (typeof value !== 'string' || value.length > MAX_TEXT) throw new AgentActionError(t('value must be a person\'s name as text (empty for everyone)'))
       return { action, value: value.trim() }
     }
     case 'say':
@@ -49,7 +52,7 @@ export function parseAgentAction(body: unknown): AgentAction {
     case 'go': {
       const hash = text(body, 'hash', true) as string
       // 画面の中の移動だけ。外のページへは移らせない
-      if (!hash.startsWith('#')) throw new AgentActionError('hash は # で始まる画面の中の場所にしてください（例：#rules）')
+      if (!hash.startsWith('#')) throw new AgentActionError(t('hash must be a place on the screen starting with # (e.g. #rules)'))
       return { action, hash, ...withMessage }
     }
     case 'type':

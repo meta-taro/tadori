@@ -1,4 +1,5 @@
 // 画面の上の検索：打っている途中から、どの画面のどこに出てくるかをグループに分けて並べる
+import { glossaryRow, t } from './i18n.js'
 import { byId, esc, kindLabel } from './util.js'
 
 /**
@@ -21,7 +22,8 @@ async function loadGlossary() {
     const text = await (await fetch('/glossary.tsv')).text()
     const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim() && !l.startsWith('#'))
     const header = (lines.shift() ?? '').split('\t')
-    glossary = lines.map(line => Object.fromEntries(header.map((h, i) => [h, line.split('\t')[i] ?? ''])))
+    // いまの言語の列（英語なら term_en など）で返す
+    glossary = lines.map(line => glossaryRow(Object.fromEntries(header.map((h, i) => [h, line.split('\t')[i] ?? '']))))
   } catch {
     glossary = [] // 用語集が読めなくても、ほかの検索は動かす
   }
@@ -39,31 +41,31 @@ export function buildIndex(state, terms) {
   const ruleOf = (/** @type {string} */ id) => state.rules.find(r => r.id === id)
   const taskIds = new Set(state.tasks.map(t => t.id))
   return [
-    ...state.tasks.map(t => ({
-      group: 'タスク', id: t.id, title: t.name, where: `プロダクト（WBS）· ${phaseName(t.phase)}`,
-      text: `${t.id} ${t.name}`, open: { hash: `browse-${t.id}` },
+    ...state.tasks.map(task => ({
+      group: t('Tasks'), id: task.id, title: task.name, where: t('Product (WBS) · {phase}', { phase: phaseName(task.phase) }),
+      text: `${task.id} ${task.name}`, open: { hash: `browse-${task.id}` },
     })),
     ...state.items.filter(i => !taskIds.has(i.id)).map(i => ({
-      group: '台帳の行', id: i.id, title: i.title, where: `つながりを辿る · ${kindLabel(i.kind)}`,
+      group: t('Ledger rows'), id: i.id, title: i.title, where: t('Trace · {kind}', { kind: kindLabel(i.kind) }),
       text: `${i.id} ${i.title}`, open: { hash: `trace-${i.id}` },
     })),
     ...state.leaks.map(l => {
       const phase = ruleOf(l.rule)?.phase ?? ''
       return {
-        group: '漏れ', id: `${l.rule}·${l.itemId}`, title: l.message, where: `リリースまでの残課題 · ${phaseName(phase) || 'どの工程にも属さない'}`,
+        group: t('Gaps'), id: `${l.rule}·${l.itemId}`, title: l.message, where: t('Remaining work to release · {phase}', { phase: phaseName(phase) || t('Not in any phase') }),
         text: `${l.rule}·${l.itemId} ${l.rule} ${l.itemId} ${l.message}`, open: { hash: phase ? `phases-${phase}` : 'phases' },
       }
     }),
     ...state.rules.map(r => ({
-      group: 'ルール', id: r.id, title: r.label, where: `ルールセット · ${phaseName(r.phase)}`,
+      group: t('Rules'), id: r.id, title: r.label, where: t('Rulesets · {phase}', { phase: phaseName(r.phase) }),
       text: `${r.id} ${r.label}`, open: { hash: 'rules', query: { view: 'rules', value: r.id } },
     })),
     ...state.checks.map((c, i) => ({
-      group: 'チェックの記録', id: c.when, title: `${c.who}：${c.what} → ${c.result}`, where: 'チェックの記録',
+      group: t('Check log'), id: c.when, title: t('{who}: {what} → {result}', { who: c.who, what: c.what, result: c.result }), where: t('Check log'),
       text: `${c.when} ${c.who} ${c.what} ${c.why} ${c.result}`, open: { hash: 'log' }, key: `check-${i}`,
     })),
     ...terms.map(g => ({
-      group: '用語', id: g.term, title: g.meaning, where: `用語 · ${g.group}`,
+      group: t('Glossary'), id: g.term, title: g.meaning, where: t('Glossary · {group}', { group: g.group }),
       text: `${g.term} ${g.meaning}`, open: { hash: 'glossary', query: { view: 'glossary', value: g.term } },
     })),
   ]
@@ -124,13 +126,13 @@ export function initSearch({ getState, navigate }) {
     flat = results.flatMap(g => g.entries)
     active = 0
     if (!flat.length) {
-      panel.innerHTML = `<div class="search-empty">「${esc(input.value.trim())}」はどの画面にもありません</div>`
+      panel.innerHTML = `<div class="search-empty">${esc(t('"{query}" is not on any screen', { query: input.value.trim() }))}</div>`
       panel.hidden = false
       return
     }
     let n = -1
     panel.innerHTML = results.map(g => `
-      <div class="search-group"><span>${esc(g.group)}</span><span class="pick-count">${g.total > g.entries.length ? `${g.entries.length} / ${g.total} 件` : `${g.total} 件`}</span></div>
+      <div class="search-group"><span>${esc(g.group)}</span><span class="pick-count">${esc(g.total > g.entries.length ? t('{shown} of {total}', { shown: g.entries.length, total: g.total }) : t('{n} found', { n: g.total }))}</span></div>
       ${g.entries.map(e => { n += 1; return `<button type="button" class="search-row ${n === 0 ? 'on' : ''}" role="option" data-n="${n}">
         <span class="search-id mono">${mark(e.id, input.value)}</span>
         <span class="search-title">${mark(e.title, input.value)}</span>

@@ -1,4 +1,5 @@
 // tadori の画面の入口：/api/state を読み、#名前 で画面を切り替える
+import { t, translateDocument } from './i18n.js'
 import { api, ApiError, byId, chip, esc, getWho, ICON_INFO, messageOf, peopleOf, setKindLabels, setWho, toast } from './util.js'
 import { renderGates } from './view-gates.js'
 import { renderWbs } from './view-wbs.js'
@@ -12,6 +13,9 @@ import { renderGlossary, setGlossaryQuery } from './view-glossary.js'
 import { renderDaily } from './view-daily.js'
 import { checkUpdateQuietly, warnIfServerStale } from './update.js'
 
+// 骨組み（index.html）の言葉を、いまの言語にする
+translateDocument()
+
 const view = byId('view')
 /**
  * 案件のいまの姿（/api/state）。読み込むまでは画面を描かないので、描く関数の中では必ずある
@@ -24,14 +28,14 @@ let state = /** @type {any} */ (null)
  * @type {Record<string, { label: string, render: (id?: string) => void | Promise<void> }>}
  */
 const VIEWS = {
-  browse: { label: 'プロダクト', render: id => renderWbs(view, state, reload, id) },
-  phases: { label: 'リリースまでの残課題', render: phaseId => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }, phaseId) },
-  daily: { label: '1 日の進行', render: () => renderDaily(view, state) },
-  rules: { label: 'ルールセット', render: () => renderRules(view, state, reload) },
-  log: { label: 'チェックの記録', render: () => renderLog(view, state) },
-  trace: { label: 'つながりを辿る', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
-  settings: { label: '設定', render: () => renderSettings(view, state, reload) },
-  glossary: { label: '用語', render: () => renderGlossary(view) },
+  browse: { label: 'Product', render: id => renderWbs(view, state, reload, id) },
+  phases: { label: 'Remaining work to release', render: phaseId => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }, phaseId) },
+  daily: { label: 'Daily progress', render: () => renderDaily(view, state) },
+  rules: { label: 'Rulesets', render: () => renderRules(view, state, reload) },
+  log: { label: 'Check log', render: () => renderLog(view, state) },
+  trace: { label: 'Trace', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
+  settings: { label: 'Settings', render: () => renderSettings(view, state, reload) },
+  glossary: { label: 'Glossary', render: () => renderGlossary(view) },
 }
 
 /** つながりを辿るの最初の行：漏れのある指摘、無ければ漏れのある行、無ければ指摘（何も無ければ選んでもらう） */
@@ -48,12 +52,12 @@ function renderChrome(key) {
   const waits = state.gates.reduce((n, g) => n + g.pendingApprovals.length, 0)
   // 最後にチェックを記録したのは、いつ・誰か（チェックの記録の最後の行。無ければ出さない）
   const last = state.checks.at(-1)
-  const lastCheck = last ? `<a class="chip last-check" href="#log" title="チェックの記録を開く">最後のチェック ${esc(String(last.when).slice(5, 16).replace('-', '/'))}${last.who ? ` ${esc(last.who)}` : ''}</a>` : ''
-  byId('summary').innerHTML = chip('hole', `漏れ ${state.leaks.length} 件`) + chip('wait', `承認待ち ${waits} 件`) + lastCheck
+  const lastCheck = last ? `<a class="chip last-check" href="#log" title="${esc(t('Open the check log'))}">${esc(t('Last check'))} ${esc(String(last.when).slice(5, 16).replace('-', '/'))}${last.who ? ` ${esc(last.who)}` : ''}</a>` : ''
+  byId('summary').innerHTML = chip('hole', esc(t('Gaps: {n}', { n: state.leaks.length }))) + chip('wait', esc(t('Pending approvals: {n}', { n: waits }))) + lastCheck
   byId('side-project').textContent = state.project.name
   byId('crumb-project').textContent = state.project.name
-  byId('crumb-view').textContent = VIEWS[key].label
-  document.title = `tadori · ${VIEWS[key].label}`
+  byId('crumb-view').textContent = t(VIEWS[key].label)
+  document.title = `tadori · ${t(VIEWS[key].label)}`
   document.querySelectorAll('nav a').forEach(el => {
     const a = /** @type {HTMLAnchorElement} */ (el)
     if (a.dataset.view === key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current')
@@ -67,7 +71,7 @@ function renderWhoFilter() {
   const select = /** @type {HTMLSelectElement} */ (byId('who-filter'))
   const people = peopleOf(state)
   const who = getWho()
-  select.innerHTML = `<option value="">全員</option>${people.map(p => `<option ${p === who ? 'selected' : ''}>${esc(p)}</option>`).join('')}`
+  select.innerHTML = `<option value="">${esc(t('Everyone'))}</option>${people.map(p => `<option ${p === who ? 'selected' : ''}>${esc(p)}</option>`).join('')}`
   // 選んでいた人が案件にいなくなったら（案件を切り替えたときなど）、全員に戻す
   if (who && !people.includes(who)) setWho('')
 }
@@ -84,8 +88,8 @@ function renderNavBadges(waits) {
   const leakRows = new Set(state.leaks.map(l => l.itemId)).size
   /** @type {Record<string, Array<[number, string, string]>>} 画面の名前 → [件数, 色, 読み上げ] */
   const badges = {
-    phases: [[state.leaks.length, 'hole', `漏れ ${state.leaks.length} 件`], [waits, 'wait', `承認待ち ${waits} 件`]],
-    trace: [[leakRows, 'hole', `漏れのある行 ${leakRows} 件`]],
+    phases: [[state.leaks.length, 'hole', t('Gaps: {n}', { n: state.leaks.length })], [waits, 'wait', t('Pending approvals: {n}', { n: waits })]],
+    trace: [[leakRows, 'hole', t('Rows with gaps: {n}', { n: leakRows })]],
   }
   document.querySelectorAll('nav a[data-view]').forEach(el => {
     const a = /** @type {HTMLAnchorElement} */ (el)
@@ -144,7 +148,7 @@ async function reload() {
     route()
     scroller().scrollTop = top
   } catch (error) {
-    view.innerHTML = `<h1>案件を読めませんでした</h1><div class="note">${ICON_INFO}<span>${esc(messageOf(error))}${(error instanceof ApiError ? error.problems : []).map(p => `<br>${esc(p)}`).join('')}</span></div>`
+    view.innerHTML = `<h1>${esc(t('Could not read the project'))}</h1><div class="note">${ICON_INFO}<span>${esc(messageOf(error))}${(error instanceof ApiError ? error.problems : []).map(p => `<br>${esc(p)}`).join('')}</span></div>`
   }
 }
 
@@ -166,7 +170,7 @@ let reloadPending = false
 function reloadFromElsewhere() {
   const el = document.activeElement
   if (el && view.contains(el) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) { reloadPending = true; return }
-  reload().then(() => toast('ほかのアプリでの変更を反映しました', 2000))
+  reload().then(() => toast(t('Applied changes made in another app'), 2000))
 }
 view.addEventListener('focusout', () => { if (reloadPending) { reloadPending = false; setTimeout(reloadFromElsewhere, 0) } })
 if ('EventSource' in window) {

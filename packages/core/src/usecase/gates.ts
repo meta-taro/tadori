@@ -7,6 +7,7 @@ export interface PendingApproval {
   readonly fix: string
 }
 import { lateDays } from '../domain/schedule.js'
+import { t } from '../i18n.js'
 
 export type GateState = 'blocked' | 'waiting' | 'clear'
 
@@ -53,10 +54,15 @@ function spanOf(tasks: readonly Task[]): Gate['span'] {
  */
 function pendingOf(project: Project, rule: Rule): PendingApproval {
   const record = project.approvals.find(a => a.rule === rule.id)
-  const who = rule.owner ?? '承認する人'
-  const fix = record
-    ? `${who}が ${LEDGER_FILES.approvals} の ${rule.id} の行の状態を「承認」にする（名前と日付も書く）`
-    : `${who}が ${LEDGER_FILES.approvals} に ${rule.id} の行を足し、状態を「承認」にする（名前と日付も書く）`
+  const vars = { who: rule.owner ?? '', file: LEDGER_FILES.approvals, rule: rule.id }
+  // 「承認」は approvals.tsv に書く値そのもの（データ）なので、英語の文でも訳さない
+  const fix = rule.owner !== undefined
+    ? (record
+      ? t('{who} sets the status of the {rule} row in {file} to "承認" (approved), with their name and the date', vars)
+      : t('{who} adds a {rule} row to {file} and sets its status to "承認" (approved), with their name and the date', vars))
+    : (record
+      ? t('The approver sets the status of the {rule} row in {file} to "承認" (approved), with their name and the date', vars)
+      : t('The approver adds a {rule} row to {file} and sets its status to "承認" (approved), with their name and the date', vars))
   return { rule, status: record?.status ?? '待ち', fix }
 }
 

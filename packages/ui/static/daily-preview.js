@@ -3,6 +3,7 @@
 // - 「1. 」で始まる行は字下げした番号付きの一覧
 // - 印（例：［済］）は小さな札
 // - WBS・課題は文字を押すと画面の中のその場所へ、正本などの URL は「正本 ↗」の文字で開く（URL をそのまま出さない）
+import { t } from './i18n.js'
 import { esc, nthIndexOf, webUrl } from './util.js'
 
 // URL は空白・括弧・補足の区切り（／・、）の手前まで
@@ -38,7 +39,7 @@ function inlineHtml(line, links, tags, whoMarks = []) {
     const [text, name, url] = match
     if (url) {
       const href = webUrl(url)
-      const label = `${name || 'リンク'} ↗`
+      const label = `${name || t('Link')} ↗`
       html += href ? `<a class="origin-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(href)}">${esc(label)}</a>` : esc(text)
     } else if (whoMarks.includes(text)) {
       // 担当で絞っていないときの行の担当（例：設計担当：）。区切りの「：」は札に出さない
@@ -82,7 +83,7 @@ function anchoredHtml(line, entries, rest) {
   let last = 0
   for (const s of spans) {
     html += rest(line.slice(last, s.start))
-    html += `<a class="daily-anchor" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(`${s.label} を開く：${s.url}`)}">${esc(line.slice(s.start, s.end))}</a>`
+    html += `<a class="daily-anchor" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open {label}: {url}', { label: s.label, url: s.url }))}">${esc(line.slice(s.start, s.end))}</a>`
     last = s.end
   }
   return html + rest(line.slice(last))

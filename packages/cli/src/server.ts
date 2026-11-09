@@ -1,3 +1,4 @@
+import './i18n.js'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { checkUpdate, type UpdateInfo } from './update-check.js'
 import { CLI_VERSION } from './version.js'
@@ -6,7 +7,10 @@ import { readBuildInfo } from './build-info.js'
 import { fileURLToPath } from 'node:url'
 import { readFile } from 'node:fs/promises'
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path'
-import { ProjectLoadError, removeRule, saveRule, saveSettings, saveTaskStatus, trace, validatePhases, validateStatuses, WriteRefused, type Phase, type RuleInput, type StatusDef } from '@tadori/core'
+import {
+  langOf, ProjectLoadError, removeRule, saveRule, saveSettings, saveTaskStatus, t, trace, validatePhases, validateStatuses, withLang, WriteRefused,
+  type Lang, type Phase, type RuleInput, type StatusDef,
+} from '@tadori/core'
 import { loadState, localToday } from './state.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
 import { AgentActionError, parseAgentAction } from './agent.js'
@@ -46,7 +50,7 @@ const RULE_FIELDS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'owne
 
 /** 画面から届いたルールの項目（文字のものだけ受ける。渡されなかった項目は変えない） */
 function ruleInputOf(body: unknown): Partial<RuleInput> {
-  if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new HttpError(400, 'JSON のオブジェクトで渡してください')
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new HttpError(400, t('Send a JSON object'))
   const record = body as Record<string, unknown>
   return Object.fromEntries(RULE_FIELDS.flatMap(k => (typeof record[k] === 'string' ? [[k, (record[k] as string).replace(/[\t\r\n]+/g, ' ').trim()]] : [])))
 }
@@ -67,13 +71,13 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
   let size = 0
   for await (const chunk of req) {
     size += (chunk as Buffer).length
-    if (size > MAX_BODY_BYTES) throw new HttpError(413, '送られた内容が大きすぎます')
+    if (size > MAX_BODY_BYTES) throw new HttpError(413, t('The request body is too large'))
     chunks.push(chunk as Buffer)
   }
   try {
     return JSON.parse(Buffer.concat(chunks).toString('utf8'))
   } catch {
-    throw new HttpError(400, 'JSON として読めませんでした')
+    throw new HttpError(400, t('Could not read it as JSON'))
   }
 }
 
@@ -83,11 +87,11 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
  * ブラウザ経由で手元のサーバーへ書き込ませる攻撃（CSRF）を防げる。
  */
 function assertWriteAllowed(req: IncomingMessage): void {
-  if (req.headers['x-tadori'] !== '1') throw new HttpError(403, 'tadori の画面からの書き込みではありません')
+  if (req.headers['x-tadori'] !== '1') throw new HttpError(403, t('This write did not come from the tadori screen'))
   // Origin が付いているなら、このサーバー自身でなければ断る
   const origin = req.headers.origin
-  if (origin !== undefined && origin !== `http://${req.headers.host}`) throw new HttpError(403, 'ほかのサイトからの書き込みは受けません')
-  if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) throw new HttpError(415, 'JSON で送ってください')
+  if (origin !== undefined && origin !== `http://${req.headers.host}`) throw new HttpError(403, t('Writes from other sites are not accepted'))
+  if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) throw new HttpError(415, t('Send it as JSON'))
 }
 
 /**
@@ -96,7 +100,22 @@ function assertWriteAllowed(req: IncomingMessage): void {
  */
 function assertLocalHost(req: IncomingMessage, port: number): void {
   const allowed = [`127.0.0.1:${port}`, `localhost:${port}`]
-  if (!allowed.includes(String(req.headers.host ?? ''))) throw new HttpError(403, '手元（127.0.0.1）以外からの呼び出しは受けません')
+  if (!allowed.includes(String(req.headers.host ?? ''))) throw new HttpError(403, t('Only calls from this machine (127.0.0.1) are accepted'))
+}
+
+/**
+ * この頼みの言語：画面が付ける x-tadori-lang（画面で選んだ言語）→ Accept-Language → 無ければ undefined（処理の既定の言語）。
+ * 画面は同じ出どころから呼ぶので、x-tadori-lang のために CORS の許可を足す必要はない
+ */
+export function requestLang(req: IncomingMessage): Lang | undefined {
+  const chosen = langOf(String(req.headers['x-tadori-lang'] ?? ''))
+  if (chosen) return chosen
+  // Accept-Language は「ja,en;q=0.9」の形。書かれた順に見て、tadori が知っている最初の言語を使う
+  for (const part of String(req.headers['accept-language'] ?? '').split(',')) {
+    const lang = langOf(part.split(';')[0])
+    if (lang) return lang
+  }
+  return undefined
 }
 
 /** 壊れた % の書き方は 400 にする（サーバーの中の問題として扱わない） */
@@ -104,7 +123,7 @@ function safeDecode(value: string): string {
   try {
     return decodeURIComponent(value)
   } catch {
-    throw new HttpError(400, 'URL の書き方が正しくありません')
+    throw new HttpError(400, t('The URL is malformed'))
   }
 }
 
@@ -119,10 +138,10 @@ const STATIC_HEADERS = {
 const isString = (v: unknown): v is string => typeof v === 'string'
 
 function parsePhases(body: unknown): Phase[] {
-  if (!Array.isArray(body)) throw new HttpError(400, '工程の配列を送ってください')
+  if (!Array.isArray(body)) throw new HttpError(400, t('Send an array of phases'))
   return body.map((p, i) => {
     if (!p || !isString(p.id) || !isString(p.name) || typeof p.order !== 'number') {
-      throw new HttpError(400, `${i + 1} 番目の工程の形が違います（id・name・order が要ります）`)
+      throw new HttpError(400, t('Phase {no} has the wrong shape (id, name and order are required)', { no: i + 1 }))
     }
     return { id: p.id.trim(), name: p.name.trim(), order: p.order }
   })
@@ -130,10 +149,10 @@ function parsePhases(body: unknown): Phase[] {
 
 const TONES = ['none', 'wait', 'hole', 'ok'] as const
 function parseStatuses(body: unknown): StatusDef[] {
-  if (!Array.isArray(body)) throw new HttpError(400, 'ステータスの配列を送ってください')
+  if (!Array.isArray(body)) throw new HttpError(400, t('Send an array of statuses'))
   return body.map((s, i) => {
     if (!s || !isString(s.id) || !isString(s.name) || !TONES.includes(s.tone)) {
-      throw new HttpError(400, `${i + 1} 番目のステータスの形が違います（id・name・tone が要ります）`)
+      throw new HttpError(400, t('Status {no} has the wrong shape (id, name and tone are required)', { no: i + 1 }))
     }
     return { id: s.id.trim(), name: s.name.trim(), tone: s.tone as StatusDef['tone'] }
   })
@@ -144,13 +163,13 @@ async function serveStatic(uiDir: string, urlPath: string, res: ServerResponse):
   const wanted = urlPath === '/' ? '/index.html' : urlPath
   const file = normalize(join(root, safeDecode(wanted)))
   // 画面のフォルダの外は出さない
-  if (file !== root && !file.startsWith(root + sep)) throw new HttpError(404, '見つかりません')
+  if (file !== root && !file.startsWith(root + sep)) throw new HttpError(404, t('Not found'))
   try {
     const body = await readFile(file)
     res.writeHead(200, { ...STATIC_HEADERS, 'content-type': CONTENT_TYPES[extname(file)] ?? 'application/octet-stream' })
     res.end(body)
   } catch {
-    throw new HttpError(404, '見つかりません')
+    throw new HttpError(404, t('Not found'))
   }
 }
 
@@ -187,14 +206,14 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
       throw error
     }
     const screens = notifier.send('agent', action)
-    if (!screens) throw new HttpError(409, 'tadori の画面が開いていません。画面を開いてから送ってください')
+    if (!screens) throw new HttpError(409, t('No tadori screen is open. Open the screen, then send again'))
     return sendJson(res, 200, { screens })
   }
 
   if (req.method === 'GET' && url.pathname === '/api/daily') {
     // 人単位の 1 日の進行
     const date = url.searchParams.get('date') || today
-    if (!isDay(date)) throw new HttpError(400, '日付は YYYY-MM-DD で渡してください')
+    if (!isDay(date)) throw new HttpError(400, t('Give the date as YYYY-MM-DD'))
     const who = url.searchParams.get('who')?.trim()
     return sendJson(res, 200, await loadDaily(dir, date, who || undefined))
   }
@@ -204,13 +223,13 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
   if (dailyMatch) {
     assertWriteAllowed(req)
     const [, date = '', what, id] = dailyMatch
-    if (!isDay(date)) throw new HttpError(400, '日付は YYYY-MM-DD で渡してください')
+    if (!isDay(date)) throw new HttpError(400, t('Give the date as YYYY-MM-DD'))
     const work = async () => {
       if (req.method === 'POST' && what === 'generate' && !id) return { commit: await generateDaily(dir, date) }
       if (req.method === 'POST' && what === 'entries' && !id) return addDaily(dir, date, await readJson(req))
       if (req.method === 'PUT' && what === 'entries' && id) return updateDaily(dir, date, id, await readJson(req))
       if (req.method === 'DELETE' && what === 'entries' && id) return removeDaily(dir, date, id)
-      throw new HttpError(404, 'その操作はありません')
+      throw new HttpError(404, t('No such operation'))
     }
     try {
       return sendJson(res, 200, await serialized(work))
@@ -243,7 +262,7 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
   if (req.method === 'GET' && traceMatch) {
     const { project } = await loadState(dir, today)
     const result = trace(project, safeDecode(traceMatch[1] ?? ''))
-    if (!result) throw new HttpError(404, 'その ID は台帳にありません')
+    if (!result) throw new HttpError(404, t('That ID is not in the ledger'))
     return sendJson(res, 200, result)
   }
 
@@ -258,11 +277,11 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
         if (req.method === 'POST' && !id) return saveRule(dir, body as RuleInput, { create: true })
         if (req.method === 'PUT' && id) return saveRule(dir, { ...body, id }, { create: false })
         if (req.method === 'DELETE' && id) return removeRule(dir, id)
-        throw new HttpError(404, 'ルールの ID を URL に書いてください（足すときは /api/rules に POST）')
+        throw new HttpError(404, t('Put the rule ID in the URL (to add one, POST to /api/rules)'))
       })
       return sendJson(res, 200, { commit })
     } catch (error: unknown) {
-      if (error instanceof WriteRefused) throw new HttpError(400, 'ルールを保存できません', [...error.problems])
+      if (error instanceof WriteRefused) throw new HttpError(400, t('Could not save the rule'), [...error.problems])
       throw error
     }
   }
@@ -273,8 +292,8 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
     const commit = await serialized(async () => {
       const { project } = await loadState(dir, today)
       const problems = validatePhases(project, next)
-      if (problems.length) throw new HttpError(400, '工程の設定を保存できません', problems)
-      return saveSettings(dir, { phases: next }, '工程の設定を変更')
+      if (problems.length) throw new HttpError(400, t('Could not save the phase settings'), problems)
+      return saveSettings(dir, { phases: next }, t('Change the phase settings'))
     })
     return sendJson(res, 200, { commit })
   }
@@ -285,8 +304,8 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
     const commit = await serialized(async () => {
       const { project } = await loadState(dir, today)
       const problems = validateStatuses(project, next)
-      if (problems.length) throw new HttpError(400, 'ステータスの設定を保存できません', problems)
-      return saveSettings(dir, { statuses: next }, 'ステータスの設定を変更')
+      if (problems.length) throw new HttpError(400, t('Could not save the status settings'), problems)
+      return saveSettings(dir, { statuses: next }, t('Change the status settings'))
     })
     return sendJson(res, 200, { commit })
   }
@@ -299,10 +318,10 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
     const commit = await serialized(async () => {
       const { project } = await loadState(dir, today)
       if (!isString(body?.status) || !project.statuses.some(s => s.id === body.status)) {
-        throw new HttpError(400, '設定に無いステータスです')
+        throw new HttpError(400, t('That status is not in the settings'))
       }
       const result = await saveTaskStatus(dir, taskId, body.status)
-      if (!result) throw new HttpError(404, 'そのタスクは WBS にありません')
+      if (!result) throw new HttpError(404, t('That task is not in the WBS'))
       return result
     })
     return sendJson(res, 200, { commit })
@@ -311,7 +330,7 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
   if (req.method === 'GET' && options.uiDir && !url.pathname.startsWith('/api/')) {
     return serveStatic(options.uiDir, url.pathname, res)
   }
-  throw new HttpError(404, '見つかりません')
+  throw new HttpError(404, t('Not found'))
 }
 
 /**
@@ -322,7 +341,7 @@ async function reportCrash(options: ServerOptions, req: IncomingMessage, error: 
     const path = new URL(req.url ?? '/', 'http://127.0.0.1').pathname
     return await appendServerError(options.logDir ?? defaultLogDir(), { method: req.method ?? '', path, project: options.dir, error })
   } catch (logError: unknown) {
-    process.stderr.write(`tadori serve: 例外を記録に残せませんでした：${logError instanceof Error ? logError.message : String(logError)}
+    process.stderr.write(`${t('tadori serve: could not log the error: {reason}', { reason: logError instanceof Error ? logError.message : String(logError) })}
 `)
     return null
   }
@@ -334,18 +353,19 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   let boundPort = options.port
   // ほかのアプリ（md-business など）や git pull で TSV が書き換わったら、画面へ知らせる
   const notifier = watchProject(options.dir)
-  const server = createServer((req, res) => {
+  // 1 回の頼みごとは、その頼みの言語で返す（画面で選んだ言語。誤りの文も同じ言語にする）
+  const server = createServer((req, res) => withLang(requestLang(req), () => {
     route(options, boundPort, notifier, req, res).catch((error: unknown) => {
       if (error instanceof HttpError) return sendJson(res, error.status, { error: error.message, problems: error.problems })
-      if (error instanceof ProjectLoadError) return sendJson(res, 422, { error: '案件を読めませんでした', problems: error.problems })
+      if (error instanceof ProjectLoadError) return sendJson(res, 422, { error: t('Could not read the project'), problems: error.problems })
       process.stderr.write(`tadori serve: ${error instanceof Error ? error.stack : String(error)}\n`)
       // 画面には例外の要点と、手元に残した記録の場所を出す（エージェントは MCP の server_errors で読める）
       return reportCrash(options, req, error).then(logFile => sendJson(res, 500, {
-        error: `サーバーの中で問題が起きました：${error instanceof Error ? error.message : String(error)}`,
+        error: t('Something went wrong inside the server: {reason}', { reason: error instanceof Error ? error.message : String(error) }),
         ...(logFile ? { logFile } : {}),
       }))
     })
-  })
+  }))
   await new Promise<void>(done => server.listen(options.port, '127.0.0.1', done))
   const address = server.address()
   if (address && typeof address === 'object') boundPort = address.port

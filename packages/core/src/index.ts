@@ -19,3 +19,4 @@ export { saveSettings, saveTaskStatus, appendChecks, readChecks, CHECK_COLUMNS, 
 export { initProject, type InitResult } from './infrastructure/scaffold.js'
 export { commitFiles, repositoryPrefix, type CommitResult } from './infrastructure/git.js'
 export { parseTsv, toTsv, updateCell } from './infrastructure/tsv.js'
+export { addJapanese, currentLang, detectLang, joinList, LANGS, langOf, setLang, t, withLang, type Lang } from './i18n.js'

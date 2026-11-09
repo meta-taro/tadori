@@ -1,6 +1,7 @@
+import './i18n.js'
 import {
   buildDaily, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, readActivity, readDaily, readDailyFormat, readMembers,
-  readStatusChanges, writeDaily, type CommitResult, type DailyEntry, type DailyLink, type DailySection,
+  readStatusChanges, t, writeDaily, type CommitResult, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
 import { dailyFormatOf, formatEntries, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
@@ -84,24 +85,24 @@ export async function loadDaily(dir: string, date: string, who?: string): Promis
 /** 下書きを作って（作り直して）置く。直した行・足した行・消した行は残る */
 export async function generateDaily(dir: string, date: string): Promise<CommitResult> {
   const { entries } = await mergedEntries(dir, date)
-  return writeDaily(dir, date, entries, `1 日の進行の下書きを作った（${date}）`)
+  return writeDaily(dir, date, entries, t('Draft daily progress ({date})', { date }))
 }
 
 function text(body: Record<string, unknown>, key: string, required: boolean): string | undefined {
   const value = body[key]
   if (value === undefined || value === null || value === '') {
-    if (required) throw new DailyInputError(`${key} を書いてください`)
+    if (required) throw new DailyInputError(t('{key} is required', { key }))
     return undefined
   }
-  if (typeof value !== 'string') throw new DailyInputError(`${key} は文字で渡してください`)
-  if (value.length > MAX_TEXT) throw new DailyInputError(`${key} が長すぎます（${MAX_TEXT} 文字まで）`)
+  if (typeof value !== 'string') throw new DailyInputError(t('{key} must be a string', { key }))
+  if (value.length > MAX_TEXT) throw new DailyInputError(t('{key} is too long (up to {max} characters)', { key, max: MAX_TEXT }))
   return value.replace(/[\t\r\n]+/g, ' ').trim()
 }
 
 function section(body: Record<string, unknown>, required: boolean): DailySection | undefined {
   const value = text(body, 'section', required)
   if (value === undefined) return undefined
-  if (!DAILY_SECTIONS.includes(value as DailySection)) throw new DailyInputError(`section は ${DAILY_SECTIONS.join(' / ')} のどれかにしてください`)
+  if (!DAILY_SECTIONS.includes(value as DailySection)) throw new DailyInputError(t('section must be one of {list}', { list: DAILY_SECTIONS.join(' / ') }))
   return value as DailySection
 }
 
@@ -109,7 +110,7 @@ function section(body: Record<string, unknown>, required: boolean): DailySection
 function tag(body: Record<string, unknown>): string | undefined {
   if (body.tag === undefined) return undefined
   const value = typeof body.tag === 'string' ? body.tag.trim() : ''
-  if (value && !(DAILY_TAGS as readonly string[]).includes(value)) throw new DailyInputError(`tag は ${DAILY_TAGS.join(' / ')} のどれか（空なら印なし）にしてください`)
+  if (value && !(DAILY_TAGS as readonly string[]).includes(value)) throw new DailyInputError(t('tag must be one of {list} (empty for no tag)', { list: DAILY_TAGS.join(' / ') }))
   return value
 }
 
@@ -123,20 +124,21 @@ const MAX_LABEL = 40
 function linkList(body: Record<string, unknown>): DailyLink[] | undefined {
   const value = body.links
   if (value === undefined) return undefined
-  if (!Array.isArray(value)) throw new DailyInputError('links は [{ "label": 表示名, "url": URL }] の形で渡してください')
-  if (value.length > MAX_LINKS) throw new DailyInputError(`links は ${MAX_LINKS} 件までです`)
+  if (!Array.isArray(value)) throw new DailyInputError(t('links must be [{ "label": display name, "url": URL }]'))
+  if (value.length > MAX_LINKS) throw new DailyInputError(t('links can have up to {max} items', { max: MAX_LINKS }))
   return value.map((raw, i) => {
     const link = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
     const label = typeof link.label === 'string' ? link.label.replace(/[\t\r\n]+/g, ' ').trim() : ''
     const url = typeof link.url === 'string' ? link.url.trim() : ''
-    if (!label || label.length > MAX_LABEL || label.includes('|')) throw new DailyInputError(`links の ${i + 1} 件目：表示名は 1〜${MAX_LABEL} 文字で、「|」を含めないでください`)
+    const no = i + 1
+    if (!label || label.length > MAX_LABEL || label.includes('|')) throw new DailyInputError(t('links item {no}: the display name must be 1–{max} characters and must not contain "|"', { no, max: MAX_LABEL }))
     let parsed: URL
-    try { parsed = new URL(url) } catch { throw new DailyInputError(`links の ${i + 1} 件目：URL として読めません`) }
-    if (!['http:', 'https:'].includes(parsed.protocol) || /\s/.test(url)) throw new DailyInputError(`links の ${i + 1} 件目：URL は http か https で、空白を含めないでください`)
+    try { parsed = new URL(url) } catch { throw new DailyInputError(t('links item {no}: not a valid URL', { no })) }
+    if (!['http:', 'https:'].includes(parsed.protocol) || /\s/.test(url)) throw new DailyInputError(t('links item {no}: the URL must be http or https and must not contain spaces', { no }))
     const anchor = typeof link.anchor === 'string' ? link.anchor.replace(/[\t\r\n]+/g, ' ').trim() : ''
-    if (anchor.length > MAX_LABEL * 2 || anchor.includes('|') || anchor.includes(' > ')) throw new DailyInputError(`links の ${i + 1} 件目：anchor は ${MAX_LABEL * 2} 文字までで、「|」「 > 」を含めないでください`)
+    if (anchor.length > MAX_LABEL * 2 || anchor.includes('|') || anchor.includes(' > ')) throw new DailyInputError(t('links item {no}: anchor must be up to {max} characters and must not contain "|" or " > "', { no, max: MAX_LABEL * 2 }))
     const nth = link.nth === undefined ? 1 : Number(link.nth)
-    if (!Number.isInteger(nth) || nth < 1 || nth > MAX_NTH) throw new DailyInputError(`links の ${i + 1} 件目：nth は 1〜${MAX_NTH} の整数で渡してください`)
+    if (!Number.isInteger(nth) || nth < 1 || nth > MAX_NTH) throw new DailyInputError(t('links item {no}: nth must be an integer from 1 to {max}', { no, max: MAX_NTH }))
     return { label, url, ...(anchor ? { anchor } : {}), ...(anchor && nth > 1 ? { nth } : {}) }
   }).filter((l, i, all) => all.findIndex(o => linkKey(o) === linkKey(l)) === i) // 同じリンクは 1 つにまとめる
 }
@@ -158,8 +160,10 @@ export function nthIndexOf(text: string, word: string, nth = 1): number {
 export function anchorWarnings(entry: DailyEntry): string[] {
   return (entry.links ?? []).flatMap(l => {
     if (!l.anchor || nthIndexOf(entry.text, l.anchor, l.nth ?? 1) >= 0) return []
-    const which = (l.nth ?? 1) > 1 ? `の ${l.nth} 回目` : ''
-    return [`リンク「${l.label}」の語「${l.anchor}」${which}が本文に見つかりません（画面では行末に「${l.label} ↗」で出します）`]
+    const vars = { label: l.label, anchor: l.anchor, nth: l.nth ?? 1 }
+    return [(l.nth ?? 1) > 1
+      ? t('Link "{label}": occurrence {nth} of the word "{anchor}" is not in the text (the screen shows "{label} ↗" at the end of the line instead)', vars)
+      : t('Link "{label}": the word "{anchor}" is not in the text (the screen shows "{label} ↗" at the end of the line instead)', vars)]
   })
 }
 
@@ -171,7 +175,7 @@ const wbsList = (body: Record<string, unknown>): string[] | undefined => {
 }
 
 const asBody = (body: unknown): Record<string, unknown> => {
-  if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new DailyInputError('JSON のオブジェクトで渡してください')
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new DailyInputError(t('Send a JSON object'))
   return body as Record<string, unknown>
 }
 
@@ -198,7 +202,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     ...(links?.length ? { links } : {}),
     origin: 'manual',
   })
-  const commit = await writeDaily(dir, date, [...entries, entry], `1 日の進行に行を足した（${date}）`)
+  const commit = await writeDaily(dir, date, [...entries, entry], t('Add a line to daily progress ({date})', { date }))
   return { entry, commit, warnings: anchorWarnings(entry) }
 }
 
@@ -218,11 +222,11 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
   const body = asBody(input)
   const { entries } = await mergedEntries(dir, date)
   const current = entries.find(e => e.id === id && visible(e))
-  if (!current) throw new DailyInputError(`${date} に行 ${id} はありません`, 404)
+  if (!current) throw new DailyInputError(t('No line {id} on {date}', { id, date }), 404)
   // 直すときは、空文字（links・wbs は空の配列や空文字・null も）を「その欄を空にする」と読む。
   // 本文だけは空の行を作らないよう断る（行ごと消すなら daily_remove）
   const isCleared = (key: string) => body[key] === '' || body[key] === null
-  if (isCleared('text')) throw new DailyInputError('本文は空にできません（行ごと消すなら daily_remove を使ってください）')
+  if (isCleared('text')) throw new DailyInputError(t('text cannot be empty (use daily_remove to delete the whole line)'))
   const patch = {
     who: isCleared('who') ? '' : text(body, 'who', false),
     section: section(body, false),
@@ -246,7 +250,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     ...(links?.length ? { links } : {}),
   }
   const entry = patch.text !== undefined || patch.issue !== undefined ? await withIssueHead(dir, merged) : merged
-  const commit = await writeDaily(dir, date, entries.map(e => (e.id === id ? entry : e)), `1 日の進行の行 ${id} を直した（${date}）`)
+  const commit = await writeDaily(dir, date, entries.map(e => (e.id === id ? entry : e)), t('Edit daily progress line {id} ({date})', { id, date }))
   return { entry, commit, warnings: anchorWarnings(entry) }
 }
 
@@ -254,9 +258,9 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
 export async function removeDaily(dir: string, date: string, id: string): Promise<{ commit: CommitResult }> {
   const { entries } = await mergedEntries(dir, date)
   const current = entries.find(e => e.id === id && visible(e))
-  if (!current) throw new DailyInputError(`${date} に行 ${id} はありません`, 404)
+  if (!current) throw new DailyInputError(t('No line {id} on {date}', { id, date }), 404)
   const next = current.origin === 'manual'
     ? entries.filter(e => e.id !== id)
     : entries.map(e => (e.id === id ? { ...e, origin: 'removed' as const } : e))
-  return { commit: await writeDaily(dir, date, next, `1 日の進行の行 ${id} を消した（${date}）`) }
+  return { commit: await writeDaily(dir, date, next, t('Remove daily progress line {id} ({date})', { id, date })) }
 }

@@ -1,4 +1,5 @@
 // プロダクト → プロジェクト → WBS（Finder の列表示）。MVP では開いている案件 1 つを出す
+import { t } from './i18n.js'
 import { api, chip, day, esc, fullDate, ICON_INFO, isDoneStatus, isMine, lateColor, lateDays, messageOf, shortDate, toast, toastCommit, within } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
@@ -11,10 +12,10 @@ const closed = new Set() // 閉じている工程（描き直しても開閉を�
 
 /** @type {Record<string, { label: string, cmp: (state: ProjectState) => (a: Task, b: Task) => number }>} */
 const SORTS = {
-  wbs: { label: 'WBS 番号順', cmp: () => (a, b) => a.id.localeCompare(b.id) },
-  start: { label: '開始日順', cmp: () => (a, b) => (a.start ? day(a.start) : Infinity) - (b.start ? day(b.start) : Infinity) },
-  end: { label: '終了日順', cmp: () => (a, b) => (a.end ? day(a.end) : Infinity) - (b.end ? day(b.end) : Infinity) },
-  status: { label: 'ステータス順', cmp: state => (a, b) => state.statuses.findIndex(s => s.id === a.status) - state.statuses.findIndex(s => s.id === b.status) },
+  wbs: { label: 'By WBS number', cmp: () => (a, b) => a.id.localeCompare(b.id) },
+  start: { label: 'By start date', cmp: () => (a, b) => (a.start ? day(a.start) : Infinity) - (b.start ? day(b.start) : Infinity) },
+  end: { label: 'By end date', cmp: () => (a, b) => (a.end ? day(a.end) : Infinity) - (b.end ? day(b.end) : Infinity) },
+  status: { label: 'By status', cmp: state => (a, b) => state.statuses.findIndex(s => s.id === a.status) - state.statuses.findIndex(s => s.id === b.status) },
 }
 
 /**
@@ -36,13 +37,13 @@ function taskRow(state, task) {
   const late = lateDays(state, task)
   // 終わったタスクは色を付けない。終わっていないタスクは青、遅れるほど赤へ
   const color = isDoneStatus(state, task.status) ? 'transparent' : lateColor(late)
-  const lateText = late ? `<span class="late" style="color:${color}">${late} 日遅れ</span>` : ''
+  const lateText = late ? `<span class="late" style="color:${color}">${esc(t('{n} days late', { n: late }))}</span>` : ''
   // 読み込みで start と end はかならずそろって入る
-  const dates = task.start ? `${shortDate(task.start)}–${shortDate(/** @type {string} */ (task.end))}` : '期間なし'
+  const dates = task.start ? `${shortDate(task.start)}–${shortDate(/** @type {string} */ (task.end))}` : esc(t('No dates'))
   return `<div class="wbs-task" id="task-${esc(task.id)}" style="--row-color:${color}">
     <span class="tid">${esc(task.id)}</span>
     <span>${esc(task.name)}${lateText}</span>
-    <select class="status-select tone-${current?.tone ?? 'none'}" data-task="${esc(task.id)}" aria-label="${esc(task.id)} のステータス">${options}</select>
+    <select class="status-select tone-${current?.tone ?? 'none'}" data-task="${esc(task.id)}" aria-label="${esc(t('Status of {id}', { id: task.id }))}">${options}</select>
     <span class="dates">${dates}</span>
   </div>`
 }
@@ -50,7 +51,7 @@ function taskRow(state, task) {
 /** @param {ProjectState} state */
 function wbsHtml(state) {
   const statusOptions = state.statuses.map(s => `<option value="${esc(s.id)}" ${s.id === wbsFilter ? 'selected' : ''}>${esc(s.name)}</option>`).join('')
-  const sortOptions = Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === wbsSort ? 'selected' : ''}>${v.label}</option>`).join('')
+  const sortOptions = Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === wbsSort ? 'selected' : ''}>${esc(t(v.label))}</option>`).join('')
   const groups = state.phases.map(phase => {
     // 上の帯の担当で絞る（WBS の担当は人の名前）
     const tasks = state.tasks.filter(t => t.phase === phase.id && isMine(state, t.owner))
@@ -63,16 +64,16 @@ function wbsHtml(state) {
     const range = dated.length ? `${shortDate(spanOf(dated).start)} – ${shortDate(spanOf(dated).end)}` : ''
     return `<details class="wbs-phase" data-phase-group="${esc(phase.id)}" ${closed.has(phase.id) ? '' : 'open'}>
       <summary><span class="tw">›</span><span class="late-dot" style="background:${dot}"></span>${esc(phase.name)}<span class="count">${visible.length}/${tasks.length}</span><span class="dates">${range}</span></summary>
-      ${visible.length ? visible.map(t => taskRow(state, t)).join('') : '<div class="wbs-task muted"><span></span><span>該当するタスクはありません</span></div>'}
+      ${visible.length ? visible.map(t => taskRow(state, t)).join('') : `<div class="wbs-task muted"><span></span><span>${esc(t('No matching tasks'))}</span></div>`}
     </details>`
   }).join('')
   return `<div class="toolbar">
-      <label>ステータス<select id="wbs-filter"><option value="all">すべて</option>${statusOptions}</select></label>
-      <label>並べ替え<select id="wbs-sort">${sortOptions}</select></label>
+      <label>${esc(t('Status'))}<select id="wbs-filter"><option value="all">${esc(t('All'))}</option>${statusOptions}</select></label>
+      <label>${esc(t('Sort'))}<select id="wbs-sort">${sortOptions}</select></label>
       <span class="spacer"></span>
-      <button type="button" class="btn-ghost" id="wbs-open-all">すべて開く</button>
-      <button type="button" class="btn-ghost" id="wbs-close-all">すべて閉じる</button>
-    </div>${groups || `<div class="note">${ICON_INFO}<span>WBS（ledger/wbs.tsv）にタスクがありません。</span></div>`}`
+      <button type="button" class="btn-ghost" id="wbs-open-all">${esc(t('Expand all'))}</button>
+      <button type="button" class="btn-ghost" id="wbs-close-all">${esc(t('Collapse all'))}</button>
+    </div>${groups || `<div class="note">${ICON_INFO}<span>${esc(t('There are no tasks in the WBS (ledger/wbs.tsv).'))}</span></div>`}`
 }
 
 /**
@@ -86,17 +87,17 @@ export function renderWbs(view, state, reload, highlightId) {
   const target = state.tasks.find(t => t.id === highlightId)
   if (target) closed.delete(target.phase)
   const dated = state.tasks.filter(t => t.start)
-  const period = dated.length ? `予定 ${fullDate(spanOf(dated).start)} – ${fullDate(spanOf(dated).end)}` : '予定期間なし'
+  const period = dated.length ? esc(t('Planned {start} – {end}', { start: fullDate(spanOf(dated).start), end: fullDate(spanOf(dated).end) })) : esc(t('No planned dates'))
   view.innerHTML = `
-    <h1>プロダクト</h1>
-    <p class="lede">プロジェクトを選ぶと WBS の骨組みが開きます。MVP では、立ち上げたときに指定した案件を 1 つ出します。</p>
+    <h1>${esc(t('Product'))}</h1>
+    <p class="lede">${esc(t('Choose a project to open the outline of its WBS. In the MVP, the one project given at startup is shown.'))}</p>
     <div class="browser">
-      <div class="col" role="listbox" aria-label="プロジェクト"><div class="col-head">プロジェクト<span>1</span></div>
+      <div class="col" role="listbox" aria-label="${esc(t('Project'))}"><div class="col-head">${esc(t('Project'))}<span>1</span></div>
         <button class="item" aria-selected="true"><span class="body"><span class="title">${esc(state.project.name)}</span><span class="meta">${period}</span></span><span class="chev">›</span></button>
       </div>
-      <div class="col wide"><div class="col-head">WBS · おおまかな骨組み</div>
+      <div class="col wide"><div class="col-head">${esc(t('WBS · outline'))}</div>
         <div class="wbs"><div class="wbs-head"><div><h3>${esc(state.project.name)}</h3><div class="meta">${period}</div></div>
-          <a class="btn-primary" href="#phases" style="text-decoration:none;white-space:nowrap">残課題を開く →</a></div>
+          <a class="btn-primary" href="#phases" style="text-decoration:none;white-space:nowrap">${esc(t('Open remaining work →'))}</a></div>
           ${wbsHtml(state)}
         </div>
       </div>
@@ -123,7 +124,7 @@ export function renderWbs(view, state, reload, highlightId) {
     const taskId = s.dataset.task ?? ''
     try {
       const { commit } = await api(`/api/tasks/${encodeURIComponent(taskId)}/status`, { method: 'PUT', body: { status: s.value } })
-      toastCommit(`${taskId} のステータス`, commit)
+      toastCommit(t('the status of {id}', { id: taskId }), commit)
       await reload()
     } catch (error) {
       toast(messageOf(error))

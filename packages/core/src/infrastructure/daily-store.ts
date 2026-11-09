@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { DAILY_SECTIONS, type DailyEntry, type DailyLink, type DailyOrigin, type DailySection, type Member } from '../usecase/daily-entries.js'
 import { commitFiles, type CommitResult } from './git.js'
 import { ownersOf } from '../domain/people.js'
+import { t } from '../i18n.js'
 import { parseTsv, toTsv } from './tsv.js'
 
 /** 日ごとの「1 日の進行」（tadori が書く記録。チェックの記録と同じく .tadori/ に置き、git で残す） */
@@ -50,8 +51,8 @@ const splitIds = (value: string) => value.split(/[、,]/).map(s => s.trim()).fil
 function toEntry(row: Record<string, string>, path: string): DailyEntry {
   const section = row.section as DailySection
   const origin = row.origin as DailyOrigin
-  if (!DAILY_SECTIONS.includes(section)) throw new Error(`${path} の ${row.id}：section「${row.section}」は ${DAILY_SECTIONS.join(' / ')} のどれかにしてください`)
-  if (!ORIGINS.includes(origin)) throw new Error(`${path} の ${row.id}：origin「${row.origin}」は ${ORIGINS.join(' / ')} のどれかにしてください`)
+  if (!DAILY_SECTIONS.includes(section)) throw new Error(t('{path}, {id}: section "{value}" must be one of {allowed}', { path, id: String(row.id), value: String(row.section), allowed: DAILY_SECTIONS.join(' / ') }))
+  if (!ORIGINS.includes(origin)) throw new Error(t('{path}, {id}: origin "{value}" must be one of {allowed}', { path, id: String(row.id), value: String(row.origin), allowed: ORIGINS.join(' / ') }))
   return {
     id: row.id ?? '',
     who: row.who ?? '',

@@ -1,4 +1,5 @@
 // チェックの記録・つながりを辿る
+import { t } from './i18n.js'
 import { api, chip, esc, ICON_INFO, kindLabel, messageOf, originHtml, toast, within } from './util.js'
 import { renderPicker } from './trace-picker.js'
 
@@ -18,12 +19,12 @@ export function renderLog(view, state) {
     <td class="mono src">${esc(r.where)}</td><td class="cond">${esc(r.why)}</td><td class="mono src">${esc(r.how)}</td>
     <td>${chip(RESULT_TONE(r.result), esc(r.result))}</td></tr>`).join('')
   view.innerHTML = `
-    <h1>チェックの記録</h1>
-    <p class="lede">ルールをチェックするたびに、5W1H で 1 行ずつ足していきます（<span class="mono">.tadori/checks.tsv</span>・git で管理）。人の承認の行は人が書きます。</p>
-    <div class="note">${ICON_INFO}<span>記録を足すには <span class="mono">tadori check --log --who 名前 --why 理由</span> を使います。</span></div>
+    <h1>${esc(t('Check log'))}</h1>
+    <p class="lede">${esc(t('Each time the rules are checked, one row is added in 5W1H form ({file}, managed in git). People write the rows for their own approvals.')).replace('{file}', () => '<span class="mono">.tadori/checks.tsv</span>')}</p>
+    <div class="note">${ICON_INFO}<span>${esc(t('To add a row, use {command}.')).replace('{command}', () => `<span class="mono">${esc(t('tadori check --log --who NAME --why REASON'))}</span>`)}</span></div>
     <div class="panel"><table>
-      <thead><tr><th>いつ</th><th>誰が</th><th>何を</th><th>どこで</th><th>なぜ</th><th>どうやって</th><th>結果</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="7" class="cond">まだ記録がありません</td></tr>'}</tbody>
+      <thead><tr><th>${esc(t('When'))}</th><th>${esc(t('Who'))}</th><th>${esc(t('What'))}</th><th>${esc(t('Where'))}</th><th>${esc(t('Why'))}</th><th>${esc(t('How'))}</th><th>${esc(t('Result'))}</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="7" class="cond">${esc(t('No records yet'))}</td></tr>`}</tbody>
     </table></div>`
 }
 
@@ -44,25 +45,25 @@ function storyPath(result, resolved = [], origins = {}) {
     const prev = result.steps[i - 1]
     // 切れ目の前後の線を赤くする（上流が無い切れ目は、その後ろの線、下流が無い切れ目は前の線）
     const broken = s.type === 'missing' || prev?.type === 'missing'
-    if (i > 0) parts.push(`<div class="sp-link ${broken ? 'broken' : ''}"><span class="sp-line"></span><span class="sp-link-label">${s.type === 'missing' ? 'ここで切れている' : ''}</span></div>`)
+    if (i > 0) parts.push(`<div class="sp-link ${broken ? 'broken' : ''}"><span class="sp-line"></span><span class="sp-link-label">${s.type === 'missing' ? esc(t('Broken here')) : ''}</span></div>`)
     if (s.type === 'missing') {
-      const what = s.before ? `元にした${kindLabel(s.kind)}が無い` : `${kindLabel(s.kind)}が無い`
+      const what = s.before ? t('The {kind} it is based on is missing', { kind: kindLabel(s.kind) }) : t('{kind} is missing', { kind: kindLabel(s.kind) })
       parts.push(`<div class="sp-card ng"><div class="sp-phase"><span class="leak-id">${esc(s.rule)}·${esc(s.after ?? s.before)}</span></div><div class="sp-icon">${ICON_NG}</div>
-        <div class="sp-kind">${esc(kindLabel(s.kind))}</div><div class="sp-say">${esc(what)}</div><div class="sp-src">台帳に ${esc(s.kind)} の行が無い</div></div>`)
+        <div class="sp-kind">${esc(kindLabel(s.kind))}</div><div class="sp-say">${esc(what)}</div><div class="sp-src">${esc(t('No {kind} row in the ledger', { kind: s.kind }))}</div></div>`)
       return
     }
     const isStart = s.item.id === result.start.id
     const other = (s.leaks ?? []).filter(l => !shownAsGap.has(`${l.rule}:${l.itemId}`))
-    const leakHtml = other.map(l => `<div class="sp-leak">漏れ <b>${esc(l.rule)}·${esc(l.itemId)}</b>：${esc(l.message)}</div>`).join('')
+    const leakHtml = other.map(l => `<div class="sp-leak">${esc(t('Gap {id}: {message}')).replace('{id}', () => `<b>${esc(l.rule)}·${esc(l.itemId)}</b>`).replace('{message}', () => esc(l.message))}</div>`).join('')
     // 前のチェックでは漏れだったが、いまは満たす行（チェックの記録から読む）
     const was = resolved.find(r => r.itemId === s.item.id)
     // カードは 3 つ：いまも漏れ（ng）／前は漏れで、いまは満たす（resolved）／初めから漏れなし（ok）
     // 漏れが切れ目として出ている行も、その行自身の漏れなので「漏れ」にする（中身は切れ目のカードに書く）
     const card = (s.leaks ?? []).length ? 'ng' : was ? 'resolved' : 'ok'
-    const resolvedHtml = card === 'resolved' && was ? `<div class="sp-resolved">${esc(was.when.slice(5, 10).replace('-', '/'))} のチェックでは漏れ（${esc(was.rule)}）→ いまは満たす</div>` : ''
-    const badge = { ng: '<span class="sp-badge ng">漏れ</span>', resolved: '<span class="sp-badge resolved">対応済み</span>', ok: '<span class="sp-badge ok">漏れなし</span>' }[card]
+    const resolvedHtml = card === 'resolved' && was ? `<div class="sp-resolved">${esc(t('Gap at the {date} check ({rule}) → met now', { date: was.when.slice(5, 10).replace('-', '/'), rule: was.rule }))}</div>` : ''
+    const badge = { ng: `<span class="sp-badge ng">${esc(t('Gap'))}</span>`, resolved: `<span class="sp-badge resolved">${esc(t('Resolved'))}</span>`, ok: `<span class="sp-badge ok">${esc(t('No gaps'))}</span>` }[card]
     const icon = { ng: ICON_NG, resolved: `<span class="sp-flip">${ICON_NG}<span>→</span>${ICON_OK}</span>`, ok: ICON_OK }[card]
-    parts.push(`<div class="sp-card ${card === 'ng' && !other.length ? 'ng-gap' : card} ${isStart ? 'end' : ''}"><div class="sp-phase">${isStart ? '辿り始め' : ''}${badge}</div><div class="sp-icon">${icon}</div>
+    parts.push(`<div class="sp-card ${card === 'ng' && !other.length ? 'ng-gap' : card} ${isStart ? 'end' : ''}"><div class="sp-phase">${isStart ? esc(t('Starting point')) : ''}${badge}</div><div class="sp-icon">${icon}</div>
       <div class="sp-kind">${esc(kindLabel(s.item.kind))} <span class="mono">${esc(s.item.id)}</span></div>
       <div class="sp-say">${esc(s.item.title)}</div>${leakHtml}${resolvedHtml}<div class="sp-src">${origins[s.item.id] ? originHtml(origins[s.item.id]) : esc(s.item.source)}</div></div>`)
   })
@@ -84,10 +85,10 @@ function traceSummary(result, resolved) {
   const onLine = new Set(result.steps.flatMap(s => (s.type === 'item' ? [s.item.id] : [])))
   const done = resolved.filter(r => onLine.has(r.itemId) && !leakIds.has(r.itemId)).map(r => r.itemId)
   const parts = [
-    leakIds.size ? `<span class="chip hole"><span class="dot"></span>漏れ ${leakIds.size} 件（${[...leakIds].map(id => esc(id)).join('・')}）</span>` : '<span class="chip ok"><span class="dot"></span>この線の上に漏れはありません</span>',
-    done.length ? `<span class="chip ok"><span class="dot"></span>対応済み ${done.length} 件（${done.map(id => esc(id)).join('・')}）</span>` : '',
+    leakIds.size ? `<span class="chip hole"><span class="dot"></span>${esc(t('Gaps: {n} ({ids})', { n: leakIds.size, ids: [...leakIds].join(t(', ')) }))}</span>` : `<span class="chip ok"><span class="dot"></span>${esc(t('No gaps on this line'))}</span>`,
+    done.length ? `<span class="chip ok"><span class="dot"></span>${esc(t('Resolved: {n} ({ids})', { n: done.length, ids: done.join(t(', ')) }))}</span>` : '',
   ]
-  return `<div class="trace-summary"><span class="cond">この線の上：</span>${parts.join('')}</div>`
+  return `<div class="trace-summary"><span class="cond">${esc(t('On this line:'))}</span>${parts.join('')}</div>`
 }
 
 /**
@@ -98,16 +99,15 @@ function traceSummary(result, resolved) {
 export async function renderTrace(view, state, startId) {
   const start = state.items.find(i => i.id === startId)
   view.innerHTML = `
-    <h1>つながりを辿る</h1>
-    <p class="lede">台帳の 1 行（指摘・試験ケース・設計書の章など）から、上流と下流のつながりを工程の順に並べます。
-      つながりは台帳に書かれた ID だけで tadori が判定し、推測でつなぎません。切れている所が赤です。</p>
+    <h1>${esc(t('Trace'))}</h1>
+    <p class="lede">${esc(t('Starting from one ledger row (a finding, a test case, a design section and so on), shows its upstream and downstream links in phase order. tadori decides links only from the IDs written in the ledger and never guesses. Broken links are red.'))}</p>
     <div class="trace-layout">
-      <section aria-label="どこから辿る"><h2>どこから辿る</h2><div id="picker"></div></section>
-      <section aria-label="辿った結果">
-        <div class="trace-head"><h2>${start ? `<span class="big-id">${esc(start.id)}</span>「${esc(start.title)}」から辿った結果` : '辿った結果'}</h2>${start ? '<button type="button" class="btn-ghost" id="copy-link" title="この結果を開くリンク（会議で渡すとき）">リンクをコピー</button>' : ''}</div>
+      <section aria-label="${esc(t('Where to start'))}"><h2>${esc(t('Where to start'))}</h2><div id="picker"></div></section>
+      <section aria-label="${esc(t('Trace result'))}">
+        <div class="trace-head"><h2>${start ? esc(t('Traced from {id} “{title}”', { title: start.title })).replace('{id}', () => `<span class="big-id">${esc(start.id)}</span>`) : esc(t('Trace result'))}</h2>${start ? `<button type="button" class="btn-ghost" id="copy-link" title="${esc(t('A link that opens this result (to share in a meeting)'))}">${esc(t('Copy link'))}</button>` : ''}</div>
         <div id="trace-summary"></div>
-        <div class="story-path" id="story" role="list"><div class="cond">${startId ? '読み込み中…' : '左で辿り始めの行を選んでください'}</div></div>
-        <div class="verdict"><span>この線のどこが漏れていたかを決めるのは人です。確かめたら、チェックの記録に人の行として残してください。</span></div>
+        <div class="story-path" id="story" role="list"><div class="cond">${esc(startId ? t('Loading…') : t('Choose the row to start from on the left'))}</div></div>
+        <div class="verdict"><span>${esc(t('A person decides where on this line the gap was. Once you have checked, record it in the check log as a human row.'))}</span></div>
       </section>
     </div>`
   renderPicker(within(view, '#picker'), state, startId, id => { location.hash = `trace-${encodeURIComponent(id)}` })
@@ -116,9 +116,9 @@ export async function renderTrace(view, state, startId) {
   view.querySelector('#copy-link')?.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(location.href)
-      toast(`リンクをコピーしました：${location.href}`)
+      toast(t('Copied the link: {url}', { url: location.href }))
     } catch {
-      toast(`コピーできませんでした。アドレスバーの URL を渡してください：${location.href}`)
+      toast(t('Could not copy. Share the URL in the address bar: {url}', { url: location.href }))
     }
   })
   try {

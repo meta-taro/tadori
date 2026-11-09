@@ -1,5 +1,6 @@
 import { relative } from 'node:path'
-import { appendChecks, type CheckRecord, type CommitResult } from '@tadori/core'
+import './i18n.js'
+import { appendChecks, t, type CheckRecord, type CommitResult } from '@tadori/core'
 import { formatCheck } from './format.js'
 import { loadState } from './state.js'
 
@@ -18,7 +19,10 @@ export interface CheckRun {
   readonly commit?: CommitResult
 }
 
-/** check の結果をチェックの記録の行にする（ルールごとに 1 行。人の承認のルールは人が記録するので入れない） */
+/**
+ * check の結果をチェックの記録の行にする（ルールごとに 1 行。人の承認のルールは人が記録するので入れない）。
+ * 行の値は案件の TSV に残るデータなので、画面の言語では訳さない
+ */
 function toRecords(state: Awaited<ReturnType<typeof loadState>>['state'], dir: string, options: CheckOptions): CheckRecord[] {
   const now = new Date()
   const when = `${options.today} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
@@ -41,6 +45,6 @@ export async function runCheck(dir: string, options: CheckOptions): Promise<Chec
   const { state } = await loadState(dir, options.today)
   const text = formatCheck(state)
   if (!options.log) return { text, leakCount: state.leaks.length }
-  const commit = await appendChecks(dir, toRecords(state, dir, options), `チェックの記録を追加（${options.why ?? 'tadori check'}）`)
+  const commit = await appendChecks(dir, toRecords(state, dir, options), t('Add check records ({why})', { why: options.why ?? 'tadori check' }))
   return { text, leakCount: state.leaks.length, commit }
 }

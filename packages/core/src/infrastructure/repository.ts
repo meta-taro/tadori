@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import type { Approval, ApprovalStatus, Item, Phase, Project, Rule, RuleKind, StatusDef, Task } from '../domain/model.js'
 import { validateLinkTemplate, type LinkTemplate } from '../domain/links.js'
 import type { SourceDef } from '../domain/sources.js'
+import { t } from '../i18n.js'
 import { parseTsv } from './tsv.js'
 
 /**
@@ -37,7 +38,7 @@ export const PATHS = {
 /** 読み込みで見つかった問題をまとめて返す（1 つずつ直させない） */
 export class ProjectLoadError extends Error {
   constructor(readonly problems: readonly string[]) {
-    super(`案件を読めませんでした：\n- ${problems.join('\n- ')}`)
+    super(t('Could not read the project:\n- {problems}', { problems: problems.join('\n- ') }))
     this.name = 'ProjectLoadError'
   }
 }
@@ -85,7 +86,7 @@ async function readRows(dir: string, path: string): Promise<readonly Record<stri
  */
 async function readRequiredNumberedRows(dir: string, path: string, problems: string[]): Promise<readonly NumberedRow[]> {
   if (!(await exists(join(dir, path)))) {
-    problems.push(`${path} がありません`)
+    problems.push(t('{path} is missing', { path }))
     return []
   }
   return readNumberedRows(dir, path)
@@ -120,7 +121,7 @@ function toTask({ row, line }: NumberedRow, problems: string[]): Task {
   const end = row.end ?? ''
   // 日付は画面に埋め込まれ、遅れの計算にも使うので形を確かめる
   for (const [label, value] of [['start', start], ['end', end]] as const) {
-    if (value && !isValidDate(value)) problems.push(`${PATHS.wbs} の ${row.id}：${label} の日付「${value}」は YYYY-MM-DD で書いてください`)
+    if (value && !isValidDate(value)) problems.push(t('{file}, {id}: the {label} date "{value}" must be written as YYYY-MM-DD', { file: PATHS.wbs, id: String(row.id), label, value }))
   }
   return {
     id: row.id ?? '',
@@ -144,7 +145,7 @@ function parseOnly(value: string): Rule['only'] | undefined {
 async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
   const folder = join(dir, PATHS.rulesets)
   if (!(await exists(folder))) {
-    problems.push(`${PATHS.rulesets} がありません（ルールが無いと、漏れが 0 件に見えてしまいます）`)
+    problems.push(t('{path} is missing (without rules, there would appear to be 0 gaps)', { path: PATHS.rulesets }))
     return []
   }
   const files = (await readdir(folder)).filter(f => f.endsWith('.tsv')).sort()
@@ -153,7 +154,7 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
     return rows.flatMap(row => {
       const kind = row.kind as RuleKind
       if (!RULE_KINDS.includes(kind)) {
-        problems.push(`${PATHS.rulesets}/${file} のルール ${row.id}：判定の種類「${row.kind}」は使えません（${RULE_KINDS.join(' / ')}）`)
+        problems.push(t('{file}, rule {id}: the check kind "{kind}" is not allowed ({allowed})', { file: `${PATHS.rulesets}/${file}`, id: String(row.id), kind: String(row.kind), allowed: RULE_KINDS.join(' / ') }))
         return []
       }
       const only = parseOnly(row.only ?? '')
@@ -172,7 +173,8 @@ function toApprovals(rows: readonly Record<string, string>[], problems: string[]
   return rows.flatMap(row => {
     const status = row.status as ApprovalStatus
     if (!APPROVAL_STATUSES.includes(status)) {
-      problems.push(`${PATHS.approvals} のルール ${row.rule}：状態「${row.status}」は使えません（${APPROVAL_STATUSES.join(' / ')}）`)
+      // 状態の値（承認・差し戻し・待ち）は人が approvals.tsv に書くデータなので、英語の文でも訳さない
+      problems.push(t('{file}, rule {rule}: the status "{status}" is not allowed ({allowed})', { file: PATHS.approvals, rule: String(row.rule), status: String(row.status), allowed: APPROVAL_STATUSES.join(' / ') }))
       return []
     }
     return [{ rule: row.rule ?? '', status, who: row.who ?? '', when: row.when ?? '' }]
@@ -183,7 +185,7 @@ function toStatuses(rows: readonly Record<string, string>[], problems: string[])
   return rows.flatMap(row => {
     const tone = row.tone as StatusDef['tone']
     if (!TONES.includes(tone)) {
-      problems.push(`${PATHS.statuses} の ${row.id}：色の意味「${row.tone}」は使えません（${TONES.join(' / ')}）`)
+      problems.push(t('{file}, {id}: the tone "{tone}" is not allowed ({allowed})', { file: PATHS.statuses, id: String(row.id), tone: String(row.tone), allowed: TONES.join(' / ') }))
       return []
     }
     return [{ id: row.id ?? '', name: row.name ?? '', tone }]
@@ -201,7 +203,7 @@ function toSources(rows: readonly Record<string, string>[], problems: string[]):
     const url = r.url as string
     const locator = (r.locator ?? '').trim()
     const problem = validateLinkTemplate(url) ?? (locator ? validateLinkTemplate(locator.replace('{url}', url)) : null)
-    if (problem) { problems.push(`${PATHS.sources} の ${name}：${problem}`); return [] }
+    if (problem) { problems.push(t('{file}, {name}: {problem}', { file: PATHS.sources, name, problem })); return [] }
     const days = Number(r.stale_days)
     return [{ name, url, locator, staleDays: Number.isFinite(days) && days > 0 ? days : DEFAULT_STALE_DAYS }]
   })
@@ -213,7 +215,7 @@ function toLinks(rows: readonly Record<string, string>[], problems: string[]): L
     const url = (row.url ?? '').trim()
     if (!tool || !url) return []
     const problem = validateLinkTemplate(url)
-    if (problem) { problems.push(`${PATHS.links} の ${tool}：${problem}`); return [] }
+    if (problem) { problems.push(t('{file}, {name}: {problem}', { file: PATHS.links, name: tool, problem })); return [] }
     return [{ tool, url }]
   })
 }
@@ -230,13 +232,13 @@ function duplicateIdProblems(items: readonly Item[]): string[] {
     if (seen.has(item.id)) duplicated.add(item.id)
     seen.add(item.id)
   }
-  return [...duplicated].map(id => `ID「${id}」が重複しています（${PATHS.wbs} と ${PATHS.items} の間の重複も含む）`)
+  return [...duplicated].map(id => t('The ID "{id}" is duplicated (this includes duplicates between {wbs} and {items})', { id, wbs: PATHS.wbs, items: PATHS.items }))
 }
 
 /** 案件のフォルダを読む。問題があれば、全部まとめて ProjectLoadError で返す */
 export async function loadProject(dir: string): Promise<Project> {
   if (!(await exists(join(dir, '.tadori')))) {
-    throw new ProjectLoadError([`${dir} に .tadori フォルダがありません。tadori の案件のフォルダを指定してください`])
+    throw new ProjectLoadError([t('{dir} has no .tadori folder. Specify a tadori project folder', { dir })])
   }
   const problems: string[] = []
   const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows, sourceRows] = await Promise.all([
@@ -254,7 +256,7 @@ export async function loadProject(dir: string): Promise<Project> {
   ])
   const phases: Phase[] = phaseRows.map(row => {
     const order = Number(row.order)
-    if (!Number.isFinite(order)) problems.push(`${PATHS.phases} の ${row.id}：order「${row.order}」は数で書いてください`)
+    if (!Number.isFinite(order)) problems.push(t('{file}, {id}: order "{order}" must be a number', { file: PATHS.phases, id: String(row.id), order: String(row.order) }))
     return { id: row.id ?? '', name: row.name ?? '', order }
   })
   const tasks = wbsRows.map(row => toTask(row, problems))

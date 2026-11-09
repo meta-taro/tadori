@@ -4,7 +4,10 @@
 //! 画面（127.0.0.1 のページ）から呼べるのは、自作の上の帯のための窓の操作と、ここにある 4 つの命令だけ
 //! （capabilities/desktop-shell.json）。ファイルの読み書きなどは呼ばせない。
 
+mod lang;
 mod sidecar;
+
+use lang::tr;
 
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -37,7 +40,7 @@ pub fn run() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("tadori の窓を作れませんでした");
+        .expect("could not create the tadori window");
 
     app.run(|handle, event| {
         if let RunEvent::Exit = event {
@@ -71,7 +74,7 @@ fn recent_projects(handle: AppHandle) -> Vec<[String; 2]> {
 async fn open_project(handle: AppHandle, path: String) -> Result<(), String> {
     let wanted = PathBuf::from(path);
     if !read_recent(&handle).contains(&wanted) {
-        return Err("最近の案件にない場所は開けません。「案件を開く…」から選んでください".into());
+        return Err(tr("That folder is not in your recent projects. Choose it with \"Open project…\".", "最近の案件にない場所は開けません。「案件を開く…」から選んでください").into());
     }
     switch_project(&handle, &wanted)
 }
@@ -80,12 +83,12 @@ async fn open_project(handle: AppHandle, path: String) -> Result<(), String> {
 /// 窓の中で外のページへ移ると tadori に戻れなくなるため。http と https だけを受ける（ファイルや命令は開かない）
 #[tauri::command]
 fn open_external(handle: AppHandle, url: String) -> Result<(), String> {
-    let parsed = Url::parse(&url).map_err(|_| format!("URL として読めません：{url}"))?;
+    let parsed = Url::parse(&url).map_err(|_| format!("{}{url}", tr("Not a valid URL: ", "URL として読めません：")))?;
     if !matches!(parsed.scheme(), "http" | "https") {
-        return Err("正本のリンクは http か https だけを開きます".into());
+        return Err(tr("Only http and https links can be opened", "正本のリンクは http か https だけを開きます").into());
     }
     use tauri_plugin_opener::OpenerExt;
-    handle.opener().open_url(parsed.as_str(), None::<&str>).map_err(|e| format!("ブラウザで開けませんでした：{e}"))
+    handle.opener().open_url(parsed.as_str(), None::<&str>).map_err(|e| format!("{}{e}", tr("Could not open the browser: ", "ブラウザで開けませんでした：")))
 }
 
 // ---- 起動と切り替え ----
@@ -138,7 +141,7 @@ fn ask_for_project(handle: &AppHandle) -> Option<PathBuf> {
         let picked = handle
             .dialog()
             .file()
-            .set_title("tadori で開く案件のフォルダを選ぶ（新しく始めるフォルダでもよい）")
+            .set_title(tr("Choose a project folder for tadori (a new folder is fine)", "tadori で開く案件のフォルダを選ぶ（新しく始めるフォルダでもよい）"))
             .blocking_pick_folder()?;
         let path = picked.into_path().ok()?;
         if sidecar::is_project(&path) {
@@ -159,12 +162,16 @@ fn confirm_start(handle: &AppHandle, dir: &Path) -> bool {
     handle
         .dialog()
         .message(format!(
-            "{} には、まだ tadori の設定がありません。\n\nここで始めますか？\n.tadori（工程・ステータス・ルール）と ledger（台帳・WBS・承認の記録）を置きます。すでにあるファイルは書き換えません。commit はしません。",
-            dir.display()
+            "{}{}",
+            dir.display(),
+            tr(
+                " has no tadori settings yet.\n\nStart here?\ntadori adds .tadori (phases, statuses, rules) and ledger (ledger, WBS, approvals). Existing files are never overwritten. Nothing is committed.",
+                " には、まだ tadori の設定がありません。\n\nここで始めますか？\n.tadori（工程・ステータス・ルール）と ledger（台帳・WBS・承認の記録）を置きます。すでにあるファイルは書き換えません。commit はしません。",
+            )
         ))
-        .title("tadori を始める")
+        .title(tr("Start tadori", "tadori を始める"))
         .kind(MessageDialogKind::Info)
-        .buttons(MessageDialogButtons::OkCancelCustom("始める".into(), "やめる".into()))
+        .buttons(MessageDialogButtons::OkCancelCustom(tr("Start", "始める").into(), tr("Cancel", "やめる").into()))
         .blocking_show()
 }
 
@@ -174,11 +181,11 @@ fn init_project(dir: &Path) -> Result<(), String> {
     let mut command = Command::new("node");
     command.args(sidecar::init_args(&cli, dir, &folder_name(dir)));
     hide_console(&mut command);
-    let output = command.output().map_err(|e| format!("tadori を始められませんでした：{e}"))?;
+    let output = command.output().map_err(|e| format!("{}{e}", tr("Could not start tadori: ", "tadori を始められませんでした：")))?;
     if output.status.success() {
         return Ok(());
     }
-    Err(format!("tadori を始められませんでした。\n{}", String::from_utf8_lossy(&output.stderr).trim()))
+    Err(format!("{}\n{}", tr("Could not start tadori.", "tadori を始められませんでした。"), String::from_utf8_lossy(&output.stderr).trim()))
 }
 
 /// `tadori serve` を起こし、立ち上がったら窓に映して戻る（出力は別のスレッドで読み続ける）
@@ -194,12 +201,12 @@ fn start_and_show(handle: &AppHandle, project: &Path) -> Result<(), String> {
     hide_console(&mut command);
     let mut child = command.spawn().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
-            "Node.js が見つかりません。Node.js 22 以上を入れてから、もう一度開いてください。".to_string()
+            tr("Node.js was not found. Install Node.js 22 or later, then open tadori again.", "Node.js が見つかりません。Node.js 22 以上を入れてから、もう一度開いてください。").to_string()
         } else {
-            format!("tadori を起こせませんでした：{e}")
+            format!("{}{e}", tr("Could not start tadori: ", "tadori を起こせませんでした："))
         }
     })?;
-    let stdout = child.stdout.take().ok_or("tadori の出力を読めませんでした")?;
+    let stdout = child.stdout.take().ok_or(tr("Could not read tadori's output", "tadori の出力を読めませんでした"))?;
     let errors = collect_stderr(&mut child);
     *handle.state::<Sidecar>().0.lock().unwrap() = Some(child);
 
@@ -214,14 +221,14 @@ fn start_and_show(handle: &AppHandle, project: &Path) -> Result<(), String> {
     // 立ち上がる前に終わった：案件を読めなかったなど。tadori の言葉をそのまま見せる
     std::thread::sleep(std::time::Duration::from_millis(200));
     let detail = errors.lock().map(|e| e.trim().to_string()).unwrap_or_default();
-    Err(format!("tadori が立ち上がりませんでした。\n{detail}"))
+    Err(format!("{}\n{detail}", tr("tadori did not start.", "tadori が立ち上がりませんでした。")))
 }
 
 fn show_in_window(handle: &AppHandle, url: &str, project: &Path) -> Result<(), String> {
-    let window = handle.get_webview_window("main").ok_or("tadori の窓が見つかりません")?;
-    let url = Url::parse(url).map_err(|e| format!("URL を読めませんでした：{e}"))?;
+    let window = handle.get_webview_window("main").ok_or(tr("The tadori window was not found", "tadori の窓が見つかりません"))?;
+    let url = Url::parse(url).map_err(|e| format!("{}{e}", tr("Could not read the URL: ", "URL を読めませんでした：")))?;
     let _ = window.set_title(&format!("tadori — {}", folder_name(project)));
-    window.navigate(url).map_err(|e| format!("画面を開けませんでした：{e}"))
+    window.navigate(url).map_err(|e| format!("{}{e}", tr("Could not open the screen: ", "画面を開けませんでした：")))
 }
 
 fn find_cli() -> Result<PathBuf, String> {
@@ -229,7 +236,7 @@ fn find_cli() -> Result<PathBuf, String> {
     let candidates = sidecar::cli_candidates(std::env::var("TADORI_CLI").ok(), resources.as_deref(), Path::new(env!("CARGO_MANIFEST_DIR")), cfg!(debug_assertions));
     candidates.iter().find(|p| p.is_file()).cloned().ok_or_else(|| {
         let tried: Vec<String> = candidates.iter().map(|p| p.display().to_string()).collect();
-        format!("tadori の本体（main.js）が見つかりません。`pnpm build` をしてから開いてください。\n探した所：\n{}", tried.join("\n"))
+        format!("{}\n{}", tr("tadori's main program (main.js) was not found. Run `pnpm build`, then open it again.\nLooked in:", "tadori の本体（main.js）が見つかりません。`pnpm build` をしてから開いてください。\n探した所："), tried.join("\n"))
     })
 }
 

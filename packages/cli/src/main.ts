@@ -2,7 +2,8 @@
 import { parseArgs } from 'node:util'
 import { basename, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { appendChecks, initProject, ProjectLoadError, trace, type CheckRecord } from '@tadori/core'
+import './i18n.js'
+import { appendChecks, initProject, langOf, ProjectLoadError, setLang, t, trace, type CheckRecord } from '@tadori/core'
 import { formatCheck, formatTrace } from './format.js'
 import { loadState, localToday } from './state.js'
 import { startServer } from './server.js'
@@ -13,24 +14,27 @@ import { runCheck } from './check-log.js'
 import { isDay, loadDaily } from './daily.js'
 
 const DEFAULT_PORT = 4870
-const USAGE = `使い方:
-  tadori init [案件のフォルダ] [--name 案件の名前]
-  tadori check [案件のフォルダ] [--log --who 名前 --why 理由] [--today YYYY-MM-DD]
-  tadori why <ID> [案件のフォルダ]
-  tadori serve [案件のフォルダ] [--port ${DEFAULT_PORT}] [--today YYYY-MM-DD]
-  tadori daily [案件のフォルダ] [--who 担当] [--date YYYY-MM-DD]
-  tadori how-to [話題]
-  tadori mcp [案件のフォルダ] [--screen http://127.0.0.1:4873]
+/** 使い方（いまの言語で。日本語の文は i18n-ja.ts） */
+const usage = (): string => t(`Usage:
+  tadori init [project folder] [--name project name]
+  tadori check [project folder] [--log --who name --why reason] [--today YYYY-MM-DD]
+  tadori why <ID> [project folder]
+  tadori serve [project folder] [--port {port}] [--today YYYY-MM-DD]
+  tadori daily [project folder] [--who owner] [--date YYYY-MM-DD]
+  tadori how-to [topic]
+  tadori mcp [project folder] [--screen http://127.0.0.1:4873]
 
-  init   試す案件のフォルダに、最小の設定（.tadori/）と台帳（ledger/）を置く。あるファイルは書き換えない
-  check  工程ごとの漏れと承認待ちを出す。漏れがあれば終了コード 1（CI でも使える）
-         --log を付けると、チェックの記録（.tadori/checks.tsv）に 5W1H で足す
-  why    1 件から上下に辿り、線が切れている所を出す
-  serve  手元（127.0.0.1）で画面を立ち上げる
-  daily  人単位の 1 日の進行（今日・次の作業日・相談・補足）。--who で担当を絞る
-  how-to 使い方を出す（MCP の how_to と同じ中身）。話題：start・ledger・rules・check・daily・write・screen・links・sources・agent-rules
-  mcp    MCP の口を標準入出力で開く（使い方・用語・残課題・漏れ・つながり・台帳の行を探す・画面の専用カーソル）
-         --screen は専用カーソルで操作する画面の場所（既定はデスクトップアプリの http://127.0.0.1:4873）`
+  init   Put the minimum settings (.tadori/) and ledger (ledger/) into a project folder to try. Existing files are not changed
+  check  Show the gaps and pending approvals per phase. Exit code 1 if there are gaps (works in CI too)
+         With --log, add the results to the check records (.tadori/checks.tsv) as 5W1H
+  why    Follow links up and down from one row and show where they break
+  serve  Start the screen on this machine (127.0.0.1)
+  daily  Daily progress per person (Today, Next working day, Questions, Notes). --who filters by owner
+  how-to Show how to use tadori (same content as MCP how_to). Topics: start, ledger, rules, check, daily, write, screen, links, sources, agent-rules
+  mcp    Open the MCP server on standard input/output (how-to, glossary, remaining work, gaps, links, ledger search, the dedicated screen cursor)
+         --screen is where the screen operated by the dedicated cursor lives (default: the desktop app at http://127.0.0.1:4873)
+
+  --lang en|ja  Language of messages (default: TADORI_LANG, then the OS language)`, { port: DEFAULT_PORT })
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -43,13 +47,21 @@ const { values, positionals } = parseArgs({
     name: { type: 'string' },
     screen: { type: 'string' },
     date: { type: 'string' },
+    lang: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
   },
 })
 
+// 言葉の言語：--lang → TADORI_LANG → OS の言語（core の detectLang）。--lang はほかの検査より先に効かせる
+if (values.lang !== undefined) {
+  const lang = langOf(values.lang)
+  if (!lang) fail(t('--lang must be en or ja: {value}', { value: values.lang }))
+  setLang(lang)
+}
+
 const [command, ...rest] = positionals
 const today = values.today ?? localToday()
-if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) fail(`--today は YYYY-MM-DD で書いてください：${today}`)
+if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) fail(t('Write --today as YYYY-MM-DD: {value}', { value: today }))
 
 function fail(message: string): never {
   process.stderr.write(`${message}\n`)
@@ -58,7 +70,7 @@ function fail(message: string): never {
 
 async function main(): Promise<void> {
   if (values.help || !command) {
-    process.stdout.write(`${USAGE}\n`)
+    process.stdout.write(`${usage()}\n`)
     return
   }
 
@@ -67,14 +79,10 @@ async function main(): Promise<void> {
     const result = await initProject(dir, values.name ?? basename(dir))
     const lines = [
       dir,
-      ...result.created.map(p => `  置いた　　　　　${p}`),
-      ...result.skipped.map(p => `  あるので触らない　${p}`),
+      ...result.created.map(p => t('  created          {path}', { path: p })),
+      ...result.skipped.map(p => t('  exists, untouched {path}', { path: p })),
       '',
-      '次にすること：',
-      '  1. .tadori/phases.tsv の工程を、この案件に合わせて書き換える',
-      '  2. .tadori/rulesets/ にルールを書く（ルールが無いうちは、漏れは出ません）',
-      `  3. ledger/ に台帳の行と WBS を書き、tadori serve ${rest[0] ?? '.'} で画面を開く`,
-      'commit はしていません。中身を確かめてから commit してください',
+      t('Next steps:\n  1. Rewrite the phases in .tadori/phases.tsv to fit this project\n  2. Write rules in .tadori/rulesets/ (no gaps are reported until there are rules)\n  3. Write ledger rows and the WBS in ledger/, then open the screen with tadori serve {dir}\nNothing was committed. Check the contents, then commit', { dir: rest[0] ?? '.' }),
     ]
     process.stdout.write(`${lines.join('\n')}\n`)
     return
@@ -87,9 +95,11 @@ async function main(): Promise<void> {
     if (run.commit) {
       const commit = run.commit
       const pushNote = commit.unpushed === null || commit.unpushed === undefined
-        ? '（push 先が設定されていません）'
-        : `（push していない commit が ${commit.unpushed} 件。中身を確かめてから push してください）`
-      process.stdout.write(commit.committed ? `チェックの記録を足して commit しました${pushNote}\n` : `チェックの記録を足しました（${commit.reason}）\n`)
+        ? t(' (no push destination is set)')
+        : t(' ({count} commits not pushed yet. Check the contents, then push)', { count: commit.unpushed })
+      process.stdout.write(commit.committed
+        ? `${t('Added the check records and committed{note}', { note: pushNote })}\n`
+        : `${t('Added the check records ({reason})', { reason: commit.reason ?? '' })}\n`)
     }
     process.exitCode = run.leakCount ? 1 : 0
     return
@@ -97,11 +107,11 @@ async function main(): Promise<void> {
 
   if (command === 'why') {
     const id = rest[0]
-    if (!id) fail('辿る ID を指定してください（例：tadori why F-02）')
+    if (!id) fail(t('Give the ID to follow (e.g. tadori why F-02)'))
     const dir = resolve(rest[1] ?? '.')
     const { project, state } = await loadState(dir, today)
     const result = trace(project, id)
-    if (!result) fail(`${id} は台帳にありません`)
+    if (!result) fail(t('{id} is not in the ledger', { id }))
     process.stdout.write(`${formatTrace(result, state.origins)}\n`)
     return
   }
@@ -110,7 +120,7 @@ async function main(): Promise<void> {
     const dir = resolve(rest[0] ?? '.')
     await loadState(dir, today) // 先に読めるか確かめる（読めなければ、ここで理由を出して止める）
     const port = Number(values.port ?? DEFAULT_PORT)
-    if (!Number.isInteger(port) || port < 0 || port > 65535) fail(`--port が正しくありません：${values.port}`)
+    if (!Number.isInteger(port) || port < 0 || port > 65535) fail(t('--port is not valid: {value}', { value: String(values.port) }))
     const uiDir = fileURLToPath(new URL('../../ui/static', import.meta.url))
     // --today を渡したときだけ日付を固定する。渡さなければ、サーバーが読むたびにその日の日付を使う
     // デスクトップアプリから起こしたときは、アプリの版を画面に出す（ヘルプの「バージョンと更新」）
@@ -119,18 +129,19 @@ async function main(): Promise<void> {
     const updateOff = process.env.TADORI_UPDATE_CHECK?.trim().toLowerCase() === 'off'
     const server = await startServer({
       dir, port, uiDir, ...(values.today ? { today } : {}), ...(appVersion ? { appVersion } : {}),
-      ...(updateOff ? { checkUpdate: async () => { throw new Error('新しい版の確認は切ってあります（TADORI_UPDATE_CHECK=off）') } } : {}),
+      ...(updateOff ? { checkUpdate: async () => { throw new Error(t('Checking for new versions is turned off (TADORI_UPDATE_CHECK=off)')) } } : {}),
     })
     // --port 0 のときは OS が空いている番号を選ぶので、実際につないだ番号を出す（デスクトップアプリはこの行から URL を読む）
     const bound = typeof server.address === 'object' && server.address ? server.address.port : port
-    process.stdout.write(`tadori を立ち上げました：http://127.0.0.1:${bound}/\n案件：${dir}\n止めるときは Ctrl+C\n`)
+    // URL の後ろは改行にする（デスクトップアプリは URL を空白か改行まで読む）
+    process.stdout.write(`${t('tadori started: {url}\nProject: {dir}\nPress Ctrl+C to stop', { url: `http://127.0.0.1:${bound}/`, dir })}\n`)
     return
   }
 
   if (command === 'daily') {
     const dir = resolve(rest[0] ?? '.')
     const date = values.date ?? today
-    if (!isDay(date)) fail(`--date は YYYY-MM-DD で書いてください：${date}`)
+    if (!isDay(date)) fail(t('Write --date as YYYY-MM-DD: {value}', { value: date }))
     const daily = await loadDaily(dir, date, values.who)
     process.stdout.write(`${daily.text}\n`)
     return
@@ -157,7 +168,7 @@ async function main(): Promise<void> {
     return
   }
 
-  fail(`知らないコマンドです：${command}\n\n${USAGE}`)
+  fail(`${t('Unknown command: {command}', { command })}\n\n${usage()}`)
 }
 
 main().catch((error: unknown) => {

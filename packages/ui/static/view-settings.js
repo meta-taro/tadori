@@ -1,4 +1,5 @@
 // 設定：工程とステータス。保存すると TSV に書き戻し、案件が git リポジトリなら commit する
+import { t, lang } from './i18n.js'
 import { api, ApiError, chip, esc, ICON_INFO, messageOf, toast, toastCommit, within } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
@@ -9,7 +10,7 @@ import { api, ApiError, chip, esc, ICON_INFO, messageOf, toast, toastCommit, wit
  */
 
 /** @type {Readonly<Record<string, string>>} 色の意味 → 画面での呼び名 */
-const TONES = { none: '色なし', wait: '青灰（途中）', hole: '琥珀（止まっている）', ok: '緑（済み）' }
+const TONES = { none: 'No color', wait: 'Blue-gray (in progress)', hole: 'Amber (stuck)', ok: 'Green (done)' }
 /** @type {string[]} 保存を断られたときの理由（次に描くときに出す） */
 let problems = []
 
@@ -17,14 +18,14 @@ let problems = []
  * 見た目の選び方。案件の設定ではなく、この PC のこの人の好みなので TSV には書かない（theme.js が覚える）
  * @type {Readonly<Record<string, string>>}
  */
-const THEMES = { light: 'ライト', dark: 'ダーク', system: 'OS に合わせる' }
+const THEMES = { light: 'Light', dark: 'Dark', system: 'Match OS' }
 
 function themeHtml() {
   const current = window.tadoriTheme?.choice() ?? 'light'
-  return `<h2>見た目</h2>
-    <div class="seg" role="group" aria-label="配色">${Object.entries(THEMES).map(([k, v]) =>
-      `<button type="button" data-theme-choice="${k}" aria-pressed="${k === current}">${v}</button>`).join('')}</div>
-    <p class="cond">この PC で開く tadori だけに効きます（案件の設定には書きません）。</p>`
+  return `<h2>${esc(t('Appearance'))}</h2>
+    <div class="seg" role="group" aria-label="${esc(t('Color scheme'))}">${Object.entries(THEMES).map(([k, v]) =>
+      `<button type="button" data-theme-choice="${k}" aria-pressed="${k === current}">${esc(t(v))}</button>`).join('')}</div>
+    <p class="cond">${esc(t('Applies only to tadori on this PC (not written to the project settings).'))}</p>`
 }
 
 /**
@@ -57,7 +58,7 @@ async function save(path, body, what, reload) {
     await reload()
   } catch (error) {
     problems = error instanceof ApiError && error.problems.length ? error.problems : [messageOf(error)]
-    toast(`${what}を保存できませんでした`)
+    toast(t('Could not save {what}', { what }))
     await reload()
   }
 }
@@ -67,28 +68,28 @@ function phaseRows(state) {
   const used = (/** @type {string} */ id) => [...state.rules.filter(r => r.phase === id).map(r => r.id), ...state.tasks.filter(t => t.phase === id).map(t => t.id)]
   return state.phases.map((p, i) => `<tr>
     <td class="rule-id">${i + 1}</td>
-    <td><input class="inline-input" data-phase-name="${esc(p.id)}" value="${esc(p.name)}" aria-label="工程 ${esc(p.id)} の名前"></td>
+    <td><input class="inline-input" data-phase-name="${esc(p.id)}" value="${esc(p.name)}" aria-label="${esc(t('Name of phase {id}', { id: p.id }))}"></td>
     <td class="mono src">${esc(p.id)}</td>
-    <td class="cond">${used(p.id).length ? `${used(p.id).length} 件（${esc(used(p.id).slice(0, 4).join('・'))}${used(p.id).length > 4 ? '…' : ''}）` : '使われていない'}</td>
+    <td class="cond">${esc(used(p.id).length ? t('{n} ({ids})', { n: used(p.id).length, ids: `${used(p.id).slice(0, 4).join(lang === 'ja' ? '・' : ', ')}${used(p.id).length > 4 ? '…' : ''}` }) : t('Not used'))}</td>
     <td class="row-actions">
-      <button type="button" class="btn-ghost" data-phase-move="${i}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="上へ">↑</button>
-      <button type="button" class="btn-ghost" data-phase-move="${i}" data-dir="1" ${i === state.phases.length - 1 ? 'disabled' : ''} aria-label="下へ">↓</button>
-      <button type="button" class="btn-ghost" data-phase-remove="${esc(p.id)}">消す</button>
+      <button type="button" class="btn-ghost" data-phase-move="${i}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="${esc(t('Move up'))}">↑</button>
+      <button type="button" class="btn-ghost" data-phase-move="${i}" data-dir="1" ${i === state.phases.length - 1 ? 'disabled' : ''} aria-label="${esc(t('Move down'))}">↓</button>
+      <button type="button" class="btn-ghost" data-phase-remove="${esc(p.id)}">${esc(t('Remove'))}</button>
     </td></tr>`).join('')
 }
 
 /** @param {ProjectState} state */
 function statusRows(state) {
-  const toneOptions = (/** @type {string} */ cur) => Object.entries(TONES).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${v}</option>`).join('')
+  const toneOptions = (/** @type {string} */ cur) => Object.entries(TONES).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(t(v))}</option>`).join('')
   return state.statuses.map((s, i) => `<tr>
     <td class="rule-id">${i + 1}</td>
     <td>${chip(s.tone === 'none' ? '' : s.tone, esc(s.name))}</td>
-    <td><select class="inline-select" data-status-tone="${esc(s.id)}" aria-label="${esc(s.name)} の色">${toneOptions(s.tone)}</select></td>
-    <td class="cond">${state.tasks.filter(t => t.status === s.id).length} 件</td>
+    <td><select class="inline-select" data-status-tone="${esc(s.id)}" aria-label="${esc(t('Color of {name}', { name: s.name }))}">${toneOptions(s.tone)}</select></td>
+    <td class="cond">${esc(t('{n} tasks', { n: state.tasks.filter(task => task.status === s.id).length }))}</td>
     <td class="row-actions">
-      <button type="button" class="btn-ghost" data-status-move="${i}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="上へ">↑</button>
-      <button type="button" class="btn-ghost" data-status-move="${i}" data-dir="1" ${i === state.statuses.length - 1 ? 'disabled' : ''} aria-label="下へ">↓</button>
-      <button type="button" class="btn-ghost" data-status-remove="${esc(s.id)}">消す</button>
+      <button type="button" class="btn-ghost" data-status-move="${i}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="${esc(t('Move up'))}">↑</button>
+      <button type="button" class="btn-ghost" data-status-move="${i}" data-dir="1" ${i === state.statuses.length - 1 ? 'disabled' : ''} aria-label="${esc(t('Move down'))}">↓</button>
+      <button type="button" class="btn-ghost" data-status-remove="${esc(s.id)}">${esc(t('Remove'))}</button>
     </td></tr>`).join('')
 }
 
@@ -99,28 +100,28 @@ function statusRows(state) {
  */
 export function renderSettings(view, state, reload) {
   view.innerHTML = `
-    <h1>設定</h1>
-    <p class="lede">工程の並びとステータスは、企業やプロダクトごとに違います。保存すると <span class="mono">.tadori/</span> の TSV に書き戻し、案件が git リポジトリなら commit します（push は人が確かめてから）。</p>
+    <h1>${esc(t('Settings'))}</h1>
+    <p class="lede">${esc(t('Phase order and statuses differ by company and product. Saving writes them back to the TSV files in {dir} and commits them if the project is a git repository (a person pushes after checking).')).replace('{dir}', '<span class="mono">.tadori/</span>')}</p>
     ${problems.length ? `<div class="note">${ICON_INFO}<span>${problems.map(esc).join('<br>')}</span></div>` : ''}
     ${themeHtml()}
-    <h2>工程 · ${state.phases.length} 件</h2>
+    <h2>${esc(t('Phases · {n}', { n: state.phases.length }))}</h2>
     <div class="panel"><table>
-      <thead><tr><th style="width:48px">順</th><th>名前</th><th style="width:90px">ID</th><th>使っているルール・タスク</th><th style="width:170px"></th></tr></thead>
+      <thead><tr><th style="width:48px">${esc(t('Order'))}</th><th>${esc(t('Name'))}</th><th style="width:90px">ID</th><th>${esc(t('Used by rules and tasks'))}</th><th style="width:170px"></th></tr></thead>
       <tbody>${phaseRows(state)}</tbody></table>
       <form class="add" id="add-phase">
-        <label>ID（英数字）<input name="id" required pattern="[A-Za-z0-9_-]+" placeholder="例：st"></label>
-        <label>名前<input name="name" required maxlength="20" placeholder="例：総合テスト"></label>
-        <div class="actions"><button type="submit" class="btn-primary">工程を足す</button></div>
+        <label>${esc(t('ID (letters and digits)'))}<input name="id" required pattern="[A-Za-z0-9_-]+" placeholder="${esc(t('e.g. {id}', { id: 'st' }))}"></label>
+        <label>${esc(t('Name'))}<input name="name" required maxlength="20" placeholder="${esc(t('e.g. System test'))}"></label>
+        <div class="actions"><button type="submit" class="btn-primary">${esc(t('Add phase'))}</button></div>
       </form></div>
-    <h2>WBS のステータス · ${state.statuses.length} 件</h2>
+    <h2>${esc(t('WBS statuses · {n}', { n: state.statuses.length }))}</h2>
     <div class="panel"><table>
-      <thead><tr><th style="width:48px">順</th><th>名前</th><th style="width:200px">色の意味</th><th style="width:96px">使っているタスク</th><th style="width:170px"></th></tr></thead>
+      <thead><tr><th style="width:48px">${esc(t('Order'))}</th><th>${esc(t('Name'))}</th><th style="width:200px">${esc(t('Color meaning'))}</th><th style="width:96px">${esc(t('Used by tasks'))}</th><th style="width:170px"></th></tr></thead>
       <tbody>${statusRows(state)}</tbody></table>
       <form class="add" id="add-status">
-        <label>ID（英数字）<input name="id" required pattern="[A-Za-z0-9_-]+" placeholder="例：back"></label>
-        <label>名前<input name="name" required maxlength="20" placeholder="例：差し戻し"></label>
-        <label>色の意味<select name="tone">${Object.entries(TONES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
-        <div class="actions"><button type="submit" class="btn-primary">ステータスを足す</button></div>
+        <label>${esc(t('ID (letters and digits)'))}<input name="id" required pattern="[A-Za-z0-9_-]+" placeholder="${esc(t('e.g. {id}', { id: 'back' }))}"></label>
+        <label>${esc(t('Name'))}<input name="name" required maxlength="20" placeholder="${esc(t('e.g. Sent back'))}"></label>
+        <label>${esc(t('Color meaning'))}<select name="tone">${Object.entries(TONES).map(([k, v]) => `<option value="${k}">${esc(t(v))}</option>`).join('')}</select></label>
+        <div class="actions"><button type="submit" class="btn-primary">${esc(t('Add status'))}</button></div>
       </form></div>`
 
   // 下の data-* は、どれも直前に描いた要素に付けたもの
@@ -132,8 +133,8 @@ export function renderSettings(view, state, reload) {
     all('[data-theme-choice]').forEach(x => x.setAttribute('aria-pressed', String(x === b)))
   }))
 
-  const savePhases = (/** @type {readonly Phase[]} */ list) => save('/api/settings/phases', list.map((p, i) => ({ ...p, order: i + 1 })), '工程の設定', reload)
-  const saveStatuses = (/** @type {readonly StatusInput[]} */ list) => save('/api/settings/statuses', list, 'ステータスの設定', reload)
+  const savePhases = (/** @type {readonly Phase[]} */ list) => save('/api/settings/phases', list.map((p, i) => ({ ...p, order: i + 1 })), t('the phase settings'), reload)
+  const saveStatuses = (/** @type {readonly StatusInput[]} */ list) => save('/api/settings/statuses', list, t('the status settings'), reload)
 
   inputs('[data-phase-name]').forEach(input => input.addEventListener('change', () =>
     savePhases(state.phases.map(p => (p.id === input.dataset.phaseName ? { ...p, name: input.value.trim() } : p)))))

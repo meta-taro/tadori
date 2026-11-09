@@ -1,44 +1,50 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>事例 — tadori の使いどころ</title>
-<meta name="description" content="架空の改修案件で見る tadori の使いどころ。改修後の対応の書き漏れ、受入の指摘から辿る、前の工程が終わる前の着手、エージェントに案内させる。">
+<title>Use cases — where tadori helps</title>
+<meta name="description" content="Where tadori helps, shown on a fictional revision project: missing post-change impact, tracing from an acceptance finding, starting before the previous phase is done, letting an agent guide you, and daily progress with an agent.">
 <link rel="canonical" href="https://meta-taro.github.io/tadori/cases/">
+<link rel="alternate" hreflang="en" href="https://meta-taro.github.io/tadori/cases/">
+<link rel="alternate" hreflang="ja" href="https://meta-taro.github.io/tadori/ja/cases/">
+<link rel="alternate" hreflang="x-default" href="https://meta-taro.github.io/tadori/cases/">
 <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
 <link rel="icon" href="../assets/favicon-32.png" sizes="32x32" type="image/png">
 <meta name="theme-color" content="#4f5bd5">
 <meta property="og:type" content="website">
-<meta property="og:title" content="tadori の事例">
+<meta property="og:title" content="tadori use cases">
 <meta property="og:url" content="https://meta-taro.github.io/tadori/cases/">
+<meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://meta-taro.github.io/tadori/img/trace.png">
 <link rel="stylesheet" href="../assets/site.css">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "ItemList",
-  "name": "tadori の事例",
+  "name": "tadori use cases",
+  "inLanguage": "en",
   "itemListElement": [
-    { "@type": "ListItem", "position": 1, "url": "https://meta-taro.github.io/tadori/cases/design-change-gap.html", "name": "改修後の対応の書き漏れを、行番号まで出す" },
-    { "@type": "ListItem", "position": 2, "url": "https://meta-taro.github.io/tadori/cases/trace-from-finding.html", "name": "受入の指摘から辿って、実施されていない試験ケースに行き着く" },
-    { "@type": "ListItem", "position": 3, "url": "https://meta-taro.github.io/tadori/cases/early-start.html", "name": "前の工程が終わる前の着手と遅れを、並べて見る" },
-    { "@type": "ListItem", "position": 4, "url": "https://meta-taro.github.io/tadori/cases/agent-guide.html", "name": "エージェントに、画面を指しながら案内させる" },
-    { "@type": "ListItem", "position": 5, "url": "https://meta-taro.github.io/tadori/cases/daily-with-agent.html", "name": "担当ごとの 1 日の進行を、エージェントと回す" }
+    { "@type": "ListItem", "position": 1, "url": "https://meta-taro.github.io/tadori/cases/design-change-gap.html", "name": "Find missing post-change impact, down to the line number" },
+    { "@type": "ListItem", "position": 2, "url": "https://meta-taro.github.io/tadori/cases/trace-from-finding.html", "name": "Trace from an acceptance finding to a test case that was never run" },
+    { "@type": "ListItem", "position": 3, "url": "https://meta-taro.github.io/tadori/cases/early-start.html", "name": "See early starts and delays side by side" },
+    { "@type": "ListItem", "position": 4, "url": "https://meta-taro.github.io/tadori/cases/agent-guide.html", "name": "Let an agent guide you by pointing at the screen" },
+    { "@type": "ListItem", "position": 5, "url": "https://meta-taro.github.io/tadori/cases/daily-with-agent.html", "name": "Run each person's daily progress with an agent" }
   ]
 }
 </script>
 </head>
 <body>
-<a class="skip" href="#main">本文へ</a>
+<a class="skip" href="#main">Skip to content</a>
 <header class="site-head">
   <div class="wrap">
     <a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="28" height="28">tadori</a>
-    <nav class="site-nav" aria-label="サイト">
-      <a href="../#features">できること</a>
-      <a href="./" aria-current="page">事例</a>
-      <a href="../download.html">ダウンロード</a>
-      <a href="../roadmap.html">ロードマップ</a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="../#features">Features</a>
+      <a href="./" aria-current="page">Use cases</a>
+      <a href="../download.html">Download</a>
+      <a href="../roadmap.html">Roadmap</a>
+      <a class="lang" href="../ja/cases/" hreflang="ja" lang="ja">日本語</a>
       <a class="gh" href="https://github.com/meta-taro/tadori">GitHub</a>
     </nav>
   </div>
@@ -47,33 +53,33 @@
 <main id="main">
   <section class="hero">
     <div class="wrap">
-      <span class="eyebrow">事例</span>
-      <h1>tadori の使いどころ</h1>
-      <p class="lede">どれも架空の「備品貸出アプリ 改修 v1.2」で再現しています。工程は 基本設計・詳細設計・実装・結合テスト・リリース の 5 つ、ルールは 13 個です。
-        同じ案件は <a href="https://github.com/meta-taro/tadori/tree/main/examples/lend-v12">リポジトリの examples/lend-v12</a> にあり、手元で同じ画面を開けます。</p>
+      <span class="eyebrow">Use cases</span>
+      <h1>Where tadori helps</h1>
+      <p class="lede">Every case is reproduced on the fictional “Equipment Lending App, revision 1.2”. It has five phases — basic design, detailed design, implementation, integration testing and release — and 13 rules.
+        The same project lives in <a href="https://github.com/meta-taro/tadori/tree/main/examples/lend-v12">examples/lend-v12 in the repository</a>, so you can open the same screens on your machine.</p>
     </div>
   </section>
   <section style="padding-top:0">
     <div class="wrap cards">
       <a class="card" href="design-change-gap.html">
         <img src="../img/timeline.png" width="1426" height="893" loading="lazy" alt="">
-        <div class="card-body"><h3>改修後の対応の書き漏れ</h3><p>詳細設計の節に「変わる／変わらない」が書かれていない所を、ファイルと行番号まで出す。</p><span class="more">事例を読む →</span></div>
+        <div class="card-body"><h3>Missing post-change impact</h3><p>Find detailed design sections that don't say whether they change — down to the file and line number.</p><span class="more">Read the case →</span></div>
       </a>
       <a class="card" href="trace-from-finding.html">
         <img src="../img/trace.png" width="1426" height="893" loading="lazy" alt="">
-        <div class="card-body"><h3>受入の指摘から辿る</h3><p>「延滞中なのに借りられた」から、実施の記録が無い試験ケースに行き着く。</p><span class="more">事例を読む →</span></div>
+        <div class="card-body"><h3>Trace from an acceptance finding</h3><p>From “an overdue user could still borrow” to a test case with no test run.</p><span class="more">Read the case →</span></div>
       </a>
       <a class="card" href="early-start.html">
         <img src="../img/browse.png" width="1426" height="893" loading="lazy" alt="">
-        <div class="card-body"><h3>前の工程が終わる前の着手</h3><p>基本設計が差し戻しのまま、詳細設計・実装・結合テストが動いていることを並べる。</p><span class="more">事例を読む →</span></div>
+        <div class="card-body"><h3>Starting before the previous phase is done</h3><p>See detailed design, implementation and integration testing moving while basic design is still sent back.</p><span class="more">Read the case →</span></div>
       </a>
       <a class="card" href="agent-guide.html">
         <img src="../img/agent.png" width="1426" height="893" loading="lazy" alt="">
-        <div class="card-body"><h3>エージェントに案内させる</h3><p>MCP で読ませ、専用カーソルで画面を指しながら、新しく入った人に説明する。</p><span class="more">事例を読む →</span></div>
+        <div class="card-body"><h3>Let an agent guide you</h3><p>The agent reads through MCP and explains to a newcomer while pointing with its cursor.</p><span class="more">Read the case →</span></div>
       </a>
       <a class="card" href="daily-with-agent.html">
         <img src="../img/daily.png" width="1426" height="893" loading="lazy" alt="">
-        <div class="card-body"><h3>1 日の進行をエージェントと回す</h3><p>担当ごとの下書きを材料から作り、各担当がそれを見ながら自分のエージェントと仕事を進める。</p><span class="more">事例を読む →</span></div>
+        <div class="card-body"><h3>Run daily progress with an agent</h3><p>Draft each person's day from the records; each person works through it with their own agent.</p><span class="more">Read the case →</span></div>
       </a>
     </div>
   </section>
@@ -81,8 +87,8 @@
 
 <footer class="site-foot">
   <div class="wrap">
-    <div><a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>仕様から試験・指摘までのつながりと、リリースまでの残課題。MIT ライセンス。</p></div>
-    <nav aria-label="フッター"><a href="./">事例</a><a href="../download.html">ダウンロード</a><a href="../releases.html">過去の版</a><a href="../roadmap.html">ロードマップ</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
+    <div><a class="brand" href="../"><img src="../assets/icon.svg" alt="" width="22" height="22">tadori</a><p>The links from spec to tests and findings, and the remaining work to release. MIT license.</p></div>
+    <nav aria-label="Footer"><a href="./">Use cases</a><a href="../download.html">Download</a><a href="../releases.html">Past versions</a><a href="../roadmap.html">Roadmap</a><a href="https://github.com/meta-taro/tadori">GitHub</a></nav>
   </div>
 </footer>
 </body>

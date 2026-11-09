@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
+import { joinList, t } from '../i18n.js'
 import { memberOf, type DailyEntry, type Member } from '../usecase/daily-entries.js'
 import { PATHS } from './repository.js'
 import { parseTsv } from './tsv.js'
@@ -48,11 +49,17 @@ function ledgerEntries(before: Rows, after: Rows, who: string, options: Activity
     const kind = row.kind ?? ''
     const title = row.title ?? ''
     if (!old) {
-      return [entry(`ledger:add:${id}`, isWork(kind) ? `${label(kind)} ${id}（${title}）を記録した` : `台帳に ${id}（${title}）を足した`, kind, id)]
+      const text = isWork(kind)
+        ? t('Recorded {kind} {id} ({title})', { kind: label(kind), id, title })
+        : t('Added {id} ({title}) to the ledger', { id, title })
+      return [entry(`ledger:add:${id}`, text, kind, id)]
     }
     const changed = Object.keys(row).filter(col => col !== 'id' && (row[col] ?? '') !== (old[col] ?? ''))
     if (!changed.length) return []
-    return [entry(`ledger:edit:${id}`, isWork(kind) ? `${label(kind)} ${id}（${title}）を直した` : `台帳の ${id}（${title}）の ${changed.join('・')} を直した`, kind, id)]
+    const text = isWork(kind)
+      ? t('Revised {kind} {id} ({title})', { kind: label(kind), id, title })
+      : t('Edited {columns} of {id} ({title}) in the ledger', { columns: joinList(changed), id, title })
+    return [entry(`ledger:edit:${id}`, text, kind, id)]
   })
 }
 
@@ -71,10 +78,11 @@ function grouped(entries: Array<DailyEntry & { kind?: string; rowId?: string }>,
     const same = entries.filter(x => groupKey(x) === k)
     const isAdd = k.endsWith('|add')
     const label = options.kindLabels?.[kind] ?? kind
+    const vars = { kind: label, count: same.length }
     const text = e.section === 'today'
-      ? `${label} を ${same.length} 件${isAdd ? '記録した' : '直した'}`
-      : `台帳に ${label} を ${same.length} 行${isAdd ? '足した' : '直した'}`
-    return [{ ...e, text, note: same.map(x => x.rowId).join('・'), key: `ledger:${isAdd ? 'add' : 'edit'}-kind:${kind}` }]
+      ? (isAdd ? t('Recorded {count} {kind} entries', vars) : t('Revised {count} {kind} entries', vars))
+      : (isAdd ? t('Added {count} {kind} rows to the ledger', vars) : t('Edited {count} {kind} rows in the ledger', vars))
+    return [{ ...e, text, note: joinList(same.map(x => x.rowId ?? '')), key: `ledger:${isAdd ? 'add' : 'edit'}-kind:${kind}` }]
   })
 }
 
@@ -119,7 +127,7 @@ async function checkActivity(dir: string, date: string): Promise<DailyEntry[]> {
     .filter(r => (r.when ?? '').startsWith(date))
     .map(r => ({
       id: '', who: r.who ?? '', section: 'today' as const, wbs: [], origin: 'auto' as const, tag: 'checked',
-      text: `${r.what ?? ''} を確かめた（${r.result ?? ''}）`,
+      text: t('Checked {what} ({result})', { what: r.what ?? '', result: r.result ?? '' }),
       key: `check:${r.when ?? ''}:${r.what ?? ''}`,
     }))
 }
