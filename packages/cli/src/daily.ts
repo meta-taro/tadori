@@ -219,19 +219,32 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
   const { entries } = await mergedEntries(dir, date)
   const current = entries.find(e => e.id === id && visible(e))
   if (!current) throw new DailyInputError(`${date} に行 ${id} はありません`, 404)
+  // 直すときは、空文字（links・wbs は空の配列や空文字・null も）を「その欄を空にする」と読む。
+  // 本文だけは空の行を作らないよう断る（行ごと消すなら daily_remove）
+  const isCleared = (key: string) => body[key] === '' || body[key] === null
+  if (isCleared('text')) throw new DailyInputError('本文は空にできません（行ごと消すなら daily_remove を使ってください）')
   const patch = {
-    who: text(body, 'who', false),
+    who: isCleared('who') ? '' : text(body, 'who', false),
     section: section(body, false),
     text: text(body, 'text', false),
-    wbs: wbsList(body),
-    issue: text(body, 'issue', false),
-    note: text(body, 'note', false),
-    tag: tag(body),
-    links: linkList(body),
+    wbs: isCleared('wbs') ? [] : wbsList(body),
+    issue: isCleared('issue') ? '' : text(body, 'issue', false),
+    note: isCleared('note') ? '' : text(body, 'note', false),
+    tag: isCleared('tag') ? '' : tag(body),
+    links: isCleared('links') ? [] : linkList(body),
   }
   const changed = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
   // 本文か課題を変えたときだけ、課題番号と短い件名を頭に付け直す
-  const merged: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited' }
+  const filled: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited' }
+  // 空にした欄は、行から外す（日ごとのファイルにも空で書く）
+  const { issue, note, tag: entryTag, links, ...rest } = filled
+  const merged: DailyEntry = {
+    ...rest,
+    ...(issue ? { issue } : {}),
+    ...(note ? { note } : {}),
+    ...(entryTag ? { tag: entryTag } : {}),
+    ...(links?.length ? { links } : {}),
+  }
   const entry = patch.text !== undefined || patch.issue !== undefined ? await withIssueHead(dir, merged) : merged
   const commit = await writeDaily(dir, date, entries.map(e => (e.id === id ? entry : e)), `1 日の進行の行 ${id} を直した（${date}）`)
   return { entry, commit, warnings: anchorWarnings(entry) }

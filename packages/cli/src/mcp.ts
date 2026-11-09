@@ -194,7 +194,7 @@ function dailyTools(options: McpOptions): Tool[] {
     },
     {
       name: 'daily_update',
-      description: '1 日の進行の行を直す（id は daily の [ID]）。渡した項目だけ変わる。自動の行は「直した行」になり、作り直しても上書きされない。',
+      description: '1 日の進行の行を直す（id は daily の [ID]）。渡した項目だけ変わる。空文字（links・wbs は空の配列）を渡すと、その欄を空にする（本文は空にできない。行ごと消すなら daily_remove）。自動の行は「直した行」になり、作り直しても上書きされない。',
       inputSchema: { type: 'object', properties: { date: DATE, id: { type: 'string' }, section: SECTION, ...ENTRY_FIELDS }, required: ['id'], additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
         const { entry, commit, warnings } = await updateDaily(dir, date, str(args.id), args)

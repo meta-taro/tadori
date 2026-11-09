@@ -144,6 +144,22 @@ describe('MCP で 1 日の進行を作る・足す・直す・消す', () => {
     expect(tooFar.content[0]?.text).toContain('「MR」の 2 回目が本文に見つかりません')
   })
 
+  test('daily_update で空文字（links・wbs は空の配列）を渡すと、その欄を空にする。本文だけは空にできない', async () => {
+    const added = await tool('daily_add', { date: '2026-11-07', who: '設計担当', section: 'today', text: '観点を足した', note: '観点表 §2', issue: 'Q-1', wbs: ['W-08'], tag: 'done', links: [{ label: 'QA表', url: 'https://sheets.example.com/qa' }] })
+    const id = added.content[0]?.text.match(/\[(m\d+)\]/)?.[1]
+    expect((await tool('daily_update', { date: '2026-11-07', id, note: '', issue: '', wbs: [], tag: '', links: [] })).isError).toBeUndefined()
+    const listed = (await tool('daily', { date: '2026-11-07' })).content[0]?.text ?? ''
+    expect(listed).not.toContain('観点表 §2')
+    expect(listed).not.toContain('QA表')
+    // W-08 は WBS から作る次の作業日の行にも出るので、足した行だけを見る
+    const row = listed.split('\n').find(l => l.includes('観点を足した')) ?? ''
+    expect(row).not.toContain('W-08')
+    expect(row).not.toContain('［済］')
+    const empty = await tool('daily_update', { date: '2026-11-07', id, text: '' })
+    expect(empty.isError).toBe(true)
+    expect(empty.content[0]?.text).toContain('daily_remove')
+  })
+
   test('無い行を直そうとしたら isError', async () => {
     expect((await tool('daily_update', { date: '2026-11-05', id: 'zz9', text: 'a' })).isError).toBe(true)
   })
