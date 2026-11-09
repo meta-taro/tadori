@@ -345,3 +345,30 @@ describe('GET /api/version・/api/update（ヘルプのバージョンと更新�
     await offline.close()
   })
 })
+
+describe('ルールを画面から足す・直す・消す（/api/rules）', () => {
+  const send = (method: string, path: string, body?: unknown) =>
+    fetch(`${base}${path}`, { method, headers: WRITE_HEADERS, ...(body ? { body: JSON.stringify(body) } : {}) })
+
+  test('足す・直す・消す。足したルールはすぐ判定に入る', async () => {
+    const added = await send('POST', '/api/rules', { id: 'R40', phase: 'it', kind: 'filled', from: 'TC', field: 'verifier', label: '試験ケースに確かめる人がいる', owner: '検証担当' })
+    expect(added.status).toBe(200)
+    let state = await (await fetch(`${base}/api/state`)).json()
+    expect(state.rules.find((r: { id: string }) => r.id === 'R40')).toMatchObject({ phase: 'it', kind: 'filled', owner: '検証担当' })
+    expect((await send('PUT', '/api/rules/R40', { owner: '開発担当' })).status).toBe(200)
+    state = await (await fetch(`${base}/api/state`)).json()
+    expect(state.rules.find((r: { id: string }) => r.id === 'R40').owner).toBe('開発担当')
+    expect((await send('DELETE', '/api/rules/R40')).status).toBe(200)
+    state = await (await fetch(`${base}/api/state`)).json()
+    expect(state.rules.some((r: { id: string }) => r.id === 'R40')).toBe(false)
+  })
+
+  test('知らない判定・同じ ID・無いルールは 400／404 で、理由を返す（ファイルは元のまま）', async () => {
+    const bad = await send('POST', '/api/rules', { id: 'R41', phase: 'it', kind: 'nope', label: 'x' })
+    expect(bad.status).toBe(400)
+    expect((await bad.json()).problems.length).toBeGreaterThan(0)
+    expect((await send('POST', '/api/rules', { id: 'R9', phase: 'it', kind: 'covered', label: 'x' })).status).toBe(400)
+    expect((await send('DELETE', '/api/rules/R99')).status).toBe(400)
+    expect((await fetch(`${base}/api/rules`, { method: 'POST', body: '{}' })).status).toBe(403) // x-tadori の無い書き込み
+  })
+})

@@ -3,7 +3,7 @@ import { checkUpdate, type UpdateInfo } from './update-check.js'
 import { CLI_VERSION } from './version.js'
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
-import { ProjectLoadError, saveSettings, saveTaskStatus, trace, validatePhases, validateStatuses, type Phase, type StatusDef } from '@tadori/core'
+import { ProjectLoadError, removeRule, saveRule, saveSettings, saveTaskStatus, trace, validatePhases, validateStatuses, WriteRefused, type Phase, type RuleInput, type StatusDef } from '@tadori/core'
 import { loadState, localToday } from './state.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
 import { AgentActionError, parseAgentAction } from './agent.js'
@@ -35,6 +35,15 @@ const CONTENT_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.json': 'application/json; charset=utf-8',
   '.tsv': 'text/tab-separated-values; charset=utf-8',
+}
+
+const RULE_FIELDS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'owner', 'label'] as const
+
+/** 画面から届いたルールの項目（文字のものだけ受ける。渡されなかった項目は変えない） */
+function ruleInputOf(body: unknown): Partial<RuleInput> {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new HttpError(400, 'JSON のオブジェクトで渡してください')
+  const record = body as Record<string, unknown>
+  return Object.fromEntries(RULE_FIELDS.flatMap(k => (typeof record[k] === 'string' ? [[k, (record[k] as string).replace(/[\t\r\n]+/g, ' ').trim()]] : [])))
 }
 
 class HttpError extends Error {
@@ -228,6 +237,26 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
     const result = trace(project, safeDecode(traceMatch[1] ?? ''))
     if (!result) throw new HttpError(404, 'その ID は台帳にありません')
     return sendJson(res, 200, result)
+  }
+
+  // ルールを画面から足す・直す・消す（形と ID は核が確かめる。読めなくなる書き方は元に戻して断る）
+  const ruleMatch = url.pathname.match(/^\/api\/rules(?:\/([^/]+))?$/)
+  if (ruleMatch && ['POST', 'PUT', 'DELETE'].includes(req.method ?? '')) {
+    assertWriteAllowed(req)
+    const id = ruleMatch[1] ? safeDecode(ruleMatch[1]) : undefined
+    const body = req.method === 'DELETE' ? {} : ruleInputOf(await readJson(req))
+    try {
+      const commit = await serialized(() => {
+        if (req.method === 'POST' && !id) return saveRule(dir, body as RuleInput, { create: true })
+        if (req.method === 'PUT' && id) return saveRule(dir, { ...body, id }, { create: false })
+        if (req.method === 'DELETE' && id) return removeRule(dir, id)
+        throw new HttpError(404, 'ルールの ID を URL に書いてください（足すときは /api/rules に POST）')
+      })
+      return sendJson(res, 200, { commit })
+    } catch (error: unknown) {
+      if (error instanceof WriteRefused) throw new HttpError(400, 'ルールを保存できません', [...error.problems])
+      throw error
+    }
   }
 
   if (req.method === 'PUT' && url.pathname === '/api/settings/phases') {

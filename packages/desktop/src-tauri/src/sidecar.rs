@@ -52,15 +52,23 @@ pub fn init_args(cli: &Path, dir: &Path, name: &str) -> Vec<String> {
 /// 1. 環境変数 TADORI_CLI（手元で別の版を試すとき）
 /// 2. インストーラーで入れたアプリの中（resources/tadori/cli/dist/main.js。scripts/stage.mjs が並べる）
 /// 3. このリポジトリの中の packages/cli/dist/main.js（開発中）
-pub fn cli_candidates(env_cli: Option<String>, resource_dir: Option<&Path>, manifest_dir: &Path) -> Vec<PathBuf> {
+///
+/// is_dev（debug で建てた版）では 3 を 2 より先に見る。debug の版の隣に、前に並べた古い写しが残っていると、
+/// 画面（いつも新しい）と server（古い写し）が食い違って落ちるため。
+pub fn cli_candidates(env_cli: Option<String>, resource_dir: Option<&Path>, manifest_dir: &Path, is_dev: bool) -> Vec<PathBuf> {
     let mut list = Vec::new();
     if let Some(path) = env_cli.filter(|p| !p.trim().is_empty()) {
         list.push(PathBuf::from(path));
     }
-    if let Some(resources) = resource_dir {
-        list.push(plain_path(&resources.join("tadori").join("cli").join("dist").join("main.js")));
+    let source = manifest_dir.join("..").join("..").join("cli").join("dist").join("main.js");
+    let bundled = resource_dir.map(|r| plain_path(&r.join("tadori").join("cli").join("dist").join("main.js")));
+    if is_dev {
+        list.push(source);
+        list.extend(bundled);
+    } else {
+        list.extend(bundled);
+        list.push(source);
     }
-    list.push(manifest_dir.join("..").join("..").join("cli").join("dist").join("main.js"));
     list
 }
 
@@ -146,11 +154,18 @@ mod tests {
 
     #[test]
     fn cli_は環境変数を先に見て_次にリポジトリの中を見る() {
-        let list = cli_candidates(Some("/x/main.js".into()), Some(Path::new("/app/res")), Path::new("/repo/packages/desktop/src-tauri"));
+        let list = cli_candidates(Some("/x/main.js".into()), Some(Path::new("/app/res")), Path::new("/repo/packages/desktop/src-tauri"), false);
         assert_eq!(list[0], PathBuf::from("/x/main.js"));
         assert_eq!(list[1], Path::new("/app/res").join("tadori").join("cli").join("dist").join("main.js"));
         assert!(list[2].ends_with("cli/dist/main.js"));
-        assert_eq!(cli_candidates(Some("  ".into()), None, Path::new("/r")).len(), 1);
+        assert_eq!(cli_candidates(Some("  ".into()), None, Path::new("/r"), false).len(), 1);
+    }
+
+    #[test]
+    fn debug_の版はリポジトリの中の_cli_を同梱の写しより先に見る() {
+        let list = cli_candidates(None, Some(Path::new("/app/res")), Path::new("/repo/packages/desktop/src-tauri"), true);
+        assert!(list[0].ends_with("cli/dist/main.js") && list[0].starts_with("/repo"));
+        assert_eq!(list[1], Path::new("/app/res").join("tadori").join("cli").join("dist").join("main.js"));
     }
 
     #[test]
