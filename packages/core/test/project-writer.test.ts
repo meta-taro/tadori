@@ -58,6 +58,13 @@ describe('WBS の作業（saveTask）', () => {
 })
 
 describe('ルール（saveRule・removeRule）', () => {
+  test('値で判定するルール（allowed と values、only の「!=」「a|b」）を足して読み戻せる。values の無い allowed は断る', async () => {
+    await saveRule(dir, { id: 'R30', phase: 'it', kind: 'allowed', from: 'RUN', field: 'result', values: 'OK|NG', only: 'env!=local|dev', label: '結果は OK か NG' }, { create: true })
+    expect((await loadProject(dir)).rules.find(r => r.id === 'R30')).toMatchObject({ kind: 'allowed', values: ['OK', 'NG'], only: { field: 'env', value: 'local|dev', values: ['local', 'dev'], negate: true } })
+    await expect(saveRule(dir, { id: 'R31', phase: 'it', kind: 'allowed', from: 'RUN', field: 'result', label: 'x' }, { create: true })).rejects.toThrow(WriteRefused)
+    await removeRule(dir, 'R30')
+  })
+
   test('足すと rules.tsv に入り、直すと元のファイルのまま直る。知らない判定は断る', async () => {
     await saveRule(dir, { id: 'R20', phase: 'it', kind: 'covered', from: 'TC', to: 'RUN', label: '試験ケースに実施がある', owner: '検証担当' }, { create: true })
     expect((await loadProject(dir)).rules.find(r => r.id === 'R20')).toMatchObject({ phase: 'it', kind: 'covered', owner: '検証担当' })

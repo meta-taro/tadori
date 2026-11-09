@@ -170,11 +170,13 @@ export interface RuleInput {
   readonly to?: string
   readonly field?: string
   readonly only?: string
+  /** allowed で使う、列に書いてよい値（「a|b」） */
+  readonly values?: string
   readonly owner?: string
   readonly label?: string
 }
 
-const RULE_HEADER = 'id\tphase\tkind\tfrom\tto\tfield\tonly\towner\tlabel\n'
+const RULE_HEADER = 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\towner\tlabel\n'
 
 /** ルールが書かれているファイル（無ければ null） */
 async function rulesetOf(dir: string, id: string): Promise<string | null> {

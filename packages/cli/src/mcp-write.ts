@@ -79,10 +79,10 @@ const taskSchema = () => ({
   id: S(t('Task ID (starts with W)')), phase: S(t('Phase ID')), name: S(t('Task name')), start: S(t('Start date YYYY-MM-DD')), end: S(t('End date YYYY-MM-DD')),
   status: S(t('Status (one from the settings)')), owner: S(t('Owner (for two or more, "A・B")')), issue: S(t('Issue ID (a ledger row)')),
 })
-const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'owner', 'label'] as const
+const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'owner', 'label'] as const
 const ruleSchema = () => ({
-  id: S(t('Rule ID')), phase: S(t('Phase ID')), kind: S(t('covered, refers, filled or approval')), from: S(t('Source kind')), to: S(t('Target kind')),
-  field: S(t('Column that filled checks')), only: S(t('Narrow the targets with "column=value"')), owner: S(t('Owner who fixes it (a role)')), label: S(t('One sentence for people to read')),
+  id: S(t('Rule ID')), phase: S(t('Phase ID')), kind: S(t('covered, refers, filled, allowed or approval')), from: S(t('Source kind')), to: S(t('Target kind')),
+  field: S(t('Column that filled and allowed check')), only: S(t('Narrow the targets with "column=value", "column=a|b" (any of them) or "column!=value"')), values: S(t('For allowed: the values the column may hold, separated by | (e.g. OK|NG)')), owner: S(t('Owner who fixes it (a role)')), label: S(t('One sentence for people to read')),
 })
 
 /** デスクトップアプリが覚えている最近の案件（OS ごとの置き場所） */
@@ -148,7 +148,7 @@ export function writeTools(ctx: WriteContext): Tool[] {
     },
     {
       name: 'rule_add',
-      description: t('Add a rule (.tadori/rulesets/rules.tsv). The check kinds are covered, refers, filled and approval.'),
+      description: t('Add a rule (.tadori/rulesets/rules.tsv). The check kinds are covered, refers, filled, allowed and approval.'),
       inputSchema: { type: 'object', properties: RULE, required: ['id', 'phase', 'kind', 'label'], additionalProperties: false },
       run: async a => writing(ctx, t('Added rule {id}', { id: str(a.id) ?? '' }), dir => saveRule(dir, { ...pick(a, RULE_KEYS), id: str(a.id) ?? '' }, { create: true })),
     },

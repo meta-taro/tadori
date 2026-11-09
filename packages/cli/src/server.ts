@@ -46,7 +46,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.tsv': 'text/tab-separated-values; charset=utf-8',
 }
 
-const RULE_FIELDS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'owner', 'label'] as const
+const RULE_FIELDS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'owner', 'label'] as const
 
 /** 画面から届いたルールの項目（文字のものだけ受ける。渡されなかった項目は変えない） */
 function ruleInputOf(body: unknown): Partial<RuleInput> {

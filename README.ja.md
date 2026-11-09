@@ -100,7 +100,7 @@ claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp /pat
 .tadori/sources.tsv        正本（外の文書・シート・課題）の URL と、反映が古いとする日数（無くてもよい。台帳の source 列の先頭の名前で引く。tadori how-to sources）
 .tadori/links.tsv          ほかの道具を開く URL の雛形（無くてもよい。差し込み：{path}・{repopath}・{abspath}・{line}・{id}。例は examples/lend-v12/.tadori/links.tsv）
                            差し込み：{path} 案件の中の場所 / {abspath} 手元の絶対パス / {line} 行番号 / {id} 行の ID。javascript: などは使えない
-.tadori/rulesets/*.tsv     工程ごとのルールセット（判定は covered / refers / filled / approval。owner 列に担当の役割）
+.tadori/rulesets/*.tsv     工程ごとのルールセット（判定は covered / refers / filled / allowed / approval。owner 列に担当の役割）
 .tadori/checks.tsv         チェックの記録（5W1H）
 ledger/items.tsv           台帳（設計書の章・節、commit、観点、試験ケース、試験の記録、指摘、再発防止）
 ledger/wbs.tsv             WBS のタスク

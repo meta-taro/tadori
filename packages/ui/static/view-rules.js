@@ -9,7 +9,7 @@ import { api, ApiError, esc, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, 
 
 const PAGE = 50
 /** @type {Readonly<Record<string, string>>} */
-const KIND_NAMES = { covered: 'Has downstream', refers: 'Based on upstream', filled: 'Column is filled', approval: 'Human approval' }
+const KIND_NAMES = { covered: 'Has downstream', refers: 'Based on upstream', filled: 'Column is filled', allowed: 'Allowed values', approval: 'Human approval' }
 
 // 画面を移っても、絞り込みと開け閉めは覚えておく
 /** @type {RuleFilters} */
@@ -49,8 +49,22 @@ const STATUS_HTML = {
 function whatText(rule) {
   const from = rule.from ? kindLabel(rule.from) : ''
   const to = rule.to ? kindLabel(rule.to) : ''
-  return `${from}${to ? ` → ${to}` : ''}${rule.field ? t(' · column {field}', { field: rule.field }) : ''}`
+  const values = rule.values?.length ? t(' · one of {values}', { values: rule.values.join(' / ') }) : ''
+  return `${from}${to ? ` → ${to}` : ''}${rule.field ? t(' · column {field}', { field: rule.field }) : ''}${values}`
 }
+
+/** 対象を絞る条件を、人が読む文にする（「a|b」はどれか、「!=」はそれ以外） */
+/** @param {NonNullable<Rule['only']>} only */
+function onlyText(only) {
+  const values = (only.values?.length ? only.values : [only.value]).join(' / ')
+  return only.negate
+    ? t('Only rows where {field} is not {values}', { field: only.field, values })
+    : t('Only rows where {field} is "{value}"', { field: only.field, value: values })
+}
+
+/** 欄に入れる「列名=値」「列名!=値」 */
+/** @param {Rule['only']} only */
+const onlyInput = only => (only ? `${only.field}${only.negate ? '!=' : '='}${only.value}` : '')
 
 /** @param {Rule} rule @param {string[]} words */
 function matches(rule, words) {
@@ -79,7 +93,7 @@ function ruleRow(state, r) {
   const s = statusOf(state, r)
   return `<tr>
     <td class="rule-id">${esc(r.id)}</td>
-    <td><div class="pair">${esc(whatText(r))}</div>${r.only ? `<div class="cond">${esc(t('Only rows where {field} is "{value}"', { field: r.only.field, value: r.only.value }))}</div>` : ''}</td>
+    <td><div class="pair">${esc(whatText(r))}</div>${r.only ? `<div class="cond">${esc(onlyText(r.only))}</div>` : ''}</td>
     <td class="cond">${esc(r.label)}</td>
     <td class="kind">${KIND_NAMES[r.kind]}</td>
     <td class="kind">${esc(r.owner ?? '')}</td>
@@ -132,7 +146,8 @@ function nextRuleId(state) {
  */
 function ruleFormHtml(state, rule) {
   const r = rule ?? { id: nextRuleId(state), phase: state.phases[0]?.id ?? '', kind: 'covered', from: '', to: '', field: '', owner: '', label: '' }
-  const only = rule?.only ? `${rule.only.field}=${rule.only.value}` : ''
+  const only = onlyInput(rule?.only)
+  const values = (rule?.values ?? []).join('|')
   const kinds = Object.keys(state.labels?.kinds ?? {})
   const columns = Object.keys(state.labels?.columns ?? {})
   return `<form class="add rule-form" id="rule-form" data-mode="${rule ? 'edit' : 'add'}">
@@ -143,7 +158,8 @@ function ruleFormHtml(state, rule) {
     <label>${esc(t('From kind'))}<input name="from" value="${esc(r.from)}" list="rule-kinds" placeholder="${esc(t('e.g. TC'))}"></label>
     <label>${esc(t('To kind'))}<input name="to" value="${esc(r.to)}" list="rule-kinds" placeholder="${esc(t('e.g. RUN (for downstream / upstream)'))}"></label>
     <label>${esc(t('Column'))}<input name="field" value="${esc(r.field)}" list="rule-columns" placeholder="${esc(t('for "Column is filled"'))}"></label>
-    <label>${esc(t('Only rows'))}<input name="only" value="${esc(only)}" placeholder="${esc(t('e.g. change=yes'))}"></label>
+    <label>${esc(t('Allowed values'))}<input name="values" value="${esc(values)}" placeholder="${esc(t('for "Allowed values" (e.g. OK|NG)'))}"></label>
+    <label>${esc(t('Only rows'))}<input name="only" value="${esc(only)}" placeholder="${esc(t('e.g. change=yes, env!=local'))}"></label>
     <label>${esc(t('Owner'))}<input name="owner" value="${esc(r.owner ?? '')}" list="rule-people" placeholder="${esc(t('Who fixes it (role)'))}"></label>
     <label class="grow">${esc(t('Condition text'))}<input name="label" value="${esc(r.label)}" required maxlength="200" placeholder="${esc(t('One sentence people read (e.g. Every test case has a test run)'))}"></label>
     <datalist id="rule-kinds">${kinds.map(k => `<option value="${esc(k)}">${esc(kindLabel(k))}</option>`).join('')}</datalist>
@@ -160,7 +176,7 @@ function ruleBody(form, isEdit) {
   const data = Object.fromEntries(new FormData(form).entries())
   /** @type {Record<string, string>} */
   const body = {}
-  for (const key of ['phase', 'kind', 'from', 'to', 'field', 'only', 'owner', 'label']) {
+  for (const key of ['phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'owner', 'label']) {
     const value = String(data[key] ?? '').trim()
     if (value || isEdit) body[key] = value
   }

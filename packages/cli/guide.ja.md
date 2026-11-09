@@ -49,16 +49,17 @@ WBS のタスクは台帳の行（種類 `W`）としても辿れます。台帳
 
 ## rules ルールの書き方
 
-`.tadori/rulesets/` の中の TSV（工程ごとに分けてよい）。列は `id phase kind from to field only owner label`。
+`.tadori/rulesets/` の中の TSV（工程ごとに分けてよい）。列は `id phase kind from to field only values owner label`（`values` は使うルールが無ければ無くてよい）。
 
-`kind` は 4 種類：
+`kind` は 5 種類：
 - `covered` from の種類のどの行にも、それを元にした to の種類の行がある（例：観点 V ごとに試験ケース TC がある）
 - `refers` from の種類のどの行も、to の種類の行を元にしている（例：どの基本設計の章 BD にも WBS のタスク W が紐づいている）
 - `filled` from の種類のどの行にも、field の列の値が入っている（例：詳細設計の節 DD に change が書いてある）
+- `allowed` from の種類のどの行も、field の列の値が `values`（`a|b`）のどれか（例：試験の記録 RUN の結果が `OK|NG`）。空の行は `filled` で見る
 - `approval` 人の承認が要る。tadori は `ledger/approvals.tsv` を見るだけで、代わりに承認しない
 
 ほかの列：
-- `only` 対象の行を `列名=値` で絞る（例：`change=変わる` の節だけ commit を求める）
+- `only` 対象の行を `列名=値` で絞る（例：`change=変わる` の節だけ commit を求める）。`列名=a|b` はどれかに合う行、`列名!=値`（`列名!=a|b` も可）はそれ以外の行
 - `owner` 漏れを直す担当（例：設計担当・検証担当）。画面と `list_leaks` に出ます
 - `label` 人が読む一文（例：観点ごとに試験ケースがある）
 

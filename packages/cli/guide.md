@@ -49,16 +49,17 @@ Links are decided only by the IDs written in the ledger. Nothing is linked by gu
 
 ## rules Writing rules
 
-TSV files in `.tadori/rulesets/` (you may split them by phase). The columns are `id phase kind from to field only owner label`.
+TSV files in `.tadori/rulesets/` (you may split them by phase). The columns are `id phase kind from to field only values owner label` (`values` can be left out when no rule uses it).
 
-There are 4 values for `kind`:
+There are 5 values for `kind`:
 - `covered` every row of the from kind has a row of the to kind based on it (e.g. every viewpoint V has a test case TC)
 - `refers` every row of the from kind is based on a row of the to kind (e.g. every basic design chapter BD is tied to a WBS task W)
 - `filled` every row of the from kind has a value in the field column (e.g. every detailed design section DD has change written)
+- `allowed` every row of the from kind holds one of `values` in the field column (`a|b`, e.g. a test run RUN has `OK|NG` as its result). Empty cells are left to `filled`
 - `approval` needs approval by a person. tadori only reads `ledger/approvals.tsv` and never approves on anyone's behalf
 
 Other columns:
-- `only` narrows the target rows by `column=value` (e.g. require a commit only for sections with `change=変わる` (changes))
+- `only` narrows the target rows by `column=value` (e.g. require a commit only for sections with `change=変わる` (changes)). `column=a|b` matches any of them, `column!=value` (or `column!=a|b`) matches the other rows
 - `owner` who fixes the gap (e.g. design owner, verification owner). Shown on the screen and in `list_leaks`
 - `label` one sentence for people to read (e.g. every viewpoint has a test case)
 
