@@ -117,7 +117,7 @@ function navigate(open) {
 /** 案件を読み直す（保存のあと・画面に戻ったとき。git pull した内容もここで反映される） */
 /** いま動いている所（広い画面では中身の列、狭い画面ではページ全体） */
 const scroller = () => {
-  const main = document.querySelector('.main')
+  const main = document.querySelector('.main > main')
   return main && getComputedStyle(main).overflowY === 'auto' ? main : document.scrollingElement
 }
 
