@@ -31,10 +31,10 @@ export const JA: Readonly<Record<string, string>> = {
   'Remove {list} from the refs of {row}, or add rows for {list} to the ledger': '{row}の refs から {list} を消すか、{list} の行を台帳に足す',
 
   // ---- 承認待ち（完了判定） ----
-  '{who} sets the status of the {rule} row in {file} to "承認" (approved), with their name and the date': '{who}が {file} の {rule} の行の状態を「承認」にする（名前と日付も書く）',
-  '{who} adds a {rule} row to {file} and sets its status to "承認" (approved), with their name and the date': '{who}が {file} に {rule} の行を足し、状態を「承認」にする（名前と日付も書く）',
-  'The approver sets the status of the {rule} row in {file} to "承認" (approved), with their name and the date': '承認する人が {file} の {rule} の行の状態を「承認」にする（名前と日付も書く）',
-  'The approver adds a {rule} row to {file} and sets its status to "承認" (approved), with their name and the date': '承認する人が {file} に {rule} の行を足し、状態を「承認」にする（名前と日付も書く）',
+  '{who} sets the status of the {rule} row in {file} to "approved", with their name and the date': '{who}が {file} の {rule} の行の状態を「承認」にする（名前と日付も書く）',
+  '{who} adds a {rule} row to {file} and sets its status to "approved", with their name and the date': '{who}が {file} に {rule} の行を足し、状態を「承認」にする（名前と日付も書く）',
+  'The approver sets the status of the {rule} row in {file} to "approved", with their name and the date': '承認する人が {file} の {rule} の行の状態を「承認」にする（名前と日付も書く）',
+  'The approver adds a {rule} row to {file} and sets its status to "approved", with their name and the date': '承認する人が {file} に {rule} の行を足し、状態を「承認」にする（名前と日付も書く）',
 
   // ---- 工程・ステータスの設定 ----
   'A phase ID is empty': '工程の ID が空です',
@@ -140,5 +140,5 @@ export const JA: Readonly<Record<string, string>> = {
   'The ledger. refs are "the IDs of the rows this row is based on". Separate several with 、 or ,': '台帳。refs は「この行が元にしている行の ID」。、か , で区切って複数書ける',
   'Choose kinds freely (e.g. SPEC = spec section, TC = test case). You can give them readable names in .tadori/kinds.tsv': 'kind は自由に決める（例：SPEC=仕様の節・TC=試験ケース）。読み方は .tadori/kinds.tsv に書ける',
   'WBS tasks. They can also be traced as ledger rows (kind W). Dates are YYYY-MM-DD': 'WBS のタスク。台帳の行（種類 W）としても辿れる。日付は YYYY-MM-DD',
-  'Approvals by people. status is "承認" (approved) or anything else (e.g. 差し戻し, sent back). tadori never approves on anyone\'s behalf': '人の承認の記録。status は「承認」か、それ以外（差し戻しなど）。tadori は代わりに承認しない',
+  'Approvals by people. status is "approved" or anything else (e.g. 差し戻し, sent back). tadori never approves on anyone\'s behalf': '人の承認の記録。status は「承認」か、それ以外（差し戻しなど）。tadori は代わりに承認しない',
 }

@@ -1,0 +1,17 @@
+# Ledger (fictional sample). refs = the IDs of the rows this row is based on (upstream links). Separate several with "," or "、"
+# kind: W=WBS task (taken from ledger/wbs.tsv automatically; do not write it here) / BD=basic design section / DD=detailed design section / Q=open question / COMMIT=source change / V=test viewpoint / TC=test case / RUN=test run / F=finding / R=preventive action
+id	kind	title	source	refs	change	verifier
+BD-2	BD	2. Lending limit	docs/basic-design.md §2	W-06
+BD-3	BD	3. Overdue handling	docs/basic-design.md §3	W-07
+DD-2.3	DD	Checking the lending limit	docs/detail-design.md §2.3	BD-2
+DD-3.1	DD	Return due dates	docs/detail-design.md §3.1	BD-3	unchanged
+DD-3.2	DD	Refusing loans while overdue	docs/detail-design.md §3.2	BD-3	changes
+Q-1	Q	Due dates that fall on holidays	docs/detail-design.md §3.1	DD-3.1
+a1b2c3d	COMMIT	Limit loans to 3 items	src/lend/limit.ts	DD-2.3
+e4f5a6b	COMMIT	Disable the lend button while overdue	src/lend/guard.ts:42	DD-3.2
+V-03	V	Overdue boundary (due day, next day)	qa/viewpoints.tsv	DD-3.2
+V-05	V	Pressing lend at the same time	qa/viewpoints.tsv	DD-2.3
+TC-04	TC	Borrow exactly at the lending limit	qa/test-spec.tsv	V-05
+TC-07	TC	An overdue person cannot borrow	qa/test-spec.tsv	V-03
+RUN-0012	RUN	Run of TC-04	runs/RUN-0012/run.json	TC-04
+F-02	F	Could borrow while overdue (acceptance)	Findings log	TC-07

@@ -105,3 +105,12 @@ describe('画面の専用カーソルへの指示の誤り（英語）', () => {
     expect(() => withLang('en', () => parseAgentAction({ action: 'jump' }))).toThrow('Unknown action: jump (available: point / click / type / go / say / filter)')
   })
 })
+
+describe('チェックの記録の結果の欄（言語ごとの形）', () => {
+  test('英語は「Gaps: 2 (A, B)」「Met」、日本語は「漏れ 2 件（A・B）」「満たす」', async () => {
+    const { leakResult } = await import('../src/check-log.js')
+    expect(leakResult(['DD-2.3', 'DD-3.2'], true)).toBe('Gaps: 2 (DD-2.3, DD-3.2)')
+    expect(leakResult([], true)).toBe('Met')
+    expect(leakResult(['DD-2.3', 'DD-3.2'], false)).toBe('漏れ 2 件（DD-2.3・DD-3.2）')
+  })
+})

@@ -362,4 +362,6 @@ export const JA = {
   'Showing everyone again': '全員に戻しました',
   'Agent: could not find "{target}" on the screen': 'エージェント：「{target}」が画面に見つかりませんでした',
   'The agent action failed: {error}': 'エージェントの操作に失敗しました：{error}',
+  'Sent back': '差し戻し',
+  'Approved': '承認',
 }

@@ -29,3 +29,10 @@ describe('resolvedItems', () => {
     expect(resolvedItems(checks, [])).toEqual([])
   })
 })
+
+describe('英語で書いたチェックの記録', () => {
+  test('「Gaps: 2 (DD-2.3, DD-3.2)」の形も読む', () => {
+    const checks = [record('2026-10-30 09:00', 'R4 · post-change impact', 'Gaps: 2 (DD-2.3, DD-3.2)')]
+    expect(resolvedItems(checks, [{ rule: 'R4', itemId: 'DD-2.3', message: '' }])).toEqual([{ itemId: 'DD-3.2', rule: 'R4', when: '2026-10-30 09:00' }])
+  })
+})

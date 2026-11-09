@@ -1,0 +1,5 @@
+# Sources of truth (fictional sample). When the source column of a ledger row starts with one of these names, the screen and agents link to it
+# locator: URL template that jumps to the place ({url}, {loc} = text after the name, {num} = the first number in it). Empty means the url as is
+# stale_days: after how many days since the last sync a row is shown as stale
+name	url	locator	stale_days
+Findings log	https://issues.example.com/lend-v12		14

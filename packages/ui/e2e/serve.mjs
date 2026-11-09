@@ -7,7 +7,8 @@ import { join, resolve } from 'node:path'
 
 const port = process.argv[2] ?? '4987'
 const here = import.meta.dirname
-const example = resolve(here, '../../../examples/lend-v12')
+// 写す見本（既定は日本語の見本。英語の画面の写真を撮るときは TADORI_E2E_EXAMPLE=lend-v12-en）
+const example = resolve(here, '../../../examples', process.env.TADORI_E2E_EXAMPLE ?? 'lend-v12')
 const dir = await mkdtemp(join(tmpdir(), 'tadori-e2e-'))
 await cp(example, dir, { recursive: true })
 

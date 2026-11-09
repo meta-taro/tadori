@@ -7,7 +7,7 @@ import { renderPicker } from './trace-picker.js'
 /** @typedef {import('./types').TraceResult} TraceResult */
 /** @typedef {import('./types').ResolvedItem} ResolvedItem */
 
-const RESULT_TONE = (/** @type {string} */ result) => (/^漏れ|差し戻し/.test(result) ? 'hole' : /^満たす|承認/.test(result) ? 'ok' : '')
+const RESULT_TONE = (/** @type {string} */ result) => (/^(漏れ|差し戻し|Gaps:|sent back|rejected)/i.test(result) ? 'hole' : /^(満たす|承認|Met|approved)/i.test(result) ? 'ok' : '')
 
 /**
  * @param {HTMLElement} view

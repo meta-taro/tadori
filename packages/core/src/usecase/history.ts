@@ -13,7 +13,8 @@ export interface ResolvedItem {
  * tadori check --log が書く行の形：what「R4 · …」、result「漏れ 2 件（DD-2.3・DD-3.2）」。
  * この形の行だけを読む（人の行や「満たす」の行は読まない）。
  */
-const LEAK_RESULT = /^漏れ \d+ 件（(.+)）$/
+// 英語の記録は result「Gaps: 2 (DD-2.3, DD-3.2)」。どちらの言語で書いた記録も読む
+const LEAK_RESULT = /^(?:漏れ \d+ 件（(.+)）|Gaps: \d+ \((.+)\))$/
 const RULE_ID = /^(\S+)\s*·/
 
 /**
@@ -24,10 +25,11 @@ export function resolvedItems(checks: readonly CheckRecord[], currentLeaks: read
   const stillLeaking = new Set(currentLeaks.map(l => l.itemId))
   const lastLeak = new Map<string, ResolvedItem>()
   for (const record of checks) {
-    const ids = record.result.match(LEAK_RESULT)?.[1]
+    const found = record.result.match(LEAK_RESULT)
+    const ids = found?.[1] ?? found?.[2]
     const rule = record.what.match(RULE_ID)?.[1]
     if (!ids || !rule) continue
-    for (const itemId of ids.split('・').map(s => s.trim()).filter(Boolean)) {
+    for (const itemId of ids.split(/[・,]/).map(s => s.trim()).filter(Boolean)) {
       const previous = lastLeak.get(itemId)
       if (!previous || previous.when <= record.when) lastLeak.set(itemId, { itemId, rule, when: record.when })
     }

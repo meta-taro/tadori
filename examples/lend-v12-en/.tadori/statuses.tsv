@@ -1,0 +1,6 @@
+id	name	tone
+todo	Not started	none
+doing	In progress	wait
+review	In review	wait
+hold	On hold	hole
+done	Done	ok

@@ -1,0 +1,11 @@
+id	name
+W	WBS task
+BD	Basic design section
+DD	Detailed design section
+Q	Open question
+COMMIT	Source change
+V	Test viewpoint
+TC	Test case
+RUN	Test run
+F	Finding
+R	Preventive action

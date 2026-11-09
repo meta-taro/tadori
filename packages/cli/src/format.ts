@@ -1,11 +1,17 @@
 import './i18n.js'
-import { t, type Origin, type TraceResult } from '@tadori/core'
+import { currentLang, t, type Origin, type TraceResult } from '@tadori/core'
 import { listJoin } from './i18n.js'
 import type { ProjectState } from './state.js'
 
 /** 担当と直し方の 1 行（例：担当：設計担当　直し方：…）。check と MCP の list_leaks が同じものを使う */
 export function fixText(fix: string, owner?: string): string {
   return `${owner ? t('Owner: {owner}  ', { owner }) : ''}${t('How to fix: {fix}', { fix })}`
+}
+
+/** 承認の状態（中では承認・差し戻し・待ちで持つ）を、いまの言語の言葉にする */
+export function approvalStatusText(status: string): string {
+  if (currentLang() !== 'en') return status
+  return ({ 承認: 'approved', 差し戻し: 'sent back', 待ち: 'waiting' } as Record<string, string>)[status] ?? status
 }
 
 /** tadori check の出力。工程ごとの漏れと承認待ちの中身だけを出す（割合や点数は出さない） */
@@ -24,7 +30,7 @@ export function formatCheck(state: ProjectState): string {
       // 誰が・どこをどう直せば消えるか
       if (leak.fix) lines.push(`        ${fixText(leak.fix, leak.owner)}`)
     }
-    for (const p of gate.pending) lines.push(`    ${t('{rule} pending approval ({status})  How to fix: {fix}', { rule: p.rule.id, status: p.status, fix: p.fix })}`)
+    for (const p of gate.pending) lines.push(`    ${t('{rule} pending approval ({status})  How to fix: {fix}', { rule: p.rule.id, status: approvalStatusText(p.status), fix: p.fix })}`)
   }
   // 同じ漏れかは、ルールと行の ID で見る（画面向けにリンクを足した写しと、工程が持つ元の漏れは別の物なので、物の同一では比べない）
   const keyOf = (l: { rule: string; itemId: string }) => `${l.rule}\t${l.itemId}`

@@ -22,7 +22,8 @@ You need Node.js 22+ and pnpm.
 
 ```bash
 pnpm install
-pnpm dev          # build, then open the screen on the fictional sample project → http://127.0.0.1:4870/
+pnpm dev:en       # build, then open the screen on the fictional sample project (English) → http://127.0.0.1:4870/
+pnpm dev          # the same sample, written in Japanese
 ```
 
 To open it as a desktop app (Tauri) you also need Rust.
@@ -103,7 +104,7 @@ ledger/wbs.tsv             WBS tasks
 ledger/approvals.tsv       human approvals (written by people)
 ```
 
-The sample is [examples/lend-v12](examples/lend-v12) (a fictional "equipment lending app, revision 1.2"; written in Japanese).
+The samples are [examples/lend-v12-en](examples/lend-v12-en) (a fictional "Equipment Lending App v1.2", in English) and the same project written in Japanese, [examples/lend-v12](examples/lend-v12).
 **Real project data never goes into this repository.** Keep a real project's ledger in that project's own repository.
 
 ## Repository layout

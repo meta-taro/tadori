@@ -203,3 +203,12 @@ describe('saveSettings', () => {
     expect(git('status', '--porcelain').trim()).toBe('')
   })
 })
+
+describe('承認の状態の英語の値', () => {
+  test('approvals.tsv の status は approved・sent back・pending（大文字・小文字は問わない）も読み、承認・差し戻し・待ちと同じに扱う', async () => {
+    await writeMinimalProject()
+    await put('ledger/approvals.tsv', 'rule\tstatus\twho\twhen\nR1\tApproved\tReviewer\t2026-10-20\nR2\tsent back\tReviewer\t2026-10-21\nR3\tpending\tReviewer\t2026-10-22\n')
+    const project = await loadProject(dir)
+    expect(project.approvals.map(a => a.status)).toEqual(['承認', '差し戻し', '待ち'])
+  })
+})

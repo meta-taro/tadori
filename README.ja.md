@@ -107,7 +107,7 @@ ledger/wbs.tsv             WBS のタスク
 ledger/approvals.tsv       人の承認の記録（人が書く）
 ```
 
-見本は [examples/lend-v12](examples/lend-v12)（架空の「備品貸出アプリ 改修 v1.2」）です。
+見本は [examples/lend-v12](examples/lend-v12)（架空の「備品貸出アプリ 改修 v1.2」）です。同じ案件を英語で書いたものが [examples/lend-v12-en](examples/lend-v12-en) にあります（`pnpm dev:en`）。
 **実案件のデータはこのリポジトリに入れません。**実案件の台帳は、その案件のリポジトリに置きます。
 
 ## リポジトリの中身

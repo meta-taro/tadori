@@ -1,0 +1,3 @@
+id	phase	kind	from	to	field	only	owner	label
+R1	bd	refers	BD	W			Designer	Every basic design section is linked to a WBS task
+R2	bd	approval					Reviewer	The reviewer approved the basic design document

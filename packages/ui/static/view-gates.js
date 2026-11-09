@@ -2,6 +2,10 @@
 import { t } from './i18n.js'
 import { chip, day, esc, fullDate, getWho, isMine, kindLabel, lateColor, shortDate, isDoneStatus } from './util.js'
 
+/** 承認の状態（中では承認・差し戻し・待ちで持つ）を画面の言葉にする */
+/** @type {Readonly<Record<string, string>>} */
+const APPROVAL_STATUS_NAMES = { 承認: 'Approved', 差し戻し: 'Sent back', 待ち: 'Pending approval' }
+
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').Gate} Gate */
 /** @typedef {import('./types').Rule} Rule */
@@ -150,7 +154,7 @@ function ruleStatus(state, rule) {
     const a = state.approvals.find(x => x.rule === rule.id)
     if (a?.status === '承認') return chip('ok', esc(t('Approved {who} · {when}', { who: a.who, when: a.when })))
     const pending = state.gates.flatMap(g => g.pending ?? []).find(p => p.rule.id === rule.id)
-    return chip('wait', a ? `${esc(a.status)} ${esc(a.who)} · ${esc(a.when)}` : esc(t('Pending approval'))) + fixHtml(pending?.fix)
+    return chip('wait', a ? `${esc(t(APPROVAL_STATUS_NAMES[a.status] ?? a.status))} ${esc(a.who)} · ${esc(a.when)}` : esc(t('Pending approval'))) + fixHtml(pending?.fix)
   }
   const leaks = state.leaks.filter(l => l.rule === rule.id)
   if (!leaks.length) return chip('ok', esc(t('No gaps')))

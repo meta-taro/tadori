@@ -1,0 +1,3 @@
+id	phase	kind	from	to	field	only	owner	label
+R12	rel	covered	F	R			PM	Every finding has a preventive action
+R13	rel	approval					Lead	The person responsible decided on the release

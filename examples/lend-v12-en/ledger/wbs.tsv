@@ -1,0 +1,12 @@
+id	phase	name	start	end	status	owner
+W-01	bd	Organize requirements	2026-09-01	2026-09-11	done	Designer
+W-02	bd	Write the basic design document	2026-09-14	2026-10-09	done	Designer
+W-03	bd	Basic design review	2026-10-12	2026-10-20	review	Designer
+W-04	dd	Detailed design (lending limit)	2026-10-14	2026-10-23	review	Designer
+W-05	dd	Detailed design (overdue)	2026-10-21	2026-10-29	hold	Designer
+W-06	impl	Change the lending limit	2026-10-26	2026-11-03	doing	Developer
+W-07	impl	Restrict overdue borrowers	2026-11-05	2026-11-18	doing	Developer
+W-08	it	Write the test viewpoints	2026-11-09	2026-11-16	doing	Tester
+W-09	it	Write the test cases	2026-11-16	2026-11-24	todo	Tester
+W-10	it	Run the integration test	2026-11-25	2026-12-09	todo	Tester
+W-11	rel	Release decision	2026-12-14	2026-12-18	todo	PM

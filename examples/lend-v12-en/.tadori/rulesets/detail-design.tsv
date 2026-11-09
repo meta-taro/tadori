@@ -1,0 +1,4 @@
+id	phase	kind	from	to	field	only	owner	label
+R3	dd	covered	BD	DD			Designer	Every basic design section has detailed design sections
+R4	dd	filled	DD		change		Designer	Every detailed design section states its post-change impact (changes / unchanged / undecided)
+R5	dd	filled	Q		verifier		Designer	Every open question has a verifier

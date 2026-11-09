@@ -40,10 +40,10 @@ describe('英語の文', () => {
     expect(leaks.find(l => l.rule === 'ID')?.message).toBe('TC-2 points to IDs that do not exist: V-9')
   })
 
-  test('承認待ちの案内は、承認の値（承認）を訳さずに英語の文で出す', () => {
+  test('承認待ちの案内は英語の文で出す（英語の値 approved でも書ける）', () => {
     const gates = withLang('en', () => buildGates(sampleProject, runChecks(sampleProject), '2026-10-20'))
     const pending = gates.flatMap(g => g.pending).find(p => p.rule.id === 'R2')
-    expect(pending?.fix).toBe('The approver sets the status of the R2 row in ledger/approvals.tsv to "承認" (approved), with their name and the date')
+    expect(pending?.fix).toBe('The approver sets the status of the R2 row in ledger/approvals.tsv to "approved", with their name and the date')
   })
 
   test('書くのを断った理由（WriteRefused）は英語で出る', async () => {

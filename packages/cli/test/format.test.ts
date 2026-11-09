@@ -73,3 +73,18 @@ describe('loadState の正本（origins）', () => {
     expect(state.origins['DD-2.3']).toBeUndefined()
   })
 })
+
+describe('英語の見本（examples/lend-v12-en）', () => {
+  test('日本語の見本と同じ漏れ・承認待ちを出し、英語の文で読める', async () => {
+    const { withLang } = await import('@tadori/core')
+    const ja = (await loadState(EXAMPLE, '2026-11-05')).state
+    // 漏れの文と直し方は、案件を読むときに作る。英語で読む
+    const en = (await withLang('en', () => loadState(resolve(import.meta.dirname, '../../../examples/lend-v12-en'), '2026-11-05'))).state
+    expect(en.leaks.map(l => `${l.rule}:${l.itemId}`).sort()).toEqual(ja.leaks.map(l => `${l.rule}:${l.itemId}`).sort())
+    expect(en.gates.map(g => g.pendingApprovals.length)).toEqual(ja.gates.map(g => g.pendingApprovals.length))
+    expect(en.resolved.map(r => r.itemId).sort()).toEqual(ja.resolved.map(r => r.itemId).sort())
+    const text = withLang('en', () => formatCheck(en))
+    expect(text).toContain('R2 pending approval (sent back)')
+    expect(text).not.toMatch(/[ぁ-んァ-ヶ]/)
+  })
+})

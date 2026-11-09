@@ -1,0 +1,6 @@
+id	name	order
+bd	Basic design	1
+dd	Detailed design	2
+impl	Implementation	3
+it	Integration test	4
+rel	Release	5

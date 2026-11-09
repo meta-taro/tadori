@@ -58,11 +58,11 @@ function pendingOf(project: Project, rule: Rule): PendingApproval {
   // 「承認」は approvals.tsv に書く値そのもの（データ）なので、英語の文でも訳さない
   const fix = rule.owner !== undefined
     ? (record
-      ? t('{who} sets the status of the {rule} row in {file} to "承認" (approved), with their name and the date', vars)
-      : t('{who} adds a {rule} row to {file} and sets its status to "承認" (approved), with their name and the date', vars))
+      ? t('{who} sets the status of the {rule} row in {file} to "approved", with their name and the date', vars)
+      : t('{who} adds a {rule} row to {file} and sets its status to "approved", with their name and the date', vars))
     : (record
-      ? t('The approver sets the status of the {rule} row in {file} to "承認" (approved), with their name and the date', vars)
-      : t('The approver adds a {rule} row to {file} and sets its status to "承認" (approved), with their name and the date', vars))
+      ? t('The approver sets the status of the {rule} row in {file} to "approved", with their name and the date', vars)
+      : t('The approver adds a {rule} row to {file} and sets its status to "approved", with their name and the date', vars))
   return { rule, status: record?.status ?? '待ち', fix }
 }
 

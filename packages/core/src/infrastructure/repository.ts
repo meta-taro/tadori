@@ -169,12 +169,22 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
   return perFile.flat()
 }
 
+/** approvals.tsv の status に英語でも書ける値（大文字・小文字は問わない）。中では日本語の値と同じに扱う */
+const APPROVAL_STATUS_ALIASES: Readonly<Record<string, ApprovalStatus>> = {
+  'approved': '承認', 'sent back': '差し戻し', 'rejected': '差し戻し', 'pending': '待ち', 'waiting': '待ち',
+}
+const approvalStatusOf = (value: string | undefined): ApprovalStatus | undefined => {
+  const text = (value ?? '').trim()
+  if (APPROVAL_STATUSES.includes(text as ApprovalStatus)) return text as ApprovalStatus
+  return APPROVAL_STATUS_ALIASES[text.toLowerCase()]
+}
+
 function toApprovals(rows: readonly Record<string, string>[], problems: string[]): Approval[] {
   return rows.flatMap(row => {
-    const status = row.status as ApprovalStatus
-    if (!APPROVAL_STATUSES.includes(status)) {
-      // 状態の値（承認・差し戻し・待ち）は人が approvals.tsv に書くデータなので、英語の文でも訳さない
-      problems.push(t('{file}, rule {rule}: the status "{status}" is not allowed ({allowed})', { file: PATHS.approvals, rule: String(row.rule), status: String(row.status), allowed: APPROVAL_STATUSES.join(' / ') }))
+    const status = approvalStatusOf(row.status)
+    if (!status) {
+      // 状態の値は人が approvals.tsv に書くデータ。日本語（承認・差し戻し・待ち）か英語（approved・sent back・pending）で書く
+      problems.push(t('{file}, rule {rule}: the status "{status}" is not allowed ({allowed})', { file: PATHS.approvals, rule: String(row.rule), status: String(row.status), allowed: `${APPROVAL_STATUSES.join(' / ')} / approved / sent back / pending` }))
       return []
     }
     return [{ rule: row.rule ?? '', status, who: row.who ?? '', when: row.when ?? '' }]

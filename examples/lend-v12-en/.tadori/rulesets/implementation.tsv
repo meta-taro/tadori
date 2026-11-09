@@ -1,0 +1,2 @@
+id	phase	kind	from	to	field	only	owner	label
+R6	impl	covered	DD	COMMIT		change=changes	Developer	Every detailed design section that changes is referenced by a commit
