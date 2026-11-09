@@ -37,6 +37,6 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     expect(await readMembers(dir)).toEqual([])
     await mkdir(join(dir, '.tadori'), { recursive: true })
     await writeFile(join(dir, '.tadori/members.tsv'), 'name\tgit\n設計担当\tsekkei-dev\n', 'utf8')
-    expect(await readMembers(dir)).toEqual([{ name: '設計担当', git: 'sekkei-dev' }])
+    expect(await readMembers(dir)).toEqual([{ name: '設計担当', git: 'sekkei-dev', roles: [] }])
   })
 })

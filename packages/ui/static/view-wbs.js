@@ -1,5 +1,5 @@
 // プロダクト → プロジェクト → WBS（Finder の列表示）。MVP では開いている案件 1 つを出す
-import { api, chip, day, esc, fullDate, ICON_INFO, isDoneStatus, lateColor, lateDays, shortDate, toast, toastCommit } from './util.js'
+import { api, chip, day, esc, fullDate, ICON_INFO, isDoneStatus, isMine, lateColor, lateDays, shortDate, toast, toastCommit } from './util.js'
 
 let wbsFilter = 'all'
 let wbsSort = 'wbs'
@@ -32,7 +32,8 @@ function wbsHtml(state) {
   const statusOptions = state.statuses.map(s => `<option value="${esc(s.id)}" ${s.id === wbsFilter ? 'selected' : ''}>${esc(s.name)}</option>`).join('')
   const sortOptions = Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === wbsSort ? 'selected' : ''}>${v.label}</option>`).join('')
   const groups = state.phases.map(phase => {
-    const tasks = state.tasks.filter(t => t.phase === phase.id)
+    // 上の帯の担当で絞る（WBS の担当は人の名前）
+    const tasks = state.tasks.filter(t => t.phase === phase.id && isMine(state, t.owner))
     if (!tasks.length) return ''
     const visible = tasks.filter(t => wbsFilter === 'all' || t.status === wbsFilter).sort(SORTS[wbsSort].cmp(state))
     const open = tasks.filter(t => !isDoneStatus(state, t.status))

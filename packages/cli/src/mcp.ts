@@ -235,14 +235,14 @@ function buildTools(options: McpOptions): Tool[] {
   }, {
     name: 'screen',
     description: '人が開いている tadori の画面を、画面の中の専用カーソルで操作して見せる（人のマウスは使わない）。'
-      + 'action は point（指す）・click（押す）・type（欄に打つ）・go（画面を移る）・say（一言）。使い方は how_to の screen。'
+      + 'action は point（指す）・click（押す）・type（欄に打つ）・go（画面を移る）・say（一言）・filter（画面を人で絞る。value に人の名前、空なら全員）。使い方は how_to の screen。'
       + '押せるのは人が画面で押せるものだけ。Windows のダイアログは操作できないので人に頼むこと。',
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['point', 'click', 'type', 'go', 'say'] },
+        action: { type: 'string', enum: ['point', 'click', 'type', 'go', 'say', 'filter'] },
         target: { type: 'string', description: '画面に出ている文字・ボタンの名前（例：ルールセット・ファイル・探す）' },
-        value: { type: 'string', description: 'type で打つ文字' },
+        value: { type: 'string', description: 'type で打つ文字。filter では人の名前（空なら全員）' },
         hash: { type: 'string', description: 'go の移り先（例：#rules・#trace-F-02）' },
         message: { type: 'string', description: '人に見せる一言（黄色の札に出る）' },
       },

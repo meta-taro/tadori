@@ -1,6 +1,8 @@
 // エージェントの専用カーソル。人のマウスは使わない（奪わない）。
 // エージェントは tadori のサーバーへ指示を送り（POST /api/agent）、画面はこのカーソルを動かして、ページの中で指す・押す・打つ。
 // 人は自分のマウスで、同じ画面を同時に触っていてよい。
+import { setWho } from './util.js'
+
 const MOVE_MS = 650 // カーソルが動く時間（style.css の .agent-cursor の transition と合わせる）
 const HIGHLIGHT_MS = 2600
 
@@ -55,7 +57,8 @@ async function moveTo(el, message) {
   cursor.hidden = false
   cursor.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 40))}px, ${Math.round(r.top + r.height / 2)}px)`
   box.hidden = false
-  Object.assign(box.style, { left: `${r.left + window.scrollX - 4}px`, top: `${r.top + window.scrollY - 4}px`, width: `${r.width + 8}px`, height: `${r.height + 8}px` })
+  // 中身の列だけが動く作りなので、枠は画面に対して置く（どこが動いても、指した所に重なる）
+  Object.assign(box.style, { position: 'fixed', left: `${r.left - 4}px`, top: `${r.top - 4}px`, width: `${r.width + 8}px`, height: `${r.height + 8}px` })
   box.querySelector('.hl-label').textContent = message ?? ''
   await wait(MOVE_MS)
 }
@@ -86,6 +89,15 @@ async function say(message, el) {
 /** 指示を 1 つ実行する。見つからなければ、そのことを画面に出す（黙って失敗しない） */
 async function run(command, toast) {
   if (command.action === 'say') return say(command.message)
+  if (command.action === 'filter') {
+    // 画面の担当の絞り込みを切り替え、上の帯の欄を指して見せる
+    setWho(command.value)
+    window.dispatchEvent(new Event('tadori-who'))
+    const field = document.getElementById('who-filter')
+    if (field) await moveTo(field, command.value ? `${command.value} の分だけにしました` : '全員に戻しました')
+    hideLater()
+    return undefined
+  }
   if (command.action === 'go') {
     location.hash = command.hash
     return command.message ? say(command.message) : undefined

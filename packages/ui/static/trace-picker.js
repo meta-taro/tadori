@@ -1,5 +1,5 @@
 // つながりを辿る：辿り始めの行を探す欄。台帳は数千行になりうるので、全件を並べない
-import { esc, kindLabel } from './util.js'
+import { esc, isMine, kindLabel } from './util.js'
 
 const MAX_RESULTS = 20
 let query = ''
@@ -37,7 +37,9 @@ function rowHtml(state, item, startId) {
 /** 何も打っていないときの初期表示：漏れのある行・対応済み・指摘の 3 つに分けて並べる */
 function suggestionGroups(state) {
   const byKind = i => kindFilter === 'all' || i.kind === kindFilter
-  const leak = state.items.filter(i => byKind(i) && statusOf(state, i.id) === 'leak')
+  // 漏れのある行は、上の帯の担当の分（漏れを直す担当がその人か、その人の役割）だけにする
+  const leak = state.items.filter(i => byKind(i) && statusOf(state, i.id) === 'leak'
+    && state.leaks.some(l => l.itemId === i.id && isMine(state, l.owner)))
   const resolved = state.items.filter(i => byKind(i) && statusOf(state, i.id) === 'resolved')
   const shown = new Set([...leak, ...resolved].map(i => i.id))
   const findings = state.items.filter(i => byKind(i) && i.kind === 'F' && !shown.has(i.id))

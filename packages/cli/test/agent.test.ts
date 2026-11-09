@@ -25,3 +25,10 @@ describe('parseAgentAction（エージェントが画面の中の専用カーソ
     expect(() => parseAgentAction({ action: 'say', message: 'あ'.repeat(501) })).toThrow(/長/)
   })
 })
+
+describe('parseAgentAction の filter（画面の人の絞り込みを切り替える）', () => {
+  test('人の名前で絞る。空なら全員に戻す', () => {
+    expect(parseAgentAction({ action: 'filter', value: '設計担当A' })).toEqual({ action: 'filter', value: '設計担当A' })
+    expect(parseAgentAction({ action: 'filter', value: '' })).toEqual({ action: 'filter', value: '' })
+  })
+})

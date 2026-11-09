@@ -9,8 +9,10 @@ export type AgentAction =
   | { readonly action: 'type'; readonly target: string; readonly value: string; readonly message?: string }
   | { readonly action: 'go'; readonly hash: string; readonly message?: string }
   | { readonly action: 'say'; readonly message: string }
+  /** 画面の人の絞り込みを切り替える（空なら全員） */
+  | { readonly action: 'filter'; readonly value: string }
 
-const ACTIONS = ['point', 'click', 'type', 'go', 'say'] as const
+const ACTIONS = ['point', 'click', 'type', 'go', 'say', 'filter'] as const
 /** 画面に出す文字の上限（吹き出し・打つ文字） */
 const MAX_TEXT = 500
 
@@ -36,6 +38,12 @@ export function parseAgentAction(body: unknown): AgentAction {
   const message = text(body, 'message', action === 'say')
   const withMessage = message === undefined ? {} : { message }
   switch (action) {
+    case 'filter': {
+      // 人の名前（空なら全員）。絞るだけで、何も書き換えない
+      const value = body.value ?? ''
+      if (typeof value !== 'string' || value.length > MAX_TEXT) throw new AgentActionError('value は人の名前を文字で（空なら全員）')
+      return { action, value: value.trim() }
+    }
     case 'say':
       return { action, message: message as string }
     case 'go': {

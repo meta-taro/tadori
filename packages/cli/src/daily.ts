@@ -21,6 +21,8 @@ export interface Daily {
   readonly entries: readonly DailyEntry[]
   /** 日ごとのファイルに置いてあるか（まだなら、いまの材料から作った下書きを見せている） */
   readonly saved: boolean
+  /** 画面の頭に出す説明（案件の daily-format.tsv の intro。空なら画面の既定の説明） */
+  readonly intro: string
 }
 
 export class DailyInputError extends Error {
@@ -61,7 +63,8 @@ export async function loadDaily(dir: string, date: string, who?: string): Promis
   const shown = entries.filter(visible).filter(mine(who))
   // 担当の選択肢は、WBS の担当と、行の担当（commit やチェックの記録から来た人）の両方から
   const owners = [...new Set([...project.tasks.flatMap(t => ownersOf(t.owner)), ...entries.flatMap(e => ownersOf(e.who))])]
-  return { date, text: formatEntries(shown, project, date, await formatOf(dir)), owners, entries: shown, saved }
+  const format = await formatOf(dir)
+  return { date, text: formatEntries(shown, project, date, format), owners, entries: shown, saved, intro: format.intro }
 }
 
 /** 下書きを作って（作り直して）置く。直した行・足した行・消した行は残る */

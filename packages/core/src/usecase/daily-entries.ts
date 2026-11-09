@@ -1,4 +1,7 @@
 import { ownersOf, type DailyLine, type DailySheet } from './daily.js'
+import type { Member } from '../domain/people.js'
+
+export type { Member }
 
 /**
  * 「1 日の進行」の 1 件。材料から作った下書きを日ごとのファイルに置き、人とエージェントが直す。
@@ -67,17 +70,9 @@ export function mergeDaily(existing: readonly DailyEntry[], fresh: readonly Dail
   return [...kept, ...added]
 }
 
-/** 担当と git の作者名の対応（.tadori/members.tsv。書かなくてもよい） */
-export interface Member {
-  /** 担当（WBS の owner 列と同じ名前） */
-  readonly name: string
-  /** git の作者名 */
-  readonly git: string
-}
-
 /** git の作者名を担当にする。表に無ければ作者名のまま（WBS の担当と git の名前をそろえていれば、表は要らない） */
 export function memberOf(author: string, members: readonly Member[]): string {
-  return members.find(m => m.git === author)?.name ?? author
+  return members.find(m => m.git && m.git === author)?.name ?? author
 }
 
 /**

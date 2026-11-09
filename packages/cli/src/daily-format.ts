@@ -27,6 +27,8 @@ export interface DailyFormat {
   readonly consult_label: string
   /** 台帳の同じ種類の行をこの数より多く足した・直した日は、種類ごとに 1 件にまとめる */
   readonly group_after: string
+  /** 画面「1 日の進行」の頭に出す説明（空なら tadori の既定の説明） */
+  readonly intro: string
 }
 
 export const DEFAULT_DAILY_FORMAT: DailyFormat = {
@@ -41,6 +43,7 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   next_label: '次の作業日',
   consult_label: '相談',
   group_after: '3',
+  intro: '',
 }
 
 /** 案件の設定（key と value）を、既定の形に重ねる。知らない key は使わない */

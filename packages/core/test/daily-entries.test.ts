@@ -62,7 +62,7 @@ describe('entriesFromSheet（WBS の変化から作った下書きを、行に�
 
 describe('memberOf（git の作者名を担当にする）', () => {
   test('表があれば表の担当、無ければ作者名そのまま', () => {
-    const members = [{ name: '設計担当', git: 'sekkei-dev' }]
+    const members = [{ name: '設計担当', git: 'sekkei-dev', roles: [] }]
     expect(memberOf('sekkei-dev', members)).toBe('設計担当')
     expect(memberOf('検証担当', members)).toBe('検証担当')
   })

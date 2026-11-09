@@ -1,4 +1,7 @@
 import type { Item, Project, Task } from '../domain/model.js'
+import { ownersOf } from '../domain/people.js'
+
+export { ownersOf }
 
 /**
  * 人単位の「1 日の進行」。プロダクト単位の残課題とは別に、人単位で見るためのもの。
@@ -78,10 +81,6 @@ function group(project: Project, tasks: readonly Task[], changes: readonly Statu
   }
   return lines
 }
-
-/** 担当の欄を人ごとに分ける（「A・B」「A、B」「A,B」「A/B」のように 2 人以上書かれることがある） */
-export const ownersOf = (owner: string | undefined): string[] =>
-  (owner ?? '').split(/[・、,，/／]/).map(s => s.trim()).filter(Boolean)
 
 export function buildDaily(project: Project, changes: readonly StatusChange[], date: string, who?: string): DailySheet {
   const isDone = (status: string) => project.statuses.some(s => s.id === status && s.tone === 'ok')

@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { DAILY_SECTIONS, type DailyEntry, type DailyOrigin, type DailySection, type Member } from '../usecase/daily-entries.js'
 import { commitFiles, type CommitResult } from './git.js'
+import { ownersOf } from '../domain/people.js'
 import { parseTsv, toTsv } from './tsv.js'
 
 /** 日ごとの「1 日の進行」（tadori が書く記録。チェックの記録と同じく .tadori/ に置き、git で残す） */
@@ -60,11 +61,12 @@ export async function writeDaily(dir: string, date: string, entries: readonly Da
   return commitFiles(dir, [path], message)
 }
 
-/** 担当と git の作者名の表（書かなくてもよい） */
+/** 人の表（列 name・git・roles。書かなくてもよい） */
 export async function readMembers(dir: string): Promise<Member[]> {
   const text = await readIfExists(join(dir, MEMBERS))
   if (text === null) return []
-  return parseTsv(text).rows.filter(r => r.name && r.git).map(r => ({ name: r.name as string, git: r.git as string }))
+  // roles は「設計担当・レビュー担当」のように複数書ける。git は書かなくてもよい（役割の対応だけを書く案件もある）
+  return parseTsv(text).rows.filter(r => r.name).map(r => ({ name: r.name as string, git: r.git ?? '', roles: ownersOf(r.roles) }))
 }
 
 /** 1 日の進行の文の形の設定（列 key・value）。書かなくてもよい。知らない key は使わない */

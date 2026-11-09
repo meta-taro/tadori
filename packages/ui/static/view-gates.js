@@ -1,5 +1,5 @@
 // リリースまでの残課題：タイムラインとカードの切り替え。割合や点数は出さない
-import { chip, day, esc, fullDate, kindLabel, lateColor, shortDate, isDoneStatus } from './util.js'
+import { chip, day, esc, fullDate, getWho, isMine, kindLabel, lateColor, shortDate, isDoneStatus } from './util.js'
 
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 let gateView = 'timeline'
@@ -134,7 +134,6 @@ const RULES_PAGE = 50
 const expandedRules = new Set()
 let showSatisfied = false
 let rulesShown = RULES_PAGE
-let ownerFilter = 'all' // 担当で絞る（自分の担当だけを見る）
 
 /** 残っているルール（漏れがある・承認されていない） */
 function isRemaining(state, rule) {
@@ -157,9 +156,8 @@ export function renderGates(view, state, onTrace, phaseId) {
   // 残課題の画面なので、最初は残っているルール（漏れ・承認待ち）だけ。50 件ずつ出す
   const allRules = gate?.rules ?? []
   const remaining = allRules.filter(r => isRemaining(state, r))
-  const owners = [...new Set(state.rules.map(r => r.owner).filter(Boolean))]
-  const byOwner = r => ownerFilter === 'all' || r.owner === ownerFilter
-  const listed = (showSatisfied ? allRules : remaining).filter(byOwner)
+  // 担当は上の帯で選ぶ（どの画面も同じ）。ルールの担当は役割なので、人の表の役割でも見分ける
+  const listed = (showSatisfied ? allRules : remaining).filter(r => isMine(state, r.owner))
   const rows = listed.slice(0, rulesShown).map(r => `
     <tr>
       <td class="rule-id">${esc(r.id)}</td>
@@ -179,7 +177,7 @@ export function renderGates(view, state, onTrace, phaseId) {
     ${gate ? `<div class="gate-table-head">
       <h2>${esc(gate.phase.name)} · 残っているルール ${remaining.length} 件 / 全 ${allRules.length} 件</h2>
       <span class="gate-filters">
-        ${owners.length ? `<label class="cond">担当 <select id="owner-filter" class="inline-select"><option value="all">すべての担当</option>${owners.map(o => `<option ${o === ownerFilter ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>` : ''}
+        ${getWho() ? `<span class="cond">${esc(getWho())} の分だけ</span>` : ''}
         <label class="cond"><input type="checkbox" id="show-satisfied" ${showSatisfied ? 'checked' : ''}> 満たすルールも出す</label>
       </span>
     </div>
@@ -191,7 +189,6 @@ export function renderGates(view, state, onTrace, phaseId) {
     </div>` : ''}`
   const rerender = () => renderGates(view, state, onTrace)
   view.querySelector('#show-satisfied')?.addEventListener('change', e => { showSatisfied = e.target.checked; rulesShown = RULES_PAGE; rerender() })
-  view.querySelector('#owner-filter')?.addEventListener('change', e => { ownerFilter = e.target.value; rulesShown = RULES_PAGE; rerender() })
   view.querySelector('#gate-more')?.addEventListener('click', () => { rulesShown += RULES_PAGE; rerender() })
   view.querySelectorAll('[data-expand]').forEach(b => b.addEventListener('click', () => { expandedRules.add(b.dataset.expand); rerender() }))
   view.querySelectorAll('.tl-row, .stage').forEach(b => b.addEventListener('click', () => { selectedPhase = b.dataset.phase; rulesShown = RULES_PAGE; renderGates(view, state, onTrace) }))

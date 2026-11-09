@@ -1,5 +1,5 @@
 // tadori の画面の入口：/api/state を読み、#名前 で画面を切り替える
-import { api, chip, esc, ICON_INFO, setKindLabels, toast } from './util.js'
+import { api, chip, esc, getWho, ICON_INFO, peopleOf, setKindLabels, setWho, toast } from './util.js'
 import { renderGates } from './view-gates.js'
 import { renderWbs } from './view-wbs.js'
 import { renderLog, renderTrace } from './view-records.js'
@@ -44,8 +44,22 @@ function renderChrome(key) {
   document.querySelectorAll('nav a').forEach(a => {
     if (a.dataset.view === key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current')
   })
+  renderWhoFilter()
   renderNavBadges(waits)
 }
+
+/** 上の帯の「担当」：人の表と WBS の担当から選ぶ。選ぶと、どの画面もその人の分だけになる */
+function renderWhoFilter() {
+  const select = document.getElementById('who-filter')
+  const people = peopleOf(state)
+  const who = getWho()
+  select.innerHTML = `<option value="">全員</option>${people.map(p => `<option ${p === who ? 'selected' : ''}>${esc(p)}</option>`).join('')}`
+  // 選んでいた人が案件にいなくなったら（案件を切り替えたときなど）、全員に戻す
+  if (who && !people.includes(who)) setWho('')
+}
+document.getElementById('who-filter').addEventListener('change', e => { setWho(e.target.value); route() })
+// エージェントが専用カーソルで人を切り替えたとき（agent.js の filter）
+window.addEventListener('tadori-who', () => route())
 
 /**
  * 左メニューに件数のバッジを出す。0 のときは出さない（全部直せば消える）。
@@ -98,13 +112,19 @@ function navigate(open) {
 }
 
 /** 案件を読み直す（保存のあと・画面に戻ったとき。git pull した内容もここで反映される） */
+/** いま動いている所（広い画面では中身の列、狭い画面ではページ全体） */
+const scroller = () => {
+  const main = document.querySelector('.main')
+  return main && getComputedStyle(main).overflowY === 'auto' ? main : document.scrollingElement
+}
+
 async function reload() {
   try {
-    const scrollY = window.scrollY // 読み直しても、読んでいた位置から動かさない
+    const top = scroller().scrollTop // 読み直しても、読んでいた位置から動かさない
     state = await api('/api/state')
     setKindLabels(state.labels?.kinds)
     route()
-    window.scrollTo(0, scrollY)
+    scroller().scrollTop = top
   } catch (error) {
     view.innerHTML = `<h1>案件を読めませんでした</h1><div class="note">${ICON_INFO}<span>${esc(error.message)}${(error.problems ?? []).map(p => `<br>${esc(p)}`).join('')}</span></div>`
   }

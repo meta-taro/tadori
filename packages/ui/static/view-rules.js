@@ -1,5 +1,5 @@
 // ルールセット：1,000 行を超えても探せるように、探す欄・絞り込み・工程ごとの帯・少しずつ出す
-import { esc, ICON_INFO, kindLabel } from './util.js'
+import { esc, ICON_INFO, isMine, kindLabel } from './util.js'
 
 const PAGE = 50
 const KIND_NAMES = { covered: '下流が出ている', refers: '上流を元にしている', filled: '列が埋まっている', approval: '人の承認' }
@@ -42,7 +42,9 @@ function filtered(state) {
     matches(r, words)
     && (filters.phase === 'all' || r.phase === filters.phase)
     && (filters.judge === 'all' || (filters.judge === 'human') === (r.kind === 'approval'))
-    && (filters.status === 'all' || statusOf(state, r).key === filters.status))
+    && (filters.status === 'all' || statusOf(state, r).key === filters.status)
+    // 上の帯の担当で絞る（ルールの担当は役割。人の表の役割でも見分ける）
+    && isMine(state, r.owner))
   const byId = (a, b) => a.id.localeCompare(b.id, 'ja', { numeric: true })
   return filters.sort === 'leaks'
     ? [...list].sort((a, b) => statusOf(state, b).count - statusOf(state, a).count || byId(a, b))

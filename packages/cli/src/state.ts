@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { buildGates, buildLink, loadProject, readChecks, repositoryPrefix, resolvedItems, runChecks, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
+import { buildGates, buildLink, loadProject, readChecks, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 漏れに「md-business で開く」の URL を付けたもの（雛形が .tadori/links.tsv にあるとき） */
 export type LeakWithLink = Leak & {
@@ -27,12 +27,15 @@ export interface ProjectState {
   readonly checks: Awaited<ReturnType<typeof readChecks>>
   /** 前のチェックでは漏れだったが、いまは漏れの無い行（チェックの記録から読むだけ） */
   readonly resolved: readonly ResolvedItem[]
+  /** 人の表（.tadori/members.tsv。人 → 役割。書かなくてもよい）。画面で人ごとに絞るのに使う */
+  readonly members: readonly Member[]
 }
 
 export async function loadState(dir: string, today: string): Promise<{ project: Project; state: ProjectState }> {
   const project = await loadProject(dir)
   const leaks = runChecks(project)
   const checks = await readChecks(dir)
+  const members = await readMembers(dir)
   const prefix = await repositoryPrefix(dir)
   const state: ProjectState = {
     today,
@@ -48,6 +51,7 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     gates: buildGates(project, leaks, today),
     checks,
     resolved: resolvedItems(checks, leaks),
+    members,
   }
   return { project, state }
 }

@@ -32,6 +32,8 @@
     <div class="topbar">
       <div class="crumb"><span id="crumb-project"></span> / <b id="crumb-view"></b></div>
       <form class="jump" id="jump" role="search"><input id="jump-input" type="search" placeholder="探す（ID・名前・漏れ・ルール・用語）　/" aria-label="探す" autocomplete="off"></form>
+      <label class="who-filter" title="どの画面でも、この人の分だけに絞る（役割で書かれた漏れは、人の表の役割で見分ける）">担当
+        <select id="who-filter" class="inline-select" aria-label="担当で絞る"><option value="">全員</option></select></label>
       <div class="chips" id="summary"></div>
     </div>
     <main id="view"></main>

@@ -29,6 +29,36 @@ export function lateColor(days) {
   return `color-mix(in oklch, var(--late-red) ${pct}%, var(--late-blue))`
 }
 
+/**
+ * 画面全体の「担当」の絞り込み（上の帯で選ぶ。どの画面も同じものを使う）。
+ * 選んだ人は、その PC のブラウザに覚える（人の好みなので、案件の設定には書かない）。
+ */
+const WHO_KEY = 'tadori-who'
+let currentWho = (() => { try { return localStorage.getItem(WHO_KEY) ?? '' } catch { return '' } })()
+export const getWho = () => currentWho
+export function setWho(value) {
+  currentWho = value ?? ''
+  try { localStorage.setItem(WHO_KEY, currentWho) } catch { /* 覚えられなくても、いまの画面には効かせる */ }
+}
+
+/** 担当の欄を人ごとに分ける（「A・B」「A、B」「A,B」「A/B」） */
+export const ownersOf = owner => String(owner ?? '').split(/[・、,，/／]/).map(s => s.trim()).filter(Boolean)
+
+/**
+ * owner の欄が、選んでいる人の分か（判定の核の isFor と同じ決まり）。
+ * 名前の一致か、その人の役割（.tadori/members.tsv の roles）の一致。だれも選んでいなければ全部。
+ */
+export function isMine(state, owner) {
+  const who = currentWho
+  if (!who) return true
+  const names = ownersOf(owner)
+  const roles = state.members?.find(m => m.name === who)?.roles ?? []
+  return names.includes(who) || names.some(n => roles.includes(n))
+}
+
+/** 担当の選択肢：人の表の名前と、WBS の担当（人）。役割だけの名前は出さない */
+export const peopleOf = state => [...new Set([...(state.members ?? []).map(m => m.name), ...state.tasks.flatMap(t => ownersOf(t.owner))])]
+
 /** 終わったステータス（設定で色の意味が ok のもの）か */
 export const isDoneStatus = (state, status) => state.statuses.some(s => s.id === status && s.tone === 'ok')
 
