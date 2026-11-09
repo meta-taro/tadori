@@ -2,7 +2,7 @@ import {
   buildDaily, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, readActivity, readDaily, readDailyFormat, readMembers,
   readStatusChanges, writeDaily, type CommitResult, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
-import { dailyFormatOf, formatEntries, tagText, wbsLabel, type DailyFormat } from './daily-format.js'
+import { dailyFormatOf, formatEntries, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
 
 /**
@@ -27,6 +27,8 @@ export interface Daily {
   readonly links: readonly { readonly text: string; readonly href: string }[]
   /** 文の中の印の書き方（例：［済］）。画面が小さな札の見た目にする */
   readonly tags: readonly string[]
+  /** 担当で絞っていないときに、行の頭に付く担当名の書き方（例：設計担当：）。画面が札の見た目にする。絞っているときは空 */
+  readonly whoMarks: readonly string[]
 }
 
 /** 行がつながる WBS と課題の、文の中の書き方 → 画面の飛び先（WBS はプロダクトのその行、課題はつながりを辿る） */
@@ -75,7 +77,8 @@ export async function loadDaily(dir: string, date: string, who?: string): Promis
   // 担当の選択肢は、WBS の担当と、行の担当（commit やチェックの記録から来た人）の両方から
   const owners = [...new Set([...project.tasks.flatMap(t => ownersOf(t.owner)), ...entries.flatMap(e => ownersOf(e.who))])]
   const format = await formatOf(dir)
-  return { date, text: formatEntries(shown, project, date, format, { showWho: !who }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean) }
+  return { date, text: formatEntries(shown, project, date, format, { showWho: !who }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
+    whoMarks: who ? [] : [...new Set(shown.map(e => whoMark(e.who, format)).filter(Boolean))] }
 }
 
 /** 下書きを作って（作り直して）置く。直した行・足した行・消した行は残る */

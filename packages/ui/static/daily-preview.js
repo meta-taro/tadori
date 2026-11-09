@@ -12,9 +12,9 @@ const LABEL_PATTERN = '[^\\s：（）()、／]{1,40}'
 const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** 1 行の中の印・リンクを、札とリンクにする（それ以外の文字はそのまま出す） */
-function inlineHtml(line, links, tags) {
+function inlineHtml(line, links, tags, whoMarks = []) {
   const byText = new Map(links.map(l => [l.text, l.href]))
-  const words = [...tags, ...byText.keys()].filter(Boolean).sort((a, b) => b.length - a.length).map(escapeRegExp)
+  const words = [...tags, ...whoMarks, ...byText.keys()].filter(Boolean).sort((a, b) => b.length - a.length).map(escapeRegExp)
   // 「表示名：URL」（例：正本：…・QA表：…）は「表示名 ↗」に、名前の無い URL は「リンク ↗」にする。長い言葉を先に当てる
   const pattern = new RegExp([`(?:(${LABEL_PATTERN})：)?(${URL_PATTERN})`, ...words].join('|'), 'g')
   let html = ''
@@ -27,6 +27,9 @@ function inlineHtml(line, links, tags) {
       const href = webUrl(url)
       const label = `${name || 'リンク'} ↗`
       html += href ? `<a class="origin-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(href)}">${esc(label)}</a>` : esc(text)
+    } else if (whoMarks.includes(text)) {
+      // 担当で絞っていないときの行の担当（例：設計担当：）。区切りの「：」は札に出さない
+      html += `<span class="daily-who">${esc(text.replace(/[：:]\s*$/, '') || text)}</span>`
     } else if (tags.includes(text)) {
       // 札にするので、印を囲む括弧（［］【】[]）は見せない
       html += `<span class="daily-pill">${esc(text.replace(/^[［【[]|[］】\]]$/g, '') || text)}</span>`
@@ -38,7 +41,7 @@ function inlineHtml(line, links, tags) {
 }
 
 /** 文全体を、見出し・番号付きの一覧・小見出しに分けて描く */
-export function previewHtml(text, links = [], tags = []) {
+export function previewHtml(text, links = [], tags = [], whoMarks = []) {
   const blocks = String(text ?? '').split(/\n{2,}/).map(b => b.split('\n').filter(l => l.trim()))
   return blocks.filter(lines => lines.length).map(lines => {
     const [head, ...rest] = lines
@@ -49,7 +52,7 @@ export function previewHtml(text, links = [], tags = []) {
       if (item && !listOpen) { body += '<ol class="daily-preview-list">'; listOpen = true }
       if (!item && listOpen) { body += '</ol>'; listOpen = false }
       body += item
-        ? `<li value="${Number(item[1])}">${inlineHtml(item[2], links, tags)}</li>`
+        ? `<li value="${Number(item[1])}">${inlineHtml(item[2], links, tags, whoMarks)}</li>`
         : `<h4>${inlineHtml(line, links, tags)}</h4>`
     }
     if (listOpen) body += '</ol>'

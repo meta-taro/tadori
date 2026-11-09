@@ -573,6 +573,7 @@
   .daily-preview-list { margin:0; padding-left:2.2em; }
   .daily-preview-list li { padding:1px 0; }
   .daily-preview-list li::marker { color:var(--ink-subtle); font-variant-numeric:tabular-nums; }
+  .daily-preview .daily-who { display:inline-block; margin-right:6px; vertical-align:1px; font-size:11px; line-height:18px; padding:0 8px; }
   .daily-pill { display:inline-block; padding:0 7px; margin-right:4px; border-radius:999px; font-size:11px; line-height:18px; vertical-align:1px; background:var(--accent-soft); color:var(--accent); font-weight:600; }
   .daily-ref { color:var(--accent); text-decoration:none; }
   .daily-ref:hover, .daily-preview .origin-link:hover { text-decoration:underline; }

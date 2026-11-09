@@ -143,3 +143,15 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     await expect(page.locator('.daily-preview a', { hasText: 'QA表 ↗' })).toHaveAttribute('href', 'https://sheets.example.com/qa#row=12')
   })
 })
+
+test.describe('1 日の進行の文の形の担当', () => {
+  test('担当で絞っていないときは、文の形の行の頭の担当名を札にする（「：」は札に出さない）。絞ると出さない', async ({ page }) => {
+    await openDaily(page)
+    const who = page.locator('.daily-preview .daily-who').first()
+    await expect(who).toBeVisible()
+    await expect(who).not.toContainText('：')
+    await page.locator('#who-filter').selectOption('設計担当')
+    await expect(page.locator('.daily-preview .daily-who')).toHaveCount(0)
+    await page.locator('#who-filter').selectOption('')
+  })
+})

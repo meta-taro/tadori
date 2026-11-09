@@ -258,6 +258,10 @@ describe('GET /api/daily（人単位の 1 日の進行）', () => {
     expect(all.links).toEqual(expect.arrayContaining([{ text: 'W-03', href: '#browse-W-03' }]))
     expect(all.text).not.toContain('#browse-')
     expect(all.tags).toEqual(expect.arrayContaining(['［済］', '［予定］']))
+    // 担当で絞っていないときは、行の頭の担当名の書き方も返す（画面が札にする）。絞ると返さない
+    expect(all.whoMarks).toEqual(expect.arrayContaining(['設計担当：']))
+    const mine = await (await fetch(`${base}/api/daily?date=2026-11-05&who=${encodeURIComponent('設計担当')}`)).json()
+    expect(mine.whoMarks).toEqual([])
   })
 
   test('日付の形がおかしければ 400', async () => {

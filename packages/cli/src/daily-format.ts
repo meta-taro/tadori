@@ -130,13 +130,18 @@ function noteLine(project: Project, entry: DailyEntry, no: number, format: Daily
   return parts.length ? `${no}. ${parts.join('／')}` : null
 }
 
+/** 読み上げる行の頭に付ける担当名（例：設計担当：）。担当が無いか、書き方が空なら付けない */
+export function whoMark(who: string, format: DailyFormat): string {
+  return who && format.who_format ? fill(format.who_format, { who }) : ''
+}
+
 /** showWho：担当で絞っていない（全員の分を並べる）ときは、読み上げる行に担当名を入れる */
 export interface FormatOptions {
   readonly showWho?: boolean
 }
 
 export function formatEntries(entries: readonly DailyEntry[], project: Project, date: string, format: DailyFormat = DEFAULT_DAILY_FORMAT, options: FormatOptions = {}): string {
-  const whoText = (who: string) => (options.showWho && who && format.who_format ? fill(format.who_format, { who }) : '')
+  const whoText = (who: string) => (options.showWho ? whoMark(who, format) : '')
   const sections = [
     { id: 'today', label: format.today_label, list: entries.filter(e => e.section === 'today') },
     { id: 'next', label: format.next_label, list: entries.filter(e => e.section === 'next') },

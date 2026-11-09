@@ -103,7 +103,7 @@ export async function renderDaily(view, state) {
       </form>
     </div>
     <h2>文の形（補足つき）</h2>
-    <div class="panel daily-preview">${previewHtml(daily.text, daily.links ?? [], daily.tags ?? [])}</div>`
+    <div class="panel daily-preview">${previewHtml(daily.text, daily.links ?? [], daily.tags ?? [], daily.whoMarks ?? [])}</div>`
 
   view.querySelector('#daily-date').addEventListener('change', e => { if (e.target.value) { date = e.target.value; rerender() } })
   view.querySelector('#daily-generate').addEventListener('click', () => write(`${base}/generate`, 'POST', {}, '1 日の進行の下書き', rerender))
