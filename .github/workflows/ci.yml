@@ -26,14 +26,14 @@ jobs:
       - name: 依存を入れる
         run: pnpm install --frozen-lockfile
 
+      - name: 建てる（CLI の型は core の dist の型定義を読み、画面のテストは CLI の dist を動かす）
+        run: pnpm -r --filter '!@tadori/desktop' build
+
       - name: 型を確かめる
         run: pnpm -r --filter '!@tadori/desktop' typecheck
 
       - name: 単体のテスト
         run: pnpm -r --filter '!@tadori/desktop' test
-
-      - name: 建てる（画面のテストは CLI の dist を動かす）
-        run: pnpm -r --filter '!@tadori/desktop' build
 
       - name: 画面のテストのブラウザを入れる
         run: pnpm --filter @tadori/ui exec playwright install --with-deps chromium
