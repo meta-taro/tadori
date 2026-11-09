@@ -11,6 +11,7 @@
 - データは案件のフォルダの TSV（git 管理）。画面は PC の中（127.0.0.1）だけで開き、外へ同期しない
 - ルールの判定は 4 種類：covered（下流がある）・refers（上流を元にしている）・filled（列が埋まっている）・approval（人の承認）
 - AI エージェントは MCP で使い方・残課題・漏れ・つながりを読める。画面の中の専用カーソルで、人のマウスを使わずに画面を指して案内できる
+- 担当ごとの 1 日の進行（今日・次の作業日・相談）の下書きを、WBS の状態の変化・台帳の差分・チェックの記録から作る。各担当はそれを見ながら、エージェントと MCP で行を足す・直す・作業の状態を進める
 - 動かすには Node.js 22 以上。macOS（Apple シリコン・Intel）と Windows（x64・ARM）のインストーラーがある
 
 ## ページ
@@ -23,6 +24,7 @@
 - [事例：受入の指摘から辿る](https://meta-taro.github.io/tadori/cases/trace-from-finding.html)
 - [事例：前の工程が終わる前の着手](https://meta-taro.github.io/tadori/cases/early-start.html)
 - [事例：エージェントに案内させる](https://meta-taro.github.io/tadori/cases/agent-guide.html)
+- [事例：1 日の進行をエージェントと回す](https://meta-taro.github.io/tadori/cases/daily-with-agent.html)
 
 ## ソース
 

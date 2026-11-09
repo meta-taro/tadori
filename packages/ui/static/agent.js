@@ -50,16 +50,32 @@ function findTarget(target) {
 
 const wait = ms => new Promise(done => setTimeout(done, ms))
 
+/** 一言の札が窓の右や左からはみ出すときは、窓の内側へずらす（指した所が窓の端にあっても全文が読めるように） */
+const EDGE_PX = 8
+function keepInWindow(label) {
+  label.style.left = ''
+  const r = label.getBoundingClientRect()
+  const overRight = r.right - (window.innerWidth - EDGE_PX)
+  const overLeft = EDGE_PX - r.left
+  if (overRight > 0) label.style.left = `${-2 - overRight}px`
+  else if (overLeft > 0) label.style.left = `${-2 + overLeft}px`
+}
+
 async function moveTo(el, message) {
   ensureCursor()
-  el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  // 見えていないものは画面の中ほどへ寄せる（端に寄せると、札やその先の中身が隠れるため）。見えていれば動かさない
+  const before = el.getBoundingClientRect()
+  const isInView = before.top >= 0 && before.bottom <= window.innerHeight
+  el.scrollIntoView({ block: isInView ? 'nearest' : 'center', inline: 'nearest' })
   const r = el.getBoundingClientRect()
   cursor.hidden = false
   cursor.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 40))}px, ${Math.round(r.top + r.height / 2)}px)`
   box.hidden = false
   // 中身の列だけが動く作りなので、枠は画面に対して置く（どこが動いても、指した所に重なる）
   Object.assign(box.style, { position: 'fixed', left: `${r.left - 4}px`, top: `${r.top - 4}px`, width: `${r.width + 8}px`, height: `${r.height + 8}px` })
-  box.querySelector('.hl-label').textContent = message ?? ''
+  const label = box.querySelector('.hl-label')
+  label.textContent = message ?? ''
+  keepInWindow(label)
   await wait(MOVE_MS)
 }
 
