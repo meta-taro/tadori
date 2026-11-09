@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { createInterface } from 'node:readline'
 import { parseTsv, trace } from '@tadori/core'
-import { formatCheck, formatTrace } from './format.js'
+import { formatCheck, formatTrace, originText } from './format.js'
 import { howTo } from './guide.js'
 import { writeTools, type WriteContext } from './mcp-write.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
@@ -104,9 +104,9 @@ function buildProjectTools(options: McpOptions): Tool[] {
       description: '台帳の 1 行（指摘・試験ケース・設計書の章など）から上流と下流のつながりを辿り、切れている所（✗）を返す。つながりは台帳の ID だけで判定し、推測でつながない。'
         + '「確かにそこが漏れていた」と認めるのは人なので、結果は人に見せて判断してもらうこと。',
       inputSchema: { type: 'object', properties: { id: { type: 'string', description: '辿り始めの行の ID（例：F-02）' } }, required: ['id'], additionalProperties: false },
-      run: async args => withState(({ project }) => {
+      run: async args => withState(({ project, state }) => {
         const result = trace(project, str(args.id))
-        return result ? text(formatTrace(result)) : text(`${str(args.id)} は台帳にありません。find_items で探してください`, true)
+        return result ? text(formatTrace(result, state.origins)) : text(`${str(args.id)} は台帳にありません。find_items で探してください`, true)
       }),
     },
     {
@@ -117,7 +117,10 @@ function buildProjectTools(options: McpOptions): Tool[] {
         const words = str(args.query).trim().toLowerCase().split(/\s+/).filter(Boolean)
         const found = state.items.filter(i => words.every(w => `${i.id} ${i.title}`.toLowerCase().includes(w)))
         if (!found.length) return text(`「${str(args.query)}」に合う行がありません`)
-        const lines = found.slice(0, MAX_FOUND).map(i => `- ${i.id}（${state.labels.kinds[i.kind] ?? i.kind}）${i.title}`)
+        const lines = found.slice(0, MAX_FOUND).map(i => {
+          const origin = state.origins[i.id]
+          return `- ${i.id}（${state.labels.kinds[i.kind] ?? i.kind}）${i.title}${origin ? `\n  ${originText(origin)}` : ''}`
+        })
         if (found.length > MAX_FOUND) lines.push(`ほか ${found.length - MAX_FOUND} 件。言葉を足して絞ってください`)
         return text(lines.join('\n'))
       }),
@@ -231,7 +234,7 @@ function buildTools(options: McpOptions): Tool[] {
       + 'topic を空にすると話題の一覧。初めて使うときは start と agent-rules を読むこと。',
     inputSchema: {
       type: 'object',
-      properties: { topic: { type: 'string', description: '話題（start・ledger・rules・check・screen・links・agent-rules）。空なら一覧' } },
+      properties: { topic: { type: 'string', description: '話題（start・ledger・rules・check・daily・write・screen・links・sources・agent-rules）。空なら一覧' } },
       additionalProperties: false,
     },
     run: async args => howToText(options.guidePath, str(args.topic).trim()),

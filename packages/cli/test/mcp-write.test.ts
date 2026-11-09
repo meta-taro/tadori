@@ -51,6 +51,15 @@ describe('MCP の書く道具', () => {
     expect(await readFile(join(dir, 'ledger/wbs.tsv'), 'utf8')).toMatch(/W-09\t.*\tdoing/)
   })
 
+  test('正本から反映した記録：item_update に synced_by を付けるか item_synced で、日時とだれがを書く', async () => {
+    expect((await tool('item_update', { id: 'DD-2.3', fields: { change: '変わる' }, synced_by: '設計担当' })).isError).toBeUndefined()
+    expect((await tool('item_synced', { id: 'F-02', who: '検証担当' })).isError).toBeUndefined()
+    const items = await readFile(join(dir, 'ledger/items.tsv'), 'utf8')
+    expect(items).toMatch(/DD-2\.3\t.*\d{4}-\d{2}-\d{2} \d{2}:\d{2}\t設計担当/)
+    expect(items).toMatch(/F-02\t.*\d{4}-\d{2}-\d{2} \d{2}:\d{2}\t検証担当/)
+    expect((await tool('item_synced', { id: 'F-02' })).isError).toBe(true) // だれがは要る
+  })
+
   test('run_check：log を付けるとチェックの記録に足す', async () => {
     const result = await tool('run_check', { log: true, who: 'テストのエージェント', why: '確かめるため' })
     expect(result.content[0]?.text).toContain('チェックの記録を足しました')

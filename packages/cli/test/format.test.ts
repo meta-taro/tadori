@@ -65,3 +65,11 @@ describe('formatTrace', () => {
     expect(lines.at(at + 1)).toMatch(/漏れ R4/)
   })
 })
+
+describe('loadState の正本（origins）', () => {
+  test('source 列が正本の表（sources.tsv）にある行は、リンクと「反映が古いか」を持つ', async () => {
+    const { state } = await loadState(EXAMPLE, '2026-11-05')
+    expect(state.origins['F-02']).toMatchObject({ name: '指摘の台帳', url: 'https://issues.example.com/lend-v12', stale: true })
+    expect(state.origins['DD-2.3']).toBeUndefined()
+  })
+})

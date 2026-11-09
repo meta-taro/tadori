@@ -214,6 +214,14 @@
   .sp-kind { font-size:12px; color:var(--ink-subtle); }
   .sp-say { color:var(--ink); font-weight:500; font-size:13px; line-height:1.45; }
   .sp-src { margin-top:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-tertiary); word-break:break-all; }
+  /* 正本へのリンクと、正本から手元へ反映した記録。古いものは目立たせる（正本と見比べる合図） */
+  .origin { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
+  .origin-link { color:var(--accent, inherit); text-decoration:none; }
+  .origin-link:hover { text-decoration:underline; }
+  .origin-sync { color:var(--ink-tertiary); }
+  .origin.stale .origin-sync, .origin-link.stale { color:var(--hole); font-weight:600; }
+  .last-check { text-decoration:none; }
+  .last-check:hover { border-color:var(--ink-muted); }
   .sp-link { flex:0 0 52px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; }
   .sp-line { width:100%; height:0; border-top:1.5px solid var(--hairline-strong); position:relative; }
   .sp-line::after { content:''; position:absolute; right:-1px; top:-5px; border:4.5px solid transparent; border-left:7px solid var(--hairline-strong); }

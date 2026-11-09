@@ -39,6 +39,14 @@ describe('台帳の行（saveItem・removeItem）', () => {
   })
 })
 
+describe('正本から手元へ反映した日時（saveItem の synced）', () => {
+  test('synced を渡すと、その行の synced_at・synced_by を書く（列が無ければ足す）', async () => {
+    await saveItem(dir, { id: 'DD-2.3', fields: { change: '変わる' } }, { create: false, synced: { at: '2026-11-09 15:20', who: '設計担当' } })
+    const item = (await loadProject(dir)).items.find(i => i.id === 'DD-2.3')
+    expect(item?.fields).toMatchObject({ change: '変わる', synced_at: '2026-11-09 15:20', synced_by: '設計担当' })
+  })
+})
+
 describe('WBS の作業（saveTask）', () => {
   test('状態・日付・担当を変える。設定に無い状態や、おかしな日付は断る', async () => {
     await saveTask(dir, { id: 'W-09', status: 'doing', end: '2026-11-26', owner: '検証担当' }, { create: false })

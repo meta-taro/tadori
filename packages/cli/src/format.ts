@@ -1,4 +1,4 @@
-import type { TraceResult } from '@tadori/core'
+import type { Origin, TraceResult } from '@tadori/core'
 import type { ProjectState } from './state.js'
 
 /** tadori check の出力。工程ごとの漏れと承認待ちの中身だけを出す（割合や点数は出さない） */
@@ -33,7 +33,7 @@ export function formatCheck(state: ProjectState): string {
 }
 
 /** tadori why の出力。元から順に並べ、切れ目には ✗ を付ける */
-export function formatTrace(result: TraceResult): string {
+export function formatTrace(result: TraceResult, origins: Readonly<Record<string, Origin>> = {}): string {
   // 切れ目として出す漏れは、行の下に重ねて出さない
   const shownAsGap = new Set(result.steps.flatMap(s => (s.type === 'missing' ? [`${s.rule}:${s.after ?? s.before}`] : [])))
   return result.steps.flatMap(step => {
@@ -47,6 +47,14 @@ export function formatTrace(result: TraceResult): string {
       `${mark} ${step.item.kind.padEnd(6)} ${step.item.id}  ${step.item.title}  （${step.item.source}）`,
       // つながり以外の漏れ（列が空など）は、その行の下に出す
       ...other.map(l => `      漏れ ${l.rule}：${l.message}`),
+      ...(origins[step.item.id] ? [`      ${originText(origins[step.item.id] as Origin)}`] : []),
     ]
   }).join('\n')
+}
+
+/** 正本の URL と、正本から手元へ反映した記録を 1 行で（例：正本：https://…（反映 2026-11-08 09:00 検証担当）） */
+export function originText(origin: Origin): string {
+  const who = origin.syncedBy ? ` ${origin.syncedBy}` : ''
+  const synced = origin.syncedAt ? `反映 ${origin.syncedAt}${who}` : '反映の記録なし'
+  return `正本：${origin.url}（${synced}${origin.stale ? '・古い' : ''}）`
 }

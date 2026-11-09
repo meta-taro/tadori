@@ -43,6 +43,13 @@ describe('MCP の読む道具（案件を指定して起動したとき）', () 
     expect(text).toContain('TC-07')
   })
 
+  test('find_items・trace：正本の表にある行は、正本の URL と反映の記録（古ければそう）を添える', async () => {
+    const found = (await tool('find_items', { query: 'F-02' })).content.at(0)?.text ?? ''
+    expect(found).toContain('正本：https://issues.example.com/lend-v12（反映の記録なし・古い）')
+    const traced = (await tool('trace', { id: 'F-02' })).content.at(0)?.text ?? ''
+    expect(traced).toContain('正本：https://issues.example.com/lend-v12')
+  })
+
   test('案件を指定せずに起動したときは、案件の道具がそう言って断る', async () => {
     const res = await handle({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_remaining', arguments: {} } }) as { result: ToolResult }
     expect(res.result.isError).toBe(true)

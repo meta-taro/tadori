@@ -28,6 +28,18 @@ const sheet = buildDaily(project, changes, '2026-11-09', '設計担当')
 const text = formatDaily(sheet, project)
 const section = (head: RegExp, body = text) => body.split('\n\n').find(s => head.test(s)) ?? ''
 
+describe('補足の正本へのリンク', () => {
+  test('課題の source が正本の表にあれば、補足に正本の URL と反映の記録を添える', () => {
+    const withSource = {
+      ...project,
+      items: [{ ...project.items[0], source: '課題表 #12', fields: { synced_at: '2026-11-08 18:00', synced_by: '設計担当' } }],
+      sources: [{ name: '課題表', url: 'https://issues.example.com/p', locator: '{url}/{num}', staleDays: 7 }],
+    } as unknown as Project
+    const notes = section(/^補足/, formatDaily(sheet, withSource))
+    expect(notes).toContain('1. 課題 Q-12：一覧の並び順を利用者が選べるようにするかの確認（課題表 #12）正本：https://issues.example.com/p/12（反映 2026-11-08 18:00 設計担当）')
+  })
+})
+
 describe('formatDaily（1 日の進行の文・既定の形）', () => {
   test('見出しは 今日・次の作業日・相談・補足 の順で、日付と曜日を入れる', () => {
     const heads = text.split('\n').filter(l => /^(今日|次の作業日|相談|補足)/.test(l))

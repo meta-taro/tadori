@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { buildGates, buildLink, loadProject, readChecks, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
+import { buildGates, buildLink, loadProject, originOf, type Origin, readChecks, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 漏れに「md-business で開く」の URL を付けたもの（雛形が .tadori/links.tsv にあるとき） */
 export type LeakWithLink = Leak & {
@@ -29,6 +29,8 @@ export interface ProjectState {
   readonly resolved: readonly ResolvedItem[]
   /** 人の表（.tadori/members.tsv。人 → 役割。書かなくてもよい）。画面で人ごとに絞るのに使う */
   readonly members: readonly Member[]
+  /** 行 ID → 正本へのリンクと、正本から手元へ反映した記録（.tadori/sources.tsv にある正本の行だけ） */
+  readonly origins: Readonly<Record<string, Origin>>
 }
 
 export async function loadState(dir: string, today: string): Promise<{ project: Project; state: ProjectState }> {
@@ -52,8 +54,18 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     checks,
     resolved: resolvedItems(checks, leaks),
     members,
+    origins: originsOf(project, today),
   }
   return { project, state }
+}
+
+/** 正本の表にある行だけ、正本へのリンクと反映の記録を集める */
+function originsOf(project: Project, today: string): Record<string, Origin> {
+  const sources = project.sources ?? []
+  return Object.fromEntries(project.items.flatMap(item => {
+    const origin = originOf(item, sources, today)
+    return origin ? [[item.id, origin] as const] : []
+  }))
 }
 
 /** 手元の日付を YYYY-MM-DD で返す */

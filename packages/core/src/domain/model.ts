@@ -135,6 +135,8 @@ export interface Project {
   readonly labels?: Labels
   /** ほかの道具を開くリンクの雛形（.tadori/links.tsv） */
   readonly links?: readonly import('./links.js').LinkTemplate[]
+  /** 正本の表（.tadori/sources.tsv。書かなくてもよい） */
+  readonly sources?: readonly import('./sources.js').SourceDef[]
   readonly name: string
   readonly phases: readonly Phase[]
   readonly rules: readonly Rule[]

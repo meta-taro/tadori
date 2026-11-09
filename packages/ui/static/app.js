@@ -36,7 +36,10 @@ function defaultTraceStart() {
 
 function renderChrome(key) {
   const waits = state.gates.reduce((n, g) => n + g.pendingApprovals.length, 0)
-  document.getElementById('summary').innerHTML = chip('hole', `漏れ ${state.leaks.length} 件`) + chip('wait', `承認待ち ${waits} 件`)
+  // 最後にチェックを記録したのは、いつ・誰か（チェックの記録の最後の行。無ければ出さない）
+  const last = state.checks.at(-1)
+  const lastCheck = last ? `<a class="chip last-check" href="#log" title="チェックの記録を開く">最後のチェック ${esc(String(last.when).slice(5, 16).replace('-', '/'))}${last.who ? ` ${esc(last.who)}` : ''}</a>` : ''
+  document.getElementById('summary').innerHTML = chip('hole', `漏れ ${state.leaks.length} 件`) + chip('wait', `承認待ち ${waits} 件`) + lastCheck
   document.getElementById('side-project').textContent = state.project.name
   document.getElementById('crumb-project').textContent = state.project.name
   document.getElementById('crumb-view').textContent = VIEWS[key].label

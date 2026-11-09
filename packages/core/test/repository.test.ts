@@ -113,6 +113,17 @@ describe('loadProject', () => {
     expect((await loadProject(dir)).labels).toEqual({ kinds: { DD: '詳細設計の節', RUN: '試験の記録' }, columns: { change: '改修後の対応' }, workKinds: ['RUN'] })
   })
 
+  test('正本の表（sources.tsv）を読む。日数の既定は 14。javascript: などの URL は止める', async () => {
+    await writeMinimalProject()
+    await put('.tadori/sources.tsv', 'name\turl\tlocator\tstale_days\n仕様書\thttps://docs.example.com/spec\t\t\n試験シート\thttps://sheets.example.com/a\t{url}#A{num}\t7\n')
+    expect((await loadProject(dir)).sources).toEqual([
+      { name: '仕様書', url: 'https://docs.example.com/spec', locator: '', staleDays: 14 },
+      { name: '試験シート', url: 'https://sheets.example.com/a', locator: '{url}#A{num}', staleDays: 7 },
+    ])
+    await put('.tadori/sources.tsv', 'name\turl\nわるい\tjavascript:alert(1)\n')
+    await expect(loadProject(dir)).rejects.toThrow(/使えません/)
+  })
+
   test('リンクの雛形（links.tsv）を読む。javascript: などは止める', async () => {
     await writeMinimalProject()
     await put('.tadori/links.tsv', 'tool\turl\nmd-business\tmd-business://open?path={path}&line={line}\n')

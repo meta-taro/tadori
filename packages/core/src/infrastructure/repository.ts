@@ -2,6 +2,7 @@ import { readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Approval, ApprovalStatus, Item, Phase, Project, Rule, RuleKind, StatusDef, Task } from '../domain/model.js'
 import { validateLinkTemplate, type LinkTemplate } from '../domain/links.js'
+import type { SourceDef } from '../domain/sources.js'
 import { parseTsv } from './tsv.js'
 
 /**
@@ -29,6 +30,7 @@ export const PATHS = {
   approvals: 'ledger/approvals.tsv',
   kinds: '.tadori/kinds.tsv',
   links: '.tadori/links.tsv',
+  sources: '.tadori/sources.tsv',
   columns: '.tadori/columns.tsv',
 } as const
 
@@ -189,6 +191,22 @@ function toStatuses(rows: readonly Record<string, string>[], problems: string[])
 }
 
 /** ほかの道具を開くリンクの雛形を読む。使えない形（javascript: など）は問題として止める */
+/** 正本の表の既定の日数（これを超えて反映していない行を「古い」として目立たせる） */
+const DEFAULT_STALE_DAYS = 14
+
+/** 正本の表（name・url・locator・stale_days）。URL とひな形は、押すと命令が動く形を止める */
+function toSources(rows: readonly Record<string, string>[], problems: string[]): SourceDef[] {
+  return rows.filter(r => r.name && r.url).flatMap(r => {
+    const name = r.name as string
+    const url = r.url as string
+    const locator = (r.locator ?? '').trim()
+    const problem = validateLinkTemplate(url) ?? (locator ? validateLinkTemplate(locator.replace('{url}', url)) : null)
+    if (problem) { problems.push(`${PATHS.sources} の ${name}：${problem}`); return [] }
+    const days = Number(r.stale_days)
+    return [{ name, url, locator, staleDays: Number.isFinite(days) && days > 0 ? days : DEFAULT_STALE_DAYS }]
+  })
+}
+
 function toLinks(rows: readonly Record<string, string>[], problems: string[]): LinkTemplate[] {
   return rows.flatMap(row => {
     const tool = (row.tool ?? '').trim()
@@ -221,7 +239,7 @@ export async function loadProject(dir: string): Promise<Project> {
     throw new ProjectLoadError([`${dir} に .tadori フォルダがありません。tadori の案件のフォルダを指定してください`])
   }
   const problems: string[] = []
-  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows] = await Promise.all([
+  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows, sourceRows] = await Promise.all([
     readRows(dir, PATHS.project),
     readRequiredRows(dir, PATHS.phases, problems),
     readRequiredRows(dir, PATHS.statuses, problems),
@@ -232,6 +250,7 @@ export async function loadProject(dir: string): Promise<Project> {
     readRows(dir, PATHS.kinds),
     readRows(dir, PATHS.columns),
     readRows(dir, PATHS.links),
+    readRows(dir, PATHS.sources),
   ])
   const phases: Phase[] = phaseRows.map(row => {
     const order = Number(row.order)
@@ -258,6 +277,7 @@ export async function loadProject(dir: string): Promise<Project> {
       workKinds: kindRows.filter(r => r.id && /^(yes|y|true|1|○|◯)$/i.test((r.work ?? '').trim())).map(r => r.id as string),
     },
     links: toLinks(linkRows, problems),
+    sources: toSources(sourceRows, problems),
   }
   if (problems.length) throw new ProjectLoadError(problems)
   return project

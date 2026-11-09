@@ -138,6 +138,7 @@ WBS（`ledger/wbs.tsv`）と台帳に、書かなくてもよい列がありま�
 台帳や設定の TSV を直に直さず、次の道具で書いてください。どれも形と ID を確かめてから書き、書いたあとに案件を読み直して、読めなくなる書き方は元に戻して断ります。書けたら commit します（push は人）。
 
 - 台帳：`item_add`・`item_update`・`item_remove`（refs は台帳にある ID だけ。ほかの行が指している行は消さない）
+- 正本から反映した記録：正本を見て手元の行を直したら `item_update` に `synced_by`（反映した人）を付ける。中身は変えずに「いまの正本どおり」と確かめただけなら `item_synced`（`id`・`who`）。日時は道具が入れる（`synced_at`・`synced_by` 列）
 - WBS：`task_add`・`task_update`（状態・日付・担当・課題。その場で commit するので、1 日の進行の「状態が変わった日」がずれない）
 - ルール：`rule_add`・`rule_update`・`rule_remove`
 - 人の表：`member_set`・`member_remove`（人の役割 roles と git の作者名）
@@ -157,6 +158,7 @@ WBS（`ledger/wbs.tsv`）と台帳に、書かなくてもよい列がありま�
 - `{ "action": "type", "target": "探す", "value": "DD-2.3" }` 欄に打つ
 - `{ "action": "go", "hash": "#trace-F-02" }` 画面を移る（`#phases` `#rules` `#log` `#trace-<ID>` `#browse` `#settings` `#glossary`）
 - `{ "action": "say", "message": "ここが漏れです" }` 一言だけ出す
+- `{ "action": "filter", "value": "設計担当" }` どの画面も、その人（または役割）の分だけに絞る。`value` を空にすると全員に戻す
 
 `target` は画面に出ている文字・ボタンの名前で探します（ぴったり同じ名前を先に）。
 押せるのは人が画面で押せるものだけです。Windows のダイアログ（フォルダ選びなど）は操作できないので、人に頼んでください。
@@ -168,6 +170,16 @@ WBS（`ledger/wbs.tsv`）と台帳に、書かなくてもよい列がありま�
 差し込める値：`{path}`（案件のフォルダからの場所）・`{repopath}`（git リポジトリの最上位からの場所）・`{abspath}`・`{line}`・`{id}`。
 例：`md-business	md-business://open?repo=github.com/<持ち主>/<リポジトリ>&path={repopath}&line={line}`
 `javascript:` `data:` `file:` などの雛形は読み込みで止めます。
+
+## sources 正本へのリンクと、反映した日時
+
+台帳は手元の写しで、正本（文書・シート・課題）は外の道具にあります。`.tadori/sources.tsv`（列 `name url locator stale_days`）に正本を書くと、台帳の `source` 列の先頭がその名前の行に、正本へのリンクが付きます（画面のつながりのカード・1 日の進行・`find_items`・`trace`・`tadori why`）。
+- `locator`：場所まで飛ぶ URL のひな形。`{url}`＝URL、`{loc}`＝名前のあとの文字、`{num}`＝その中の最初の数。空なら URL のまま
+- `stale_days`：正本から手元へ反映してから、何日で「古い」と出すか（既定 14）。反映の記録（`synced_at`）が無い行も古いと出します
+- 例：`課題表	https://issues.example.com/p	{url}/{num}	7` と書くと、`source` が `課題表 #12` の行は `https://issues.example.com/p/12` を開きます
+
+tadori は正本と同期しません。古いと出た行は、人かエージェントが正本と見比べて、直したら `item_update`（`synced_by` 付き）、そのままでよければ `item_synced` で記録してください。
+URL は案件の `.tadori/sources.tsv` にだけ書きます（tadori 本体には入れません）。
 
 ## agent-rules エージェントが守ること
 

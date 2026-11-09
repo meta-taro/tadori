@@ -10,6 +10,7 @@ export { buildDaily, nextWorkday, ownersOf, type DailyLine, type DailySheet, typ
 export { readStatusChanges } from './infrastructure/status-history.js'
 export { DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, memberOf, mergeDaily, type DailyEntry, type DailyOrigin, type DailySection } from './usecase/daily-entries.js'
 export { isFor, type Member } from './domain/people.js'
+export { isStale, originOf, sourceLinkOf, type Origin, type SourceDef, type SourceLink } from './domain/sources.js'
 export { readActivity, type ActivityOptions } from './infrastructure/activity.js'
 export { removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveTask, WriteRefused, type ItemInput, type MemberInput, type RuleInput, type TaskInput } from './infrastructure/project-writer.js'
 export { DAILY_DIR, dailyPath, readDaily, readDailyFormat, readMembers, writeDaily } from './infrastructure/daily-store.js'

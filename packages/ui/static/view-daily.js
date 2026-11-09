@@ -1,7 +1,7 @@
 // 1 日の進行：担当ごとに見て、その場で直す（プロダクト単位の残課題とは別に、人単位で見る）。
 // 材料（WBS の状態の変化・台帳の差分・チェックの記録）から作った下書きを、日ごとのファイルに置き、行を足す・直す・消す。
 // 直した行・足した行・消した行は、下書きを作り直しても上書きしない。
-import { api, esc, getWho, ICON_INFO, toast, toastCommit } from './util.js'
+import { api, esc, getWho, ICON_INFO, toast, toastCommit, webUrl } from './util.js'
 
 // 担当は上の帯で選ぶ（どの画面も同じ）
 let date = ''
@@ -13,27 +13,36 @@ const ORIGIN_LABEL = { edited: '直した行', manual: '足した行' }
 const TAGS = [['', '印なし'], ['done', 'やり終えた'], ['doing', '作業中'], ['plan', '予定'], ['upkeep', '台帳の整備'], ['checked', '確かめた']]
 const tagSelect = entry => `<select class="inline-select daily-tag" data-tag="${esc(entry.id)}" aria-label="印">${TAGS.map(([v, l]) => `<option value="${v}" ${v === (entry.tag ?? '') ? 'selected' : ''}>${l}</option>`).join('')}</select>`
 
+/** 課題の正本へ飛ぶ小さなリンク（会議の場で正本を開けるように）。反映が古ければ目立たせる */
+function originLink(origin) {
+  const url = webUrl(origin?.url)
+  if (!url) return ''
+  const sync = origin.syncedAt ? `反映 ${origin.syncedAt}${origin.syncedBy ? ` ${origin.syncedBy}` : ''}` : '反映の記録なし'
+  return `<a class="cond origin-link ${origin.stale ? 'stale' : ''}" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(`正本を開く（${sync}${origin.stale ? '・古い' : ''}）`)}">正本 ↗</a>`
+}
+
 /** 1 行：番号・本文（その場で直せる）・担当・課題と WBS へのリンク・消すボタン */
-function entryRow(entry, no) {
+function entryRow(entry, no, origins = {}) {
   const badge = ORIGIN_LABEL[entry.origin] ? `<span class="chip mono">${ORIGIN_LABEL[entry.origin]}</span>` : ''
   // 課題は「つながりを辿る」へ、WBS は「プロダクト」のその行へ（会議の場で、その場から開けるように）
   const issue = entry.issue ? `<a class="cond mono" href="#trace-${encodeURIComponent(entry.issue)}" title="${esc(entry.issue)} から辿る">${esc(entry.issue)}</a>` : ''
   const wbs = entry.wbs.map(id => `<a class="cond mono" href="#browse-${encodeURIComponent(id)}" title="WBS の ${esc(id)} を開く">${esc(id)}</a>`).join('')
+  const origin = originLink(entry.issue ? origins[entry.issue] : undefined)
   return `<li class="daily-entry">
     <span class="daily-no">${no}.</span>
     ${tagSelect(entry)}
     <input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${no} 番の本文" maxlength="500">
-    <span class="daily-meta">${badge}<span class="cond">${esc(entry.who || '担当なし')}</span>${issue}${wbs}</span>
+    <span class="daily-meta">${badge}<span class="cond">${esc(entry.who || '担当なし')}</span>${issue}${origin}${wbs}</span>
     <button type="button" class="btn-ghost" data-remove="${esc(entry.id)}" aria-label="${no} 番を消す">消す</button>
   </li>`
 }
 
-function sectionsHtml(entries) {
+function sectionsHtml(entries, origins = {}) {
   let no = 0
   return SECTIONS.map(([id, label]) => {
     const list = entries.filter(e => e.section === id)
     if (id === 'upkeep' && !list.length) return ''
-    const rows = list.map(e => entryRow(e, ++no)).join('')
+    const rows = list.map(e => entryRow(e, ++no, origins)).join('')
     return `<section class="daily-section"><h2>${label}${id === 'today' ? ` ${list.length}件` : ''}</h2>
       ${rows ? `<ol class="daily-list">${rows}</ol>` : `<p class="cond">${id === 'consult' ? '下の欄から足せます' : 'ありません'}</p>`}</section>`
   }).join('')
@@ -72,7 +81,7 @@ export async function renderDaily(view, state) {
     </div>
     ${daily.saved ? '' : `<div class="note">${ICON_INFO}<span>まだ日ごとのファイルに置いていない下書きです。直したり足したりすると、その時点で置かれます。</span></div>`}
     <div class="panel daily-sheet">
-      ${sectionsHtml(daily.entries)}
+      ${sectionsHtml(daily.entries, state.origins ?? {})}
       <form class="add" id="daily-add">
         <label>見出し<select name="section">${SECTIONS.map(([id, label]) => `<option value="${id}" ${id === 'consult' ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
         <label>担当<input name="who" value="${esc(getWho())}" maxlength="100"></label>

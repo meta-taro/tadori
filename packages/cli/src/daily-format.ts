@@ -1,4 +1,5 @@
-import { entriesFromSheet, nextWorkday, type DailyEntry, type DailySheet, type Project } from '@tadori/core'
+import { entriesFromSheet, nextWorkday, originOf, type DailyEntry, type DailySheet, type Project } from '@tadori/core'
+import { originText } from './format.js'
 
 /**
  * 「1 日の進行」の文。形（見出しの言葉・WBS の番号の書き方・続く作業の印）は案件ごとに違うので、
@@ -103,12 +104,18 @@ function wbsTail(project: Project, ids: readonly string[], format: DailyFormat):
   return `（${parts.join('・')}）`
 }
 
+/** 課題の正本へのリンクと反映の記録（正本の表に無ければ空） */
+function originNote(project: Project, item: Project['items'][number], date: string): string {
+  const origin = originOf(item, project.sources ?? [], date)
+  return origin ? originText(origin) : ''
+}
+
 /** 補足の 1 行（正式な名前・WBS・場所）。補足するものが無ければ null */
-function noteLine(project: Project, entry: DailyEntry, no: number, format: DailyFormat): string | null {
+function noteLine(project: Project, entry: DailyEntry, no: number, format: DailyFormat, date: string): string | null {
   const phaseName = (id: string) => project.phases.find(p => p.id === id)?.name ?? id
   const issue = entry.issue ? project.items.find(i => i.id === entry.issue) : undefined
   const parts = [
-    ...(issue ? [`課題 ${issue.id}：${issue.title}（${issue.source}）`] : entry.issue ? [`課題 ${entry.issue}`] : []),
+    ...(issue ? [`課題 ${issue.id}：${issue.title}（${issue.source}）${originNote(project, issue, date)}`] : entry.issue ? [`課題 ${entry.issue}`] : []),
     ...entry.wbs.map(id => {
       const t = project.tasks.find(task => task.id === id)
       return t ? `${wbsLabel(t.id, format)}：${t.name}（${[phaseName(t.phase), t.start && t.end ? `${md(t.start)}〜${md(t.end)}` : ''].filter(Boolean).join('・')}）` : wbsLabel(id, format)
@@ -132,7 +139,7 @@ export function formatEntries(entries: readonly DailyEntry[], project: Project, 
   const numbered = sections.map(s => ({ ...s, items: s.list.map((entry, i) => ({ entry, no: perSection ? i + 1 : ++running })) }))
   const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${tagText(entry.tag, format)}${entry.text}${wbsTail(project, entry.wbs, format)}`)
   const notes = numbered.flatMap(s => {
-    const rows = s.items.flatMap(({ entry, no }) => noteLine(project, entry, no, format) ?? [])
+    const rows = s.items.flatMap(({ entry, no }) => noteLine(project, entry, no, format, date) ?? [])
     // 見出しごとに番号を振り直すときは、どの見出しの番号か分かるよう、補足を見出しの名前で分ける
     return perSection && rows.length ? [s.label, ...rows] : rows
   })

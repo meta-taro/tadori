@@ -68,8 +68,11 @@ export interface ItemInput {
   readonly fields?: Readonly<Record<string, string>>
 }
 
-/** 台帳の行を足す（create）か直す。refs は台帳と WBS にある ID だけ */
-export async function saveItem(dir: string, input: ItemInput, { create }: { create: boolean }): Promise<CommitResult> {
+/**
+ * 台帳の行を足す（create）か直す。refs は台帳と WBS にある ID だけ。
+ * synced を渡すと、正本から手元へ反映した日時とだれが（synced_at・synced_by 列）も書く。
+ */
+export async function saveItem(dir: string, input: ItemInput, { create, synced }: { create: boolean; synced?: { at: string; who: string } }): Promise<CommitResult> {
   const id = checkId(input.id, '台帳の行')
   const project = await loadProject(dir)
   const exists = project.items.some(i => i.id === id)
@@ -88,6 +91,7 @@ export async function saveItem(dir: string, input: ItemInput, { create }: { crea
     ...(input.source !== undefined ? { source: input.source } : {}),
     ...(input.refs !== undefined ? { refs: input.refs.join('、') } : {}),
     ...(input.fields ?? {}),
+    ...(synced ? { synced_at: synced.at, synced_by: synced.who } : {}),
   }
   const original = await readFile(join(dir, PATHS.items), 'utf8')
   return writeChecked(dir, PATHS.items, upsertRow(original, 'id', id, values), original, `台帳の ${id} を${create ? '足した' : '直した'}`)

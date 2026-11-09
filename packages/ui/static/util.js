@@ -103,3 +103,23 @@ export function toastCommit(what, commit) {
     : `push していない commit が ${commit.unpushed} 件あります。中身を確かめてから push してください`
   toast(`${what}を保存して commit しました。${pushNote}`, 7000)
 }
+
+/** http・https の URL だけを通す（正本の表に書かれた URL でも、画面で押せるのはこれだけ） */
+export const webUrl = url => (/^https?:\/\//i.test(String(url ?? '')) ? String(url) : '')
+
+/**
+ * 正本へのリンクと、正本から手元へ反映した記録（例：「正本 ↗ · 反映 11/8 検証担当」）。
+ * 反映が古い（設定の日数を超えた・記録が無い）ときは目立たせる。正本の表に無い行は空。
+ * リンクは新しいタブ（デスクトップアプリでは OS のブラウザ）で開く。
+ */
+export function originHtml(origin) {
+  if (!origin) return ''
+  const url = webUrl(origin.url)
+  const name = `${esc(origin.name)}${origin.place ? ` ${esc(origin.place)}` : ''}`
+  const link = url
+    ? `<a class="origin-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="正本を開く：${esc(url)}">${name} ↗</a>`
+    : `<span>${name}</span>`
+  const when = origin.syncedAt ? `反映 ${esc(origin.syncedAt.slice(5, 16).replace('-', '/'))}${origin.syncedBy ? ` ${esc(origin.syncedBy)}` : ''}` : '反映の記録なし'
+  const title = origin.stale ? '正本から手元へ反映してから日が経っています（または記録がありません）。正本と見比べてください' : '正本から手元へ反映した日時'
+  return `<span class="origin ${origin.stale ? 'stale' : ''}">${link}<span class="origin-sync" title="${title}">${when}${origin.stale ? ' · 古い' : ''}</span></span>`
+}

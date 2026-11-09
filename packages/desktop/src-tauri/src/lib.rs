@@ -1,7 +1,7 @@
 //! tadori のデスクトップアプリ。
 //! 窓を出し、裏で `tadori serve` を起こして、その画面を窓に映す。判定は TypeScript の核のまま（CLI・CI と食い違わないように）。
 //!
-//! 画面（127.0.0.1 のページ）から呼べるのは、自作の上の帯のための窓の操作と、ここにある 3 つの命令だけ
+//! 画面（127.0.0.1 のページ）から呼べるのは、自作の上の帯のための窓の操作と、ここにある 4 つの命令だけ
 //! （capabilities/desktop-shell.json）。ファイルの読み書きなどは呼ばせない。
 
 mod sidecar;
@@ -26,8 +26,9 @@ static APP: std::sync::OnceLock<AppHandle> = std::sync::OnceLock::new();
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(Sidecar(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![pick_project, recent_projects, open_project])
+        .invoke_handler(tauri::generate_handler![pick_project, recent_projects, open_project, open_external])
         .setup(|app| {
             let handle = app.handle().clone();
             let _ = APP.set(handle.clone());
@@ -73,6 +74,18 @@ async fn open_project(handle: AppHandle, path: String) -> Result<(), String> {
         return Err("最近の案件にない場所は開けません。「案件を開く…」から選んでください".into());
     }
     switch_project(&handle, &wanted)
+}
+
+/// 正本（.tadori/sources.tsv に書いた文書・課題の URL）を OS の既定のブラウザで開く。
+/// 窓の中で外のページへ移ると tadori に戻れなくなるため。http と https だけを受ける（ファイルや命令は開かない）
+#[tauri::command]
+fn open_external(handle: AppHandle, url: String) -> Result<(), String> {
+    let parsed = Url::parse(&url).map_err(|_| format!("URL として読めません：{url}"))?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return Err("正本のリンクは http か https だけを開きます".into());
+    }
+    use tauri_plugin_opener::OpenerExt;
+    handle.opener().open_url(parsed.as_str(), None::<&str>).map_err(|e| format!("ブラウザで開けませんでした：{e}"))
 }
 
 // ---- 起動と切り替え ----

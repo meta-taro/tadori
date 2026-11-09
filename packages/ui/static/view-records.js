@@ -1,5 +1,5 @@
 // チェックの記録・つながりを辿る
-import { api, chip, esc, ICON_INFO, kindLabel, toast } from './util.js'
+import { api, chip, esc, ICON_INFO, kindLabel, originHtml, toast } from './util.js'
 import { renderPicker } from './trace-picker.js'
 
 const RESULT_TONE = result => (/^漏れ|差し戻し/.test(result) ? 'hole' : /^満たす|承認/.test(result) ? 'ok' : '')
@@ -22,7 +22,7 @@ export function renderLog(view, state) {
 const ICON_OK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 8.5l3 3 6-7"/></svg>'
 const ICON_NG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>'
 
-function storyPath(result, resolved = []) {
+function storyPath(result, resolved = [], origins = {}) {
   // 切れ目として出す漏れは、カードに重ねて出さない（列が空など、つながり以外の漏れだけをカードに出す）
   const shownAsGap = new Set(result.steps.flatMap(s => (s.type === 'missing' ? [`${s.rule}:${s.after ?? s.before}`] : [])))
   const parts = []
@@ -50,7 +50,7 @@ function storyPath(result, resolved = []) {
     const icon = { ng: ICON_NG, resolved: `<span class="sp-flip">${ICON_NG}<span>→</span>${ICON_OK}</span>`, ok: ICON_OK }[card]
     parts.push(`<div class="sp-card ${card === 'ng' && !other.length ? 'ng-gap' : card} ${isStart ? 'end' : ''}"><div class="sp-phase">${isStart ? '辿り始め' : ''}${badge}</div><div class="sp-icon">${icon}</div>
       <div class="sp-kind">${esc(kindLabel(s.item.kind))} <span class="mono">${esc(s.item.id)}</span></div>
-      <div class="sp-say">${esc(s.item.title)}</div>${leakHtml}${resolvedHtml}<div class="sp-src">${esc(s.item.source)}</div></div>`)
+      <div class="sp-say">${esc(s.item.title)}</div>${leakHtml}${resolvedHtml}<div class="sp-src">${origins[s.item.id] ? originHtml(origins[s.item.id]) : esc(s.item.source)}</div></div>`)
   })
   return parts.join('')
 }
@@ -99,7 +99,7 @@ export async function renderTrace(view, state, startId) {
   })
   try {
     const result = await api(`/api/trace/${encodeURIComponent(startId)}`)
-    view.querySelector('#story').innerHTML = storyPath(result, state.resolved ?? [])
+    view.querySelector('#story').innerHTML = storyPath(result, state.resolved ?? [], state.origins ?? {})
     view.querySelector('#trace-summary').innerHTML = traceSummary(result, state.resolved ?? [])
   } catch (error) {
     view.querySelector('#story').innerHTML = `<div class="note">${ICON_INFO}<span>${esc(error.message)}</span></div>`

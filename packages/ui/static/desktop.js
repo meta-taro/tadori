@@ -1,7 +1,7 @@
 // デスクトップアプリ（Tauri）の窓で開いたときだけ、上の帯を自作のタイトルバーにする：
 // 帯をつかんで窓を動かす・ダブルクリックで最大化、左にメニュー（ファイル・表示・ヘルプ）、右に最小化・最大化・閉じる。
 // ブラウザで開いたときは何もしない（window.__TAURI__ が無い）。
-// 呼べるのは、窓の操作と、案件を開く 3 つの命令だけ（それ以外は Tauri の側で断られる）
+// 呼べるのは、窓の操作と、案件を開く 3 つの命令と、正本を OS のブラウザで開く命令だけ（それ以外は Tauri の側で断られる）
 import { esc, toast } from './util.js'
 
 const tauri = window.__TAURI__
@@ -16,6 +16,13 @@ export function initDesktop() {
   const win = tauri.window.getCurrentWindow()
   const topbar = document.querySelector('.topbar')
   document.documentElement.classList.add('desktop')
+  // 正本へのリンクは、窓の中で外のページへ移らず、OS の既定のブラウザで開く（Rust 側で http・https だけを受ける）
+  document.addEventListener('click', e => {
+    const link = e.target.closest('a[data-external]')
+    if (!link) return
+    e.preventDefault()
+    tauri.core.invoke('open_external', { url: link.href }).catch(error => toast(String(error)))
+  })
 
   topbar.insertAdjacentHTML('afterbegin', `<div class="win-menu" role="menubar" aria-label="メニュー">
     <button type="button" data-menu="file" aria-haspopup="true" aria-expanded="false">ファイル</button>

@@ -1,0 +1,5 @@
+# 正本の表（架空の見本）。台帳の source 列の先頭がこの名前なら、画面とエージェントに正本へのリンクを出す
+# locator: 場所まで飛ぶ URL のひな形（{url}・{loc}＝名前のあとの文字・{num}＝その中の数）。空なら url のまま
+# stale_days: 正本から手元へ反映してから、何日で「古い」と出すか
+name	url	locator	stale_days
+指摘の台帳	https://issues.example.com/lend-v12		14

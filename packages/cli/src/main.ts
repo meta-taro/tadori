@@ -27,7 +27,7 @@ const USAGE = `使い方:
   why    1 件から上下に辿り、線が切れている所を出す
   serve  手元（127.0.0.1）で画面を立ち上げる
   daily  人単位の 1 日の進行（今日・次の作業日・相談・補足）。--who で担当を絞る
-  how-to 使い方を出す（MCP の how_to と同じ中身）。話題：start・ledger・rules・check・screen・links・agent-rules
+  how-to 使い方を出す（MCP の how_to と同じ中身）。話題：start・ledger・rules・check・daily・write・screen・links・sources・agent-rules
   mcp    MCP の口を標準入出力で開く（使い方・用語・残課題・漏れ・つながり・台帳の行を探す・画面の専用カーソル）
          --screen は専用カーソルで操作する画面の場所（既定はデスクトップアプリの http://127.0.0.1:4873）`
 
@@ -98,10 +98,10 @@ async function main(): Promise<void> {
     const id = rest[0]
     if (!id) fail('辿る ID を指定してください（例：tadori why F-02）')
     const dir = resolve(rest[1] ?? '.')
-    const { project } = await loadState(dir, today)
+    const { project, state } = await loadState(dir, today)
     const result = trace(project, id)
     if (!result) fail(`${id} は台帳にありません`)
-    process.stdout.write(`${formatTrace(result)}\n`)
+    process.stdout.write(`${formatTrace(result, state.origins)}\n`)
     return
   }
 

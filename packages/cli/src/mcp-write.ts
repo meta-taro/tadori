@@ -53,6 +53,18 @@ function pick(args: Record<string, unknown>, keys: readonly string[]): Record<st
   return Object.fromEntries(keys.flatMap(k => (str(args[k]) !== undefined ? [[k, str(args[k]) as string]] : [])))
 }
 
+/** 手元の日時を YYYY-MM-DD HH:MM で返す（正本から反映した記録に使う） */
+export function localMinute(now: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${localToday(now)} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+}
+
+/** 反映した人が渡されたら、いまの日時と組にして saveItem の synced にする */
+function syncedBy(who: unknown): { synced?: { at: string; who: string } } {
+  const name = str(who)?.trim()
+  return name ? { synced: { at: localMinute(), who: name } } : {}
+}
+
 const S = (description: string) => ({ type: 'string', description })
 const ITEM = { id: S('行の ID'), kind: S('種類（例：DD・TC・RUN）'), title: S('名前'), source: S('原本の場所（中身は写さない）'), refs: { type: 'array', items: { type: 'string' }, description: '元にしている行の ID（台帳にあるものだけ）' }, fields: { type: 'object', additionalProperties: { type: 'string' }, description: 'そのほかの列（例：{"change":"変わる"}）' } }
 const TASK = { id: S('作業の ID（W で始める）'), phase: S('工程の ID'), name: S('作業の名前'), start: S('開始日 YYYY-MM-DD'), end: S('終了日 YYYY-MM-DD'), status: S('状態（設定にあるもの）'), owner: S('担当（2 人以上は「A・B」）'), issue: S('課題の ID（台帳の行）') }
@@ -85,9 +97,18 @@ export function writeTools(ctx: WriteContext): Tool[] {
     },
     {
       name: 'item_update',
-      description: '台帳の行を直す（渡した項目だけ変わる）。',
-      inputSchema: { type: 'object', properties: ITEM, required: ['id'], additionalProperties: false },
-      run: async a => writing(ctx, `台帳の ${str(a.id)} を直しました`, dir => saveItem(dir, { ...pick(a, ['kind', 'title', 'source']), id: str(a.id) ?? '', ...(list(a.refs) ? { refs: list(a.refs) as string[] } : {}), ...(a.fields ? { fields: a.fields as Record<string, string> } : {}) }, { create: false })),
+      description: '台帳の行を直す（渡した項目だけ変わる）。正本を見て手元へ反映したなら synced_by に自分（または頼んだ人）の名前を付ける。日時は道具が入れる。',
+      inputSchema: { type: 'object', properties: { ...ITEM, synced_by: S('正本から反映した人（付けると synced_at・synced_by 列に、いまの日時とこの名前を書く）') }, required: ['id'], additionalProperties: false },
+      run: async a => writing(ctx, `台帳の ${str(a.id)} を直しました`, dir => saveItem(dir, { ...pick(a, ['kind', 'title', 'source']), id: str(a.id) ?? '', ...(list(a.refs) ? { refs: list(a.refs) as string[] } : {}), ...(a.fields ? { fields: a.fields as Record<string, string> } : {}) }, { create: false, ...syncedBy(a.synced_by) })),
+    },
+    {
+      name: 'item_synced',
+      description: '台帳の行を正本と見比べて、手元がいまの正本どおりだと確かめたときに呼ぶ（中身は変えない）。synced_at にいまの日時、synced_by に who を書く。画面では、反映が古い行が目立つ。',
+      inputSchema: { type: 'object', properties: { id: ITEM.id, who: S('確かめた人（エージェントなら自分の名前）') }, required: ['id', 'who'], additionalProperties: false },
+      run: async a => {
+        if (!str(a.who)?.trim()) return reply('who（確かめた人）が要ります', true)
+        return writing(ctx, `台帳の ${str(a.id)} に、正本から反映した記録を付けました`, dir => saveItem(dir, { id: str(a.id) ?? '' }, { create: false, ...syncedBy(a.who) }))
+      },
     },
     {
       name: 'item_remove',
