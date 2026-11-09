@@ -18,6 +18,15 @@ describe('formatCheck', () => {
   })
 })
 
+describe('formatCheck の「どの工程にも属さない漏れ」', () => {
+  test('工程のルールの漏れは、その工程の欄だけに出し、「どの工程にも属さない漏れ」に重ねて出さない', async () => {
+    const { state } = await loadState(EXAMPLE, '2026-11-05')
+    const text = formatCheck(state)
+    expect(text).not.toContain('どの工程にも属さない漏れ')
+    expect(text.match(/R4 DD-2\.3/g)?.length).toBe(1)
+  })
+})
+
 describe('formatCheck のルールが無い工程', () => {
   test('ルールが 1 つも無い工程は「残りなし」ではなく「ルールなし」と出す（通ったように見せない）', async () => {
     const { state } = await loadState(EXAMPLE, '2026-11-05')

@@ -19,7 +19,10 @@ export function formatCheck(state: ProjectState): string {
     }
     for (const p of gate.pending) lines.push(`    ${p.rule.id} 承認待ち（${p.status}）　直し方：${p.fix}`)
   }
-  const dangling = state.leaks.filter(l => !state.gates.some(g => g.leaks.includes(l)))
+  // 同じ漏れかは、ルールと行の ID で見る（画面向けにリンクを足した写しと、工程が持つ元の漏れは別の物なので、物の同一では比べない）
+  const keyOf = (l: { rule: string; itemId: string }) => `${l.rule}\t${l.itemId}`
+  const inPhase = new Set(state.gates.flatMap(g => g.leaks.map(keyOf)))
+  const dangling = state.leaks.filter(l => !inPhase.has(keyOf(l)))
   if (dangling.length) {
     lines.push('■ どの工程にも属さない漏れ')
     for (const leak of dangling) lines.push(`    ${leak.rule} ${leak.message}`)
