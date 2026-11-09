@@ -128,7 +128,7 @@ function buildProjectTools(options: McpOptions): Tool[] {
 /** 1 日の進行の道具：読む・作る・足す・直す・消す。人の承認には関わらない（1 日の進行は人とエージェントが書く記録） */
 function dailyTools(options: McpOptions): Tool[] {
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
-  const SECTION = { type: 'string', enum: ['today', 'next', 'consult'], description: 'today＝今日 / next＝次の作業日 / consult＝相談' }
+  const SECTION = { type: 'string', enum: ['today', 'next', 'consult', 'upkeep'], description: 'today＝今日 / next＝次の作業日 / consult＝相談 / upkeep＝台帳の整備（成果物の作業ではないもの）' }
   const DATE = { type: 'string', description: '日付（YYYY-MM-DD）。空なら今日' }
   const ENTRY_FIELDS = {
     who: { type: 'string', description: '担当（2 人以上は「A・B」）' },

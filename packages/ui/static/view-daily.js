@@ -6,17 +6,20 @@ import { api, esc, getWho, ICON_INFO, toast, toastCommit } from './util.js'
 // 担当は上の帯で選ぶ（どの画面も同じ）
 let date = ''
 
-const SECTIONS = [['today', '今日'], ['next', '次の作業日'], ['consult', '相談']]
+// 台帳の整備（台帳の行を足した・直した）は、成果物の作業と読み違えないよう別の見出しにする。無い日は出さない
+const SECTIONS = [['today', '今日'], ['next', '次の作業日'], ['consult', '相談'], ['upkeep', '台帳の整備']]
 const ORIGIN_LABEL = { edited: '直した行', manual: '足した行' }
 
-/** 1 行：番号・本文（その場で直せる）・担当・消すボタン */
+/** 1 行：番号・本文（その場で直せる）・担当・課題と WBS へのリンク・消すボタン */
 function entryRow(entry, no) {
   const badge = ORIGIN_LABEL[entry.origin] ? `<span class="chip mono">${ORIGIN_LABEL[entry.origin]}</span>` : ''
-  const wbs = entry.wbs.length ? `<span class="cond mono">${esc(entry.wbs.join('・'))}</span>` : ''
+  // 課題は「つながりを辿る」へ、WBS は「プロダクト」のその行へ（会議の場で、その場から開けるように）
+  const issue = entry.issue ? `<a class="cond mono" href="#trace-${encodeURIComponent(entry.issue)}" title="${esc(entry.issue)} から辿る">${esc(entry.issue)}</a>` : ''
+  const wbs = entry.wbs.map(id => `<a class="cond mono" href="#browse-${encodeURIComponent(id)}" title="WBS の ${esc(id)} を開く">${esc(id)}</a>`).join('')
   return `<li class="daily-entry">
     <span class="daily-no">${no}.</span>
     <input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${no} 番の本文" maxlength="500">
-    <span class="daily-meta">${badge}<span class="cond">${esc(entry.who || '担当なし')}</span>${wbs}</span>
+    <span class="daily-meta">${badge}<span class="cond">${esc(entry.who || '担当なし')}</span>${issue}${wbs}</span>
     <button type="button" class="btn-ghost" data-remove="${esc(entry.id)}" aria-label="${no} 番を消す">消す</button>
   </li>`
 }
@@ -25,6 +28,7 @@ function sectionsHtml(entries) {
   let no = 0
   return SECTIONS.map(([id, label]) => {
     const list = entries.filter(e => e.section === id)
+    if (id === 'upkeep' && !list.length) return ''
     const rows = list.map(e => entryRow(e, ++no)).join('')
     return `<section class="daily-section"><h2>${label}${id === 'today' ? ` ${list.length}件` : ''}</h2>
       ${rows ? `<ol class="daily-list">${rows}</ol>` : `<p class="cond">${id === 'consult' ? '下の欄から足せます' : 'ありません'}</p>`}</section>`

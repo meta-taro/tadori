@@ -107,10 +107,10 @@ describe('loadProject', () => {
 
   test('種類と列の読み方（kinds.tsv・columns.tsv）を読む。無くてもよい', async () => {
     await writeMinimalProject()
-    expect((await loadProject(dir)).labels).toEqual({ kinds: {}, columns: {} })
-    await put('.tadori/kinds.tsv', 'id\tname\nDD\t詳細設計の節\n')
+    expect((await loadProject(dir)).labels).toEqual({ kinds: {}, columns: {}, workKinds: [] })
+    await put('.tadori/kinds.tsv', 'id\tname\twork\nDD\t詳細設計の節\t\nRUN\t試験の記録\tyes\n')
     await put('.tadori/columns.tsv', 'id\tname\nchange\t改修後の対応\n')
-    expect((await loadProject(dir)).labels).toEqual({ kinds: { DD: '詳細設計の節' }, columns: { change: '改修後の対応' } })
+    expect((await loadProject(dir)).labels).toEqual({ kinds: { DD: '詳細設計の節', RUN: '試験の記録' }, columns: { change: '改修後の対応' }, workKinds: ['RUN'] })
   })
 
   test('リンクの雛形（links.tsv）を読む。javascript: などは止める', async () => {

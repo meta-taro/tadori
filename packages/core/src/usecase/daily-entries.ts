@@ -9,8 +9,9 @@ export type { Member }
  */
 
 /** today＝今日 / next＝次の作業日 / consult＝相談 */
-export type DailySection = 'today' | 'next' | 'consult'
-export const DAILY_SECTIONS: readonly DailySection[] = ['today', 'next', 'consult']
+/** upkeep＝台帳の整備（台帳の行を足した・直した。成果物の作業とは分けて出す） */
+export type DailySection = 'today' | 'next' | 'consult' | 'upkeep'
+export const DAILY_SECTIONS: readonly DailySection[] = ['today', 'next', 'consult', 'upkeep']
 
 /**
  * auto＝tadori が作った下書きのまま / edited＝人かエージェントが直した / manual＝人かエージェントが足した /

@@ -27,26 +27,39 @@ export interface ActivityOptions {
   readonly groupAfter?: number
   /** 種類の読み方（.tadori/kinds.tsv） */
   readonly kindLabels?: Readonly<Record<string, string>>
+  /**
+   * 「やったこと」に当たる種類（.tadori/kinds.tsv の work 列）。この種類の行を足した・直したことは今日の作業として出す。
+   * それ以外の種類の行を足した・直したことは「台帳の整備」として分ける（成果物を直し終えたと読み違えないように）
+   */
+  readonly workKinds?: readonly string[]
 }
 const DEFAULT_GROUP_AFTER = 3
 
+type LedgerEntry = DailyEntry & { kind: string; rowId: string }
+
 /** 台帳の 2 つの版を比べ、足した行と直した行を、文にする */
-function ledgerEntries(before: Rows, after: Rows, who: string): DailyEntry[] {
-  const entry = (key: string, text: string, kind: string, id: string): DailyEntry & { kind: string; rowId: string } =>
-    ({ id: '', who, section: 'today', text, wbs: [], origin: 'auto', key, kind, rowId: id })
+function ledgerEntries(before: Rows, after: Rows, who: string, options: ActivityOptions): LedgerEntry[] {
+  const label = (kind: string) => options.kindLabels?.[kind] ?? kind
+  const isWork = (kind: string) => (options.workKinds ?? []).includes(kind)
+  const entry = (key: string, text: string, kind: string, id: string): LedgerEntry =>
+    ({ id: '', who, section: isWork(kind) ? 'today' : 'upkeep', text, wbs: [], origin: 'auto', key, kind, rowId: id })
   return [...after].flatMap(([id, row]) => {
     const old = before.get(id)
     const kind = row.kind ?? ''
-    if (!old) return [entry(`ledger:add:${id}`, `台帳に ${id}（${row.title ?? ''}）を足した`, kind, id)]
+    const title = row.title ?? ''
+    if (!old) {
+      return [entry(`ledger:add:${id}`, isWork(kind) ? `${label(kind)} ${id}（${title}）を記録した` : `台帳に ${id}（${title}）を足した`, kind, id)]
+    }
     const changed = Object.keys(row).filter(col => col !== 'id' && (row[col] ?? '') !== (old[col] ?? ''))
-    return changed.length ? [entry(`ledger:edit:${id}`, `台帳の ${id}（${row.title ?? ''}）の ${changed.join('・')} を直した`, kind, id)] : []
+    if (!changed.length) return []
+    return [entry(`ledger:edit:${id}`, isWork(kind) ? `${label(kind)} ${id}（${title}）を直した` : `台帳の ${id}（${title}）の ${changed.join('・')} を直した`, kind, id)]
   })
 }
 
 /** 同じ担当・同じ種類・同じしたこと（足した／直した）が多い分を、1 件にまとめる。ID は補足に回す */
 function grouped(entries: Array<DailyEntry & { kind?: string; rowId?: string }>, options: ActivityOptions): DailyEntry[] {
   const limit = options.groupAfter ?? DEFAULT_GROUP_AFTER
-  const groupKey = (e: DailyEntry & { kind?: string }) => [e.who, e.kind, (e.key ?? '').startsWith('ledger:add:') ? 'add' : 'edit'].join('|')
+  const groupKey = (e: DailyEntry & { kind?: string }) => [e.who, e.kind, e.section, (e.key ?? '').startsWith('ledger:add:') ? 'add' : 'edit'].join('|')
   const counts = new Map<string, number>()
   for (const e of entries) counts.set(groupKey(e), (counts.get(groupKey(e)) ?? 0) + 1)
   const done = new Set<string>()
@@ -58,7 +71,10 @@ function grouped(entries: Array<DailyEntry & { kind?: string; rowId?: string }>,
     const same = entries.filter(x => groupKey(x) === k)
     const isAdd = k.endsWith('|add')
     const label = options.kindLabels?.[kind] ?? kind
-    return [{ ...e, text: `台帳に ${label} を ${same.length} 行${isAdd ? '足した' : '直した'}`, note: same.map(x => x.rowId).join('・'), key: `ledger:${isAdd ? 'add' : 'edit'}-kind:${kind}` }]
+    const text = e.section === 'today'
+      ? `${label} を ${same.length} 件${isAdd ? '記録した' : '直した'}`
+      : `台帳に ${label} を ${same.length} 行${isAdd ? '足した' : '直した'}`
+    return [{ ...e, text, note: same.map(x => x.rowId).join('・'), key: `ledger:${isAdd ? 'add' : 'edit'}-kind:${kind}` }]
   })
 }
 
@@ -75,13 +91,13 @@ async function ledgerActivity(dir: string, date: string, today: string, members:
   for (const line of log.split('\n').filter(Boolean)) {
     const [hash = '', author = '', day = ''] = line.split('\t')
     if (day !== date) continue
-    entries.push(...ledgerEntries(await show(dir, `${hash}^`), await show(dir, hash), memberOf(author, members)))
+    entries.push(...ledgerEntries(await show(dir, `${hash}^`), await show(dir, hash), memberOf(author, members), options))
   }
   if (date === today) {
     // まだ commit していない書き換え：だれがしたかは分からないので担当は空
     try {
       const working = rowsOf(await readFile(join(dir, PATHS.items), 'utf8'))
-      entries.push(...ledgerEntries(await show(dir, 'HEAD'), working, ''))
+      entries.push(...ledgerEntries(await show(dir, 'HEAD'), working, '', options))
     } catch {
       // 台帳が無い案件
     }

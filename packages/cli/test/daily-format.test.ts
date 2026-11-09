@@ -85,3 +85,22 @@ describe('formatEntries の番号の振り方', () => {
     expect(section(/^次の作業日/)).toMatch(/\n2\. /)
   })
 })
+
+describe('formatEntries の台帳の整備', () => {
+  const entries = [
+    ...entriesFromSheet(sheet),
+    { id: 'a9', who: '設計担当', section: 'upkeep' as const, text: '台帳の DD-1（上限の判定）の change を直した', wbs: [], origin: 'auto' as const },
+  ]
+
+  test('台帳の整備は、相談のあとに別の見出しで出す（今日の作業と同じ見た目で並べない）', () => {
+    const out = formatEntries(entries, project, '2026-11-09')
+    const heads = out.split('\n').filter(l => /^(今日|次の作業日|相談|台帳の整備|補足)/.test(l))
+    expect(heads).toEqual(['今日（11/9 月）1 件', '次の作業日（11/10 火）', '相談', '台帳の整備', '補足'])
+    expect(section(/^今日/, out)).not.toContain('台帳の')
+  })
+
+  test('upkeep_mode が hide なら、台帳の整備は出さない。整備が無い日は見出しも出さない', () => {
+    expect(formatEntries(entries, project, '2026-11-09', { ...DEFAULT_DAILY_FORMAT, upkeep_mode: 'hide' })).not.toContain('台帳の整備')
+    expect(text).not.toContain('台帳の整備')
+  })
+})

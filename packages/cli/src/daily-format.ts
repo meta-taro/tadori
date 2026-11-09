@@ -29,6 +29,10 @@ export interface DailyFormat {
   readonly group_after: string
   /** 画面「1 日の進行」の頭に出す説明（空なら tadori の既定の説明） */
   readonly intro: string
+  /** 台帳の整備（台帳の行を足した・直した）の見出し。相談のあと・補足の前に出す */
+  readonly upkeep: string
+  /** 台帳の整備を出すか：show＝出す / hide＝出さない */
+  readonly upkeep_mode: string
 }
 
 export const DEFAULT_DAILY_FORMAT: DailyFormat = {
@@ -44,6 +48,8 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   consult_label: '相談',
   group_after: '3',
   intro: '',
+  upkeep: '台帳の整備',
+  upkeep_mode: 'show',
 }
 
 /** 案件の設定（key と value）を、既定の形に重ねる。知らない key は使わない */
@@ -96,6 +102,8 @@ export function formatEntries(entries: readonly DailyEntry[], project: Project, 
     { id: 'today', label: format.today_label, list: entries.filter(e => e.section === 'today') },
     { id: 'next', label: format.next_label, list: entries.filter(e => e.section === 'next') },
     { id: 'consult', label: format.consult_label, list: entries.filter(e => e.section === 'consult') },
+    // 台帳の整備（台帳の行を足した・直した）は、成果物の作業と読み違えないよう別の見出しにする。hide なら出さない
+    { id: 'upkeep', label: format.upkeep, list: format.upkeep_mode === 'hide' ? [] : entries.filter(e => e.section === 'upkeep') },
   ]
   // 番号：既定は 今日 → 次の作業日 → 相談 の通し。per-section なら見出しごとに 1 から。補足は同じ番号を使う
   const perSection = format.numbering === 'per-section'
@@ -112,6 +120,7 @@ export function formatEntries(entries: readonly DailyEntry[], project: Project, 
     [fill(format.today, { date: mdWeekday(date), count: String(today) }), ...lines('today')].join('\n'),
     [fill(format.next, { date: mdWeekday(nextWorkday(date)) }), ...lines('next')].join('\n'),
     [format.consult, ...lines('consult')].join('\n'),
+    ...(lines('upkeep').length ? [[format.upkeep, ...lines('upkeep')].join('\n')] : []),
     [format.notes, ...notes].join('\n'),
   ].join('\n\n')
 }

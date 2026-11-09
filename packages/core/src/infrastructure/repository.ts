@@ -251,7 +251,12 @@ export async function loadProject(dir: string): Promise<Project> {
     tasks,
     approvals: toApprovals(approvalRows, problems),
     statuses: toStatuses(statusRows, problems),
-    labels: { kinds: toNameMap(kindRows), columns: toNameMap(columnRows) },
+    labels: {
+      kinds: toNameMap(kindRows),
+      columns: toNameMap(columnRows),
+      // work 列に印（yes・○・1・true など）がある種類は「やったこと」（1 日の進行で、台帳の整備と分ける）
+      workKinds: kindRows.filter(r => r.id && /^(yes|y|true|1|○|◯)$/i.test((r.work ?? '').trim())).map(r => r.id as string),
+    },
     links: toLinks(linkRows, problems),
   }
   if (problems.length) throw new ProjectLoadError(problems)

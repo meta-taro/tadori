@@ -45,7 +45,7 @@ async function freshEntries(dir: string, date: string): Promise<DailyEntry[]> {
   const project = await loadProject(dir)
   const today = localToday()
   const [changes, members, format] = await Promise.all([readStatusChanges(dir, today), readMembers(dir), formatOf(dir)])
-  return [...entriesFromSheet(buildDaily(project, changes, date), format.continued), ...(await readActivity(dir, date, today, members, { groupAfter: Number(format.group_after) || 3, kindLabels: project.labels?.kinds ?? {} }))]
+  return [...entriesFromSheet(buildDaily(project, changes, date), format.continued), ...(await readActivity(dir, date, today, members, { groupAfter: Number(format.group_after) || 3, kindLabels: project.labels?.kinds ?? {}, workKinds: project.labels?.workKinds ?? [] }))]
 }
 
 /** 置いてある行と、いまの材料を合わせた行（保存はしない） */

@@ -119,6 +119,8 @@ export interface StatusDef {
 export interface Labels {
   readonly kinds: Readonly<Record<string, string>>
   readonly columns: Readonly<Record<string, string>>
+  /** 「やったこと」に当たる種類（.tadori/kinds.tsv の work 列）。1 日の進行で、台帳の整備と分ける */
+  readonly workKinds?: readonly string[]
 }
 
 /** 読み方があればそれを、無ければ記号を前後に空白を付けて返す（文の中で記号だと分かるように） */
