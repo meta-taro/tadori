@@ -42,6 +42,8 @@ export interface DailyFormat {
   readonly tag_checked: string
   /** 印の書き方（{tag}＝印の言葉） */
   readonly tag_format: string
+  /** 担当で絞っていないときに、読み上げる行の頭に付ける担当名の書き方（{who}＝担当）。空なら付けない */
+  readonly who_format: string
 }
 
 export const DEFAULT_DAILY_FORMAT: DailyFormat = {
@@ -65,6 +67,7 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   tag_upkeep: '整備',
   tag_checked: '確認',
   tag_format: '［{tag}］',
+  who_format: '{who}：',
 }
 
 /** 行の頭に付ける印（言葉が空なら付けない） */
@@ -121,11 +124,19 @@ function noteLine(project: Project, entry: DailyEntry, no: number, format: Daily
       return t ? `${wbsLabel(t.id, format)}：${t.name}（${[phaseName(t.phase), t.start && t.end ? `${md(t.start)}〜${md(t.end)}` : ''].filter(Boolean).join('・')}）` : wbsLabel(id, format)
     }),
     ...(entry.note ? [entry.note] : []),
+    // 行のリンクは読み上げる行には入れず、補足に「表示名：URL」で出す（聞かれたら開くもの）
+    ...(entry.links ?? []).map(l => `${l.label}：${l.url}`),
   ]
   return parts.length ? `${no}. ${parts.join('／')}` : null
 }
 
-export function formatEntries(entries: readonly DailyEntry[], project: Project, date: string, format: DailyFormat = DEFAULT_DAILY_FORMAT): string {
+/** showWho：担当で絞っていない（全員の分を並べる）ときは、読み上げる行に担当名を入れる */
+export interface FormatOptions {
+  readonly showWho?: boolean
+}
+
+export function formatEntries(entries: readonly DailyEntry[], project: Project, date: string, format: DailyFormat = DEFAULT_DAILY_FORMAT, options: FormatOptions = {}): string {
+  const whoText = (who: string) => (options.showWho && who && format.who_format ? fill(format.who_format, { who }) : '')
   const sections = [
     { id: 'today', label: format.today_label, list: entries.filter(e => e.section === 'today') },
     { id: 'next', label: format.next_label, list: entries.filter(e => e.section === 'next') },
@@ -137,7 +148,7 @@ export function formatEntries(entries: readonly DailyEntry[], project: Project, 
   const perSection = format.numbering === 'per-section'
   let running = 0
   const numbered = sections.map(s => ({ ...s, items: s.list.map((entry, i) => ({ entry, no: perSection ? i + 1 : ++running })) }))
-  const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${tagText(entry.tag, format)}${entry.text}${wbsTail(project, entry.wbs, format)}`)
+  const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${tagText(entry.tag, format)}${whoText(entry.who)}${entry.text}${wbsTail(project, entry.wbs, format)}`)
   const notes = numbered.flatMap(s => {
     const rows = s.items.flatMap(({ entry, no }) => noteLine(project, entry, no, format, date) ?? [])
     // 見出しごとに番号を振り直すときは、どの見出しの番号か分かるよう、補足を見出しの名前で分ける

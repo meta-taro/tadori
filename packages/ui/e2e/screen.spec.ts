@@ -14,7 +14,8 @@ async function openDaily(page: Page): Promise<void> {
   await page.goto('/#daily')
   await page.locator('#daily-date').fill('2026-10-30')
   await page.locator('#daily-date').dispatchEvent('change')
-  await expect(page.getByRole('heading', { name: /今日 2/ })).toBeVisible()
+  // 今日の日付の画面から、10/30 の画面に描き変わるのを待つ（文の形の見出しに日付が出る）
+  await expect(page.locator('.daily-preview h3').first()).toContainText('10/30')
 }
 
 test.describe('上の帯と左の列は動かない', () => {
@@ -77,11 +78,13 @@ test.describe('1 日の進行', () => {
 
   test('担当で絞ると、その人の行だけになる（役割で書いた行も含む）', async ({ page }) => {
     await openDaily(page)
+    // 絞る前は全員の行（行の頭の担当の札で見分ける）。設計担当の行は、絞ったあとも同じ数だけ残る
+    const owners = await page.locator('.daily-entry .daily-who').allTextContents()
+    const mine = owners.filter(o => o.includes('設計担当')).length
+    expect(mine).toBeGreaterThan(0)
+    expect(mine).toBeLessThan(owners.length)
     await page.locator('#who-filter').selectOption('設計担当')
-    await expect(page.locator('.daily-entry .daily-meta').first()).toContainText('設計担当')
-    const owners = await page.locator('.daily-entry .daily-meta > span.cond').allTextContents()
-    expect(owners.length).toBeGreaterThan(0)
-    expect(owners.every(o => o.includes('設計担当'))).toBe(true)
+    await expect(page.locator('.daily-entry')).toHaveCount(mine)
     await page.locator('#who-filter').selectOption('')
   })
 
@@ -111,5 +114,32 @@ test.describe('エージェントの専用カーソル', () => {
     await expect(page.locator('#who-filter')).toHaveValue('検証担当')
     await agent(page, { action: 'filter', value: '' })
     await expect(page.locator('#who-filter')).toHaveValue('')
+  })
+})
+
+test.describe('1 日の進行の行のリンクと担当', () => {
+  test('担当で絞っていないときは、見出しの横に「全員」、各行の頭に担当の札を出す。絞ると出さない', async ({ page }) => {
+    await openDaily(page)
+    await expect(page.locator('.daily-section h2 .daily-scope').first()).toHaveText('全員')
+    await expect(page.locator('.daily-entry .daily-who').first()).toBeVisible()
+    await page.locator('#who-filter').selectOption('設計担当')
+    await expect(page.locator('.daily-section h2 .daily-scope').first()).toHaveText('設計担当')
+    await expect(page.locator('.daily-entry .daily-who')).toHaveCount(0)
+    await page.locator('#who-filter').selectOption('')
+  })
+
+  test('links を付けた行は、行の末尾に「表示名 ↗」を出し、押すと新しいタブで開く。URL は文字に出さない', async ({ page }) => {
+    const res = await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: 'QA を返した', links: [{ label: 'QA表', url: 'https://sheets.example.com/qa#row=12' }] },
+    })
+    expect(res.ok()).toBe(true)
+    await openDaily(page)
+    const link = page.locator('.daily-entry .daily-link', { hasText: 'QA表 ↗' })
+    await expect(link).toHaveAttribute('href', 'https://sheets.example.com/qa#row=12')
+    await expect(link).toHaveAttribute('target', '_blank')
+    await expect(page.locator('.daily-entry').filter({ hasText: 'QA表' })).not.toContainText('https://')
+    // 文の形では、補足の「QA表：URL」も「QA表 ↗」のリンクにする
+    await expect(page.locator('.daily-preview a', { hasText: 'QA表 ↗' })).toHaveAttribute('href', 'https://sheets.example.com/qa#row=12')
   })
 })

@@ -14,16 +14,22 @@ const ORIGIN_LABEL = { edited: '直した行', manual: '足した行' }
 const TAGS = [['', '印なし'], ['done', 'やり終えた'], ['doing', '作業中'], ['plan', '予定'], ['upkeep', '台帳の整備'], ['checked', '確かめた']]
 const tagSelect = entry => `<select class="inline-select daily-tag" data-tag="${esc(entry.id)}" aria-label="印">${TAGS.map(([v, l]) => `<option value="${v}" ${v === (entry.tag ?? '') ? 'selected' : ''}>${l}</option>`).join('')}</select>`
 
-/** 課題の正本へ飛ぶ小さなリンク（会議の場で正本を開けるように）。反映が古ければ目立たせる */
+/** 外のページを新しいタブ（デスクトップアプリでは OS のブラウザ）で開くリンク。URL は文字に出さない */
+const outLink = (label, url, title, extra = '') => `<a class="daily-link ${extra}" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(title)}">${esc(label)} ↗</a>`
+
+/** その作業でさわった正本の場所（エージェントや人が links で付けたもの） */
+const entryLinks = entry => (entry.links ?? []).flatMap(l => (webUrl(l.url) ? [outLink(l.label, webUrl(l.url), `${l.label} を開く：${l.url}`)] : [])).join('')
+
+/** 課題の正本へ飛ぶ小さなリンク（会議の場で正本を開けるように）。表示名は正本の表の名前。反映が古ければ目立たせる */
 function originLink(origin) {
   const url = webUrl(origin?.url)
   if (!url) return ''
   const sync = origin.syncedAt ? `反映 ${origin.syncedAt}${origin.syncedBy ? ` ${origin.syncedBy}` : ''}` : '反映の記録なし'
-  return `<a class="cond origin-link ${origin.stale ? 'stale' : ''}" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(`正本を開く（${sync}${origin.stale ? '・古い' : ''}）`)}">正本 ↗</a>`
+  return outLink(origin.name || '正本', url, `正本を開く（${sync}${origin.stale ? '・古い' : ''}）：${url}`, `origin-link ${origin.stale ? 'stale' : ''}`)
 }
 
 /** 1 行：番号・本文（その場で直せる）・担当・課題と WBS へのリンク・消すボタン */
-function entryRow(entry, no, origins = {}) {
+function entryRow(entry, no, origins = {}, isAll = true) {
   const badge = ORIGIN_LABEL[entry.origin] ? `<span class="chip mono">${ORIGIN_LABEL[entry.origin]}</span>` : ''
   // 課題は「つながりを辿る」へ、WBS は「プロダクト」のその行へ（会議の場で、その場から開けるように）
   const issue = entry.issue ? `<a class="cond mono" href="#trace-${encodeURIComponent(entry.issue)}" title="${esc(entry.issue)} から辿る">${esc(entry.issue)}</a>` : ''
@@ -32,19 +38,25 @@ function entryRow(entry, no, origins = {}) {
   return `<li class="daily-entry">
     <span class="daily-no">${no}.</span>
     ${tagSelect(entry)}
+    ${isAll ? `<span class="daily-who" title="この行の担当">${esc(entry.who || '担当なし')}</span>` : ''}
     <input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${no} 番の本文" maxlength="500">
-    <span class="daily-meta">${badge}<span class="cond">${esc(entry.who || '担当なし')}</span>${issue}${origin}${wbs}</span>
+    <span class="daily-links">${origin}${entryLinks(entry)}</span>
+    <span class="daily-meta">${badge}${issue}${wbs}</span>
     <button type="button" class="btn-ghost" data-remove="${esc(entry.id)}" aria-label="${no} 番を消す">消す</button>
   </li>`
 }
 
 function sectionsHtml(entries, origins = {}) {
+  // 担当で絞っていないときは、見出しの横に「全員」、各行の頭に担当を出す（別の人の作業が混ざっていると一目で分かるように）
+  const who = getWho()
+  const isAll = !who
+  const scope = `<span class="chip daily-scope">${isAll ? '全員' : esc(who)}</span>`
   let no = 0
   return SECTIONS.map(([id, label]) => {
     const list = entries.filter(e => e.section === id)
     if (id === 'upkeep' && !list.length) return ''
-    const rows = list.map(e => entryRow(e, ++no, origins)).join('')
-    return `<section class="daily-section"><h2>${label}${id === 'today' ? ` ${list.length}件` : ''}</h2>
+    const rows = list.map(e => entryRow(e, ++no, origins, isAll)).join('')
+    return `<section class="daily-section"><h2>${label}${id === 'today' ? ` ${list.length}件` : ''}${scope}</h2>
       ${rows ? `<ol class="daily-list">${rows}</ol>` : `<p class="cond">${id === 'consult' ? '下の欄から足せます' : 'ありません'}</p>`}</section>`
   }).join('')
 }

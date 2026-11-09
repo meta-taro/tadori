@@ -18,10 +18,18 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     ]
     const commit = await writeDaily(dir, '2026-11-09', entries, '1 日の進行を直した')
     expect(commit.committed).toBe(false) // git の外なので commit しない
-    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\n/)
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\n/)
     const back = await readDaily(dir, '2026-11-09')
     expect(back[0]).toEqual({ ...entries[0], text: '画面の設計 を直した' })
     expect(back[1]).toEqual(entries[1])
+  })
+
+  test('行のリンク（表示名と URL）は「表示名 URL | 表示名 URL」の 1 セルに書き、読むと同じ組に戻る', async () => {
+    const dir = await dirOf()
+    const links = [{ label: 'QA表', url: 'https://sheets.example.com/qa#row=12' }, { label: '設計書 3.2.5', url: 'https://docs.example.com/d?s=3.2.5' }]
+    await writeDaily(dir, '2026-11-09', [{ id: 'm1', who: '設計担当', section: 'today', text: 'QA を返した', wbs: [], origin: 'manual', links }], 'x')
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toContain('QA表 https://sheets.example.com/qa#row=12 | 設計書 3.2.5 https://docs.example.com/d?s=3.2.5')
+    expect((await readDaily(dir, '2026-11-09'))[0]?.links).toEqual(links)
   })
 
   test('ファイルが無い日は空。おかしな見出し・出どころの行は読み飛ばさず、問題として止める', async () => {

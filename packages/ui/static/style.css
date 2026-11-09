@@ -559,6 +559,13 @@
   .daily-no { width:24px; color:var(--ink-subtle); font-variant-numeric:tabular-nums; flex:none; }
   .daily-text { flex:1; min-width:200px; max-width:none; }
   .daily-meta { display:flex; align-items:center; gap:8px; flex:none; max-width:40%; overflow:hidden; white-space:nowrap; }
+  /* 担当で絞っていないときの、行の担当の札と見出しの「全員」。行の末尾の、正本などへのリンク */
+  .daily-who { flex:none; max-width:9em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:600; background:var(--surface-2); border:1px solid var(--hairline-strong); color:var(--ink-muted); }
+  .daily-scope { margin-left:10px; vertical-align:2px; font-size:11px; font-weight:600; }
+  .daily-links { display:flex; gap:8px; flex:none; white-space:nowrap; }
+  .daily-link { font-size:12px; color:var(--accent); text-decoration:none; }
+  .daily-link:hover { text-decoration:underline; }
+  .daily-link.stale { color:var(--hole); font-weight:600; }
   /* 文の形：Markdown を描いたときのように、見出し・字下げした番号付きの一覧・札で見せる */
   .daily-preview { font-size:14px; line-height:1.8; padding:8px 24px 16px; color:var(--ink); }
   .daily-preview-block h3 { font-size:18px; font-weight:700; margin:18px 0 6px; padding-bottom:4px; border-bottom:1px solid var(--hairline-strong); }

@@ -138,6 +138,11 @@ function dailyTools(options: McpOptions): Tool[] {
     who: { type: 'string', description: '担当（2 人以上は「A・B」）' },
     text: { type: 'string', description: '本文（番号と末尾の WBS は付けない。場所や URL は補足へ）' },
     wbs: { type: 'array', items: { type: 'string' }, description: 'つながる WBS の ID（例：W-03）' },
+    links: {
+      type: 'array', maxItems: 8,
+      items: { type: 'object', properties: { label: { type: 'string', description: '表示名（例：QA表・MR・設計書 3.2.5）' }, url: { type: 'string', description: 'http か https の URL' } }, required: ['label', 'url'], additionalProperties: false },
+      description: 'その作業でさわった正本の場所。画面では行の末尾に「表示名 ↗」で出て押すと開く。読み上げる文には入れず、補足に出す。直すときは全件を渡し直す',
+    },
     issue: { type: 'string', description: '課題の ID（台帳の行）' },
     note: { type: 'string', description: '補足に足す一言（聞かれたら読むもの）' },
     tag: { type: 'string', enum: ['', 'done', 'doing', 'plan', 'upkeep', 'checked'], description: '行の印：done＝やり終えた / doing＝作業中 / plan＝予定 / upkeep＝台帳の整備 / checked＝確かめた（空なら印なし）' },

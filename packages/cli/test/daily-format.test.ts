@@ -144,3 +144,22 @@ describe('linksOf（文の中の WBS・課題の書き方 → 画面の飛び先
     expect(links).toEqual(expect.arrayContaining([{ text: 'WBS01', href: '#browse-W-01' }, { text: 'Q-12', href: '#trace-Q-12' }]))
   })
 })
+
+describe('行のリンクと、担当で絞っていないときの担当名', () => {
+  const entries = [
+    { id: 'm1', who: '設計担当', section: 'today' as const, text: 'QA を返した', wbs: [], origin: 'manual' as const, links: [{ label: 'QA表', url: 'https://sheets.example.com/qa#row=12' }] },
+    { id: 'm2', who: '検証担当', section: 'next' as const, text: '観点を見直す', wbs: [], origin: 'manual' as const },
+  ]
+
+  test('行のリンクは読み上げる行には入れず、補足に「表示名：URL」で出す', () => {
+    const text = formatEntries(entries, project, '2026-11-09')
+    expect(text).toMatch(/^1\. QA を返した$/m)
+    expect(section(/^補足/, text)).toContain('1. QA表：https://sheets.example.com/qa#row=12')
+  })
+
+  test('showWho（担当で絞っていない）なら、読み上げる行に担当名を入れる。絞っているときは入れない', () => {
+    expect(formatEntries(entries, project, '2026-11-09', DEFAULT_DAILY_FORMAT, { showWho: true })).toMatch(/^1\. 設計担当：QA を返した$/m)
+    expect(formatEntries(entries, project, '2026-11-09', { ...DEFAULT_DAILY_FORMAT, who_format: '（{who}）' }, { showWho: true })).toMatch(/^2\. （検証担当）観点を見直す$/m)
+    expect(formatEntries(entries, project, '2026-11-09')).not.toContain('設計担当：')
+  })
+})

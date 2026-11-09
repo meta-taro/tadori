@@ -1,6 +1,6 @@
 import {
   buildDaily, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, readActivity, readDaily, readDailyFormat, readMembers,
-  readStatusChanges, writeDaily, type CommitResult, type DailyEntry, type DailySection,
+  readStatusChanges, writeDaily, type CommitResult, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
 import { dailyFormatOf, formatEntries, tagText, wbsLabel, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
@@ -75,7 +75,7 @@ export async function loadDaily(dir: string, date: string, who?: string): Promis
   // 担当の選択肢は、WBS の担当と、行の担当（commit やチェックの記録から来た人）の両方から
   const owners = [...new Set([...project.tasks.flatMap(t => ownersOf(t.owner)), ...entries.flatMap(e => ownersOf(e.who))])]
   const format = await formatOf(dir)
-  return { date, text: formatEntries(shown, project, date, format), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean) }
+  return { date, text: formatEntries(shown, project, date, format, { showWho: !who }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean) }
 }
 
 /** 下書きを作って（作り直して）置く。直した行・足した行・消した行は残る */
@@ -110,6 +110,30 @@ function tag(body: Record<string, unknown>): string | undefined {
   return value
 }
 
+const MAX_LINKS = 8
+const MAX_LABEL = 40
+
+/**
+ * 行のリンク（その作業でさわった正本の場所）。[{ label, url }] で受ける。
+ * URL は http・https だけ（押すと画面の中で命令が動く形や、手元のファイルを開く形は受けない）。表示名に「 | 」は使えない（1 セルに並べて書くため）
+ */
+function linkList(body: Record<string, unknown>): DailyLink[] | undefined {
+  const value = body.links
+  if (value === undefined) return undefined
+  if (!Array.isArray(value)) throw new DailyInputError('links は [{ "label": 表示名, "url": URL }] の形で渡してください')
+  if (value.length > MAX_LINKS) throw new DailyInputError(`links は ${MAX_LINKS} 件までです`)
+  return value.map((raw, i) => {
+    const link = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
+    const label = typeof link.label === 'string' ? link.label.replace(/[\t\r\n]+/g, ' ').trim() : ''
+    const url = typeof link.url === 'string' ? link.url.trim() : ''
+    if (!label || label.length > MAX_LABEL || label.includes('|')) throw new DailyInputError(`links の ${i + 1} 件目：表示名は 1〜${MAX_LABEL} 文字で、「|」を含めないでください`)
+    let parsed: URL
+    try { parsed = new URL(url) } catch { throw new DailyInputError(`links の ${i + 1} 件目：URL として読めません`) }
+    if (!['http:', 'https:'].includes(parsed.protocol) || /\s/.test(url)) throw new DailyInputError(`links の ${i + 1} 件目：URL は http か https で、空白を含めないでください`)
+    return { label, url }
+  })
+}
+
 const wbsList = (body: Record<string, unknown>): string[] | undefined => {
   const value = body.wbs
   if (value === undefined) return undefined
@@ -132,6 +156,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
   const issue = text(body, 'issue', false)
   const note = text(body, 'note', false)
   const chosenTag = tag(body)
+  const links = linkList(body)
   const entry: DailyEntry = await withIssueHead(dir, {
     id: `m${n}`,
     who: text(body, 'who', false) ?? '',
@@ -141,6 +166,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     ...(issue ? { issue } : {}),
     ...(note ? { note } : {}),
     ...(chosenTag ? { tag: chosenTag } : {}),
+    ...(links?.length ? { links } : {}),
     origin: 'manual',
   })
   const commit = await writeDaily(dir, date, [...entries, entry], `1 日の進行に行を足した（${date}）`)
@@ -172,6 +198,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     issue: text(body, 'issue', false),
     note: text(body, 'note', false),
     tag: tag(body),
+    links: linkList(body),
   }
   const changed = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
   // 本文か課題を変えたときだけ、課題番号と短い件名を頭に付け直す

@@ -123,6 +123,14 @@ describe('MCP で 1 日の進行を作る・足す・直す・消す', () => {
     expect((await tool('daily', { date: '2026-11-05' })).content[0]?.text).toContain('Q-1 返却期限の祝日扱い 祝日の一覧をもらう')
   })
 
+  test('links（表示名と URL）を付けて足せる。http・https 以外の URL は断る', async () => {
+    const ok = await tool('daily_add', { date: '2026-11-05', who: '設計担当', section: 'today', text: 'QA を返した', links: [{ label: 'QA表', url: 'https://sheets.example.com/qa#row=12' }] })
+    expect(ok.isError).toBeUndefined()
+    expect((await tool('daily', { date: '2026-11-05' })).content[0]?.text).toContain('QA表：https://sheets.example.com/qa#row=12')
+    const bad = await tool('daily_add', { date: '2026-11-05', who: '設計担当', section: 'today', text: 'x', links: [{ label: 'x', url: 'javascript:alert(1)' }] })
+    expect(bad.isError).toBe(true)
+  })
+
   test('無い行を直そうとしたら isError', async () => {
     expect((await tool('daily_update', { date: '2026-11-05', id: 'zz9', text: 'a' })).isError).toBe(true)
   })

@@ -20,7 +20,8 @@ export default defineConfig({
     ...(useEdge ? { channel: 'msedge' } : {}),
   },
   webServer: {
-    command: `node ../cli/dist/main.js serve ../../examples/lend-v12 --port ${PORT}`,
+    // 見本を一時フォルダへ写して開く（テストが書いても、リポジトリの見本は変わらない）
+    command: `node e2e/serve.mjs ${PORT}`,
     url: `http://127.0.0.1:${PORT}/api/state`,
     reuseExistingServer: false,
     timeout: 30_000,

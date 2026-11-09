@@ -293,7 +293,8 @@ describe('1 日の進行を作る・足す・直す・消す', () => {
     expect(after.entries.find((e: { id: string }) => e.id === target.id)).toMatchObject({ text: '観点表を半分まで書いた', origin: 'edited' })
     expect(after.entries.find((e: { id: string }) => e.id === added.entry.id)?.text).toBe('試験の環境はいつ空くか確かめたい')
     if (other) expect(after.text).not.toContain(other.text)
-    expect(after.text).toMatch(/相談\n\d+\. 試験の環境はいつ空くか確かめたい/)
+    // 担当で絞っていないので、行の頭に担当名が付く
+    expect(after.text).toMatch(/相談\n\d+\. (\S+：)?試験の環境はいつ空くか確かめたい/)
   })
 
   test('おかしな見出し・長すぎる文・無い行は断る', async () => {
@@ -317,7 +318,7 @@ describe('1 日の進行の行の印', () => {
     expect(added.entry.tag).toBe('done')
     expect((await send('PUT', `/api/daily/${day}/entries/${added.entry.id}`, { tag: 'doing' })).status).toBe(200)
     const daily = await (await fetch(`${base}/api/daily?date=${day}`)).json()
-    expect(daily.text).toContain('［作業中］観点表を見直した')
+    expect(daily.text).toMatch(/［作業中］(\S+：)?観点表を見直した/)
     expect((await send('PUT', `/api/daily/${day}/entries/${added.entry.id}`, { tag: 'nope' })).status).toBe(400)
   })
 })

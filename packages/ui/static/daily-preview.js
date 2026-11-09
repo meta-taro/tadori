@@ -5,25 +5,28 @@
 // - WBS・課題は文字を押すと画面の中のその場所へ、正本などの URL は「正本 ↗」の文字で開く（URL をそのまま出さない）
 import { esc, webUrl } from './util.js'
 
-const URL_PATTERN = 'https?:\\/\\/[^\\s（）()]+'
+// URL は空白・括弧・補足の区切り（／・、）の手前まで
+const URL_PATTERN = 'https?:\\/\\/[^\\s（）()／、]+'
+// 「表示名：URL」の表示名（空白・括弧・区切りを含まない 40 文字まで）
+const LABEL_PATTERN = '[^\\s：（）()、／]{1,40}'
 const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** 1 行の中の印・リンクを、札とリンクにする（それ以外の文字はそのまま出す） */
 function inlineHtml(line, links, tags) {
   const byText = new Map(links.map(l => [l.text, l.href]))
   const words = [...tags, ...byText.keys()].filter(Boolean).sort((a, b) => b.length - a.length).map(escapeRegExp)
-  // 「正本：URL」は「正本 ↗」に、ほかの URL は「リンク ↗」にする。長い言葉を先に当てる
-  const pattern = new RegExp([`(正本：)?(${URL_PATTERN})`, ...words].join('|'), 'g')
+  // 「表示名：URL」（例：正本：…・QA表：…）は「表示名 ↗」に、名前の無い URL は「リンク ↗」にする。長い言葉を先に当てる
+  const pattern = new RegExp([`(?:(${LABEL_PATTERN})：)?(${URL_PATTERN})`, ...words].join('|'), 'g')
   let html = ''
   let last = 0
   for (const match of line.matchAll(pattern)) {
     html += esc(line.slice(last, match.index))
     last = match.index + match[0].length
-    const [text, originMark, url] = match
+    const [text, name, url] = match
     if (url) {
       const href = webUrl(url)
-      const label = originMark ? '正本 ↗' : 'リンク ↗'
-      html += href ? `<a class="origin-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(href)}">${label}</a>` : esc(text)
+      const label = `${name || 'リンク'} ↗`
+      html += href ? `<a class="origin-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(href)}">${esc(label)}</a>` : esc(text)
     } else if (tags.includes(text)) {
       // 札にするので、印を囲む括弧（［］【】[]）は見せない
       html += `<span class="daily-pill">${esc(text.replace(/^[［【[]|[］】\]]$/g, '') || text)}</span>`

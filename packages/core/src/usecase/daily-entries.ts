@@ -44,6 +44,14 @@ export interface DailyEntry {
   readonly tag?: string
   /** 自動の行がどの材料から来たか（作り直したとき同じものを見分ける。例：wbs:today:W-01） */
   readonly key?: string
+  /** その作業でさわった正本の場所（表示名と URL）。画面では行の末尾に「表示名 ↗」で出し、読み上げる文には入れない */
+  readonly links?: readonly DailyLink[]
+}
+
+/** 行のリンク。表示名は人が読む名前（例：QA表・設計書 3.2.5）。URL は http・https だけ */
+export interface DailyLink {
+  readonly label: string
+  readonly url: string
 }
 
 /** 人かエージェントが触った行か */
