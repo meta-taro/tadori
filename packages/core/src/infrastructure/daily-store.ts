@@ -10,7 +10,8 @@ export const DAILY_DIR = '.tadori/daily'
 const MEMBERS = '.tadori/members.tsv'
 /** 1 日の進行の文の形（見出しの言葉など）。案件ごとに決める。書かなければ tadori の既定の形 */
 const DAILY_FORMAT = '.tadori/daily-format.tsv'
-const COLUMNS = ['id', 'who', 'section', 'text', 'wbs', 'issue', 'note', 'origin', 'key'] as const
+// tag は後から足した列なので最後に置く（前の版で書いたファイルも、そのまま読める）
+const COLUMNS = ['id', 'who', 'section', 'text', 'wbs', 'issue', 'note', 'origin', 'key', 'tag'] as const
 const ORIGINS: readonly DailyOrigin[] = ['auto', 'edited', 'manual', 'removed']
 
 export const dailyPath = (date: string) => `${DAILY_DIR}/${date}.tsv`
@@ -42,6 +43,7 @@ function toEntry(row: Record<string, string>, path: string): DailyEntry {
     ...(row.note ? { note: row.note } : {}),
     origin,
     ...(row.key ? { key: row.key } : {}),
+    ...(row.tag ? { tag: row.tag } : {}),
   }
 }
 
@@ -56,7 +58,7 @@ export async function readDaily(dir: string, date: string): Promise<DailyEntry[]
 export async function writeDaily(dir: string, date: string, entries: readonly DailyEntry[], message: string): Promise<CommitResult> {
   const path = dailyPath(date)
   await mkdir(dirname(join(dir, path)), { recursive: true })
-  const rows = entries.map(e => ({ ...e, wbs: e.wbs.join(','), issue: e.issue ?? '', note: e.note ?? '', key: e.key ?? '' }))
+  const rows = entries.map(e => ({ ...e, wbs: e.wbs.join(','), issue: e.issue ?? '', note: e.note ?? '', key: e.key ?? '', tag: e.tag ?? '' }))
   await writeFile(join(dir, path), toTsv(COLUMNS, rows as unknown as Record<string, string>[]), 'utf8')
   return commitFiles(dir, [path], message)
 }

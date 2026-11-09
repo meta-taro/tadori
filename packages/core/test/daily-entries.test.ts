@@ -85,3 +85,17 @@ describe('entriesFromSheet の続く印の区切り', () => {
     expect(entriesFromSheet(sheet, '続き：')[0]?.text).toBe('続き：API の設計')
   })
 })
+
+describe('entriesFromSheet の印（tag）', () => {
+  test('今日に済みへ変わった作業は done、今日に途中の状態へ変わった作業は doing、次の作業日の行は plan', () => {
+    const statuses = [{ id: 'todo', name: '未着手', tone: 'none' as const }, { id: 'doing', name: '進行中', tone: 'wait' as const }, { id: 'done', name: '完了', tone: 'ok' as const }]
+    const t = (id: string, status: string, start: string): Task => ({ id, phase: 'dd', name: id, status, start, end: '2026-11-20' })
+    const project = { name: 'x', phases: [], rules: [], approvals: [], statuses, items: [], tasks: [t('W-1', 'done', '2026-11-01'), t('W-2', 'doing', '2026-11-01'), t('W-3', 'todo', '2026-11-10')] } as unknown as Project
+    const changes: StatusChange[] = [{ taskId: 'W-1', date: '2026-11-09', from: 'doing', to: 'done' }, { taskId: 'W-2', date: '2026-11-09', from: 'todo', to: 'doing' }]
+    const entries = entriesFromSheet(buildDaily(project, changes, '2026-11-09'))
+    const tagOf = (section: string, id: string) => entries.find(e => e.section === section && e.wbs.includes(id))?.tag
+    expect(tagOf('today', 'W-1')).toBe('done')
+    expect(tagOf('today', 'W-2')).toBe('doing')
+    expect(tagOf('next', 'W-3')).toBe('plan')
+  })
+})

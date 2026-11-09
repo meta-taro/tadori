@@ -136,6 +136,7 @@ function dailyTools(options: McpOptions): Tool[] {
     wbs: { type: 'array', items: { type: 'string' }, description: 'つながる WBS の ID（例：W-03）' },
     issue: { type: 'string', description: '課題の ID（台帳の行）' },
     note: { type: 'string', description: '補足に足す一言（聞かれたら読むもの）' },
+    tag: { type: 'string', enum: ['', 'done', 'doing', 'plan', 'upkeep', 'checked'], description: '行の印：done＝やり終えた / doing＝作業中 / plan＝予定 / upkeep＝台帳の整備 / checked＝確かめた（空なら印なし）' },
   }
   /** 案件・日付を確かめてから、本体を動かす。入力の誤りは isError で返す */
   const withDay = async (args: Record<string, unknown>, work: (dir: string, date: string) => Promise<ToolResult>): Promise<ToolResult> => {

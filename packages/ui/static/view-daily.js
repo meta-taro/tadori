@@ -9,6 +9,9 @@ let date = ''
 // 台帳の整備（台帳の行を足した・直した）は、成果物の作業と読み違えないよう別の見出しにする。無い日は出さない
 const SECTIONS = [['today', '今日'], ['next', '次の作業日'], ['consult', '相談'], ['upkeep', '台帳の整備']]
 const ORIGIN_LABEL = { edited: '直した行', manual: '足した行' }
+// 行の印（やり終えたことか、これからのことか）。文に出す言葉は案件の設定で決まる。画面の選択肢は意味で示す
+const TAGS = [['', '印なし'], ['done', 'やり終えた'], ['doing', '作業中'], ['plan', '予定'], ['upkeep', '台帳の整備'], ['checked', '確かめた']]
+const tagSelect = entry => `<select class="inline-select daily-tag" data-tag="${esc(entry.id)}" aria-label="印">${TAGS.map(([v, l]) => `<option value="${v}" ${v === (entry.tag ?? '') ? 'selected' : ''}>${l}</option>`).join('')}</select>`
 
 /** 1 行：番号・本文（その場で直せる）・担当・課題と WBS へのリンク・消すボタン */
 function entryRow(entry, no) {
@@ -18,6 +21,7 @@ function entryRow(entry, no) {
   const wbs = entry.wbs.map(id => `<a class="cond mono" href="#browse-${encodeURIComponent(id)}" title="WBS の ${esc(id)} を開く">${esc(id)}</a>`).join('')
   return `<li class="daily-entry">
     <span class="daily-no">${no}.</span>
+    ${tagSelect(entry)}
     <input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${no} 番の本文" maxlength="500">
     <span class="daily-meta">${badge}<span class="cond">${esc(entry.who || '担当なし')}</span>${issue}${wbs}</span>
     <button type="button" class="btn-ghost" data-remove="${esc(entry.id)}" aria-label="${no} 番を消す">消す</button>
@@ -83,6 +87,8 @@ export async function renderDaily(view, state) {
   view.querySelector('#daily-generate').addEventListener('click', () => write(`${base}/generate`, 'POST', {}, '1 日の進行の下書き', rerender))
   view.querySelectorAll('[data-entry]').forEach(input => input.addEventListener('change', () =>
     write(`${base}/entries/${encodeURIComponent(input.dataset.entry)}`, 'PUT', { text: input.value }, '行', rerender)))
+  view.querySelectorAll('[data-tag]').forEach(select => select.addEventListener('change', () =>
+    write(`${base}/entries/${encodeURIComponent(select.dataset.tag)}`, 'PUT', { tag: select.value }, '印', rerender)))
   view.querySelectorAll('[data-remove]').forEach(button => button.addEventListener('click', () =>
     write(`${base}/entries/${encodeURIComponent(button.dataset.remove)}`, 'DELETE', {}, '行の削除', rerender)))
   view.querySelector('#daily-add').addEventListener('submit', e => {

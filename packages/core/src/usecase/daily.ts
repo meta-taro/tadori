@@ -29,6 +29,8 @@ export interface DailyLine {
   readonly changes: readonly StatusChange[]
   /** 次の作業日も同じ作業が続く */
   readonly continued: boolean
+  /** まとめた作業がどれも済みになっているか（今日の行の印を「やり終えた」にするため） */
+  readonly finished?: boolean
 }
 
 export interface DailySheet {
@@ -97,7 +99,7 @@ export function buildDaily(project: Project, changes: readonly StatusChange[], d
   const starting = mine.filter(t => !isDone(t.status) && !isStarted(t.status) && t.start && t.start <= nextDate)
   const nextTasks = [...ongoing, ...starting.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''))]
 
-  const today = group(project, todayTasks, todayChanges, new Set())
+  const today = group(project, todayTasks, todayChanges, new Set()).map(line => ({ ...line, finished: line.tasks.every(t => isDone(t.status)) }))
   const next = group(project, nextTasks, [], new Set(ongoing.map(t => t.id)))
   const numbered = [...today, ...next].map((line, i) => ({ ...line, no: i + 1 }))
   return {

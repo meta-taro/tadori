@@ -35,12 +35,12 @@ describe('formatDaily（1 日の進行の文・既定の形）', () => {
   })
 
   test('1 件は 課題 → 短い名前 → 作業 →（WBS の ID 状態 期限）。同じ課題の WBS の行は 1 件にまとめる', () => {
-    expect(section(/^今日/)).toContain('1. Q-12 並び順 画面の設計・画面の設計レビュー（W-01 完了 11/9・W-02 進行中 11/11）')
+    expect(section(/^今日/)).toContain('1. ［作業中］Q-12 並び順 画面の設計・画面の設計レビュー（W-01 完了 11/9・W-02 進行中 11/11）')
   })
 
   test('課題の無い作業は課題を書かない。既定では続く作業に印を付けない', () => {
-    expect(section(/^次の作業日/)).toContain('2. Q-12 並び順 画面の設計レビュー（W-02 進行中 11/11）')
-    expect(section(/^次の作業日/)).toContain('3. API の設計（W-03 未着手 11/13）')
+    expect(section(/^次の作業日/)).toContain('2. ［予定］Q-12 並び順 画面の設計レビュー（W-02 進行中 11/11）')
+    expect(section(/^次の作業日/)).toContain('3. ［予定］API の設計（W-03 未着手 11/13）')
   })
 
   test('本文に場所を挟まない。正式な名前と場所は、同じ番号で補足に出す', () => {
@@ -68,7 +68,7 @@ describe('formatEntries の形は案件ごとに変えられる（.tadori/daily-
 
   test('見出しの言葉・WBS の番号の書き方・続く作業の印を、案件の設定で変えられる', () => {
     expect(out.split('\n').filter(l => /^(Done|Next|Ask|Refs)/.test(l))).toEqual(['Done (11/9 月) x1', 'Next (11/10 火)', 'Ask', 'Refs'])
-    expect(section(/^Next/, out)).toContain('2. Q-12 並び順 [cont] 画面の設計レビュー（#02 進行中 11/11）')
+    expect(section(/^Next/, out)).toContain('2. ［予定］Q-12 並び順 [cont] 画面の設計レビュー（#02 進行中 11/11）')
   })
 })
 
@@ -102,5 +102,24 @@ describe('formatEntries の台帳の整備', () => {
   test('upkeep_mode が hide なら、台帳の整備は出さない。整備が無い日は見出しも出さない', () => {
     expect(formatEntries(entries, project, '2026-11-09', { ...DEFAULT_DAILY_FORMAT, upkeep_mode: 'hide' })).not.toContain('台帳の整備')
     expect(text).not.toContain('台帳の整備')
+  })
+})
+
+describe('formatEntries の印', () => {
+  const tagged = [
+    { id: 'a1', who: 'x', section: 'today' as const, text: '画面の設計', wbs: [], origin: 'auto' as const, tag: 'done' },
+    { id: 'a2', who: 'x', section: 'next' as const, text: 'API の設計', wbs: [], origin: 'auto' as const, tag: 'plan' },
+  ]
+
+  test('行の頭に印を出す。言葉は既定（済・予定）で、案件の設定で替えられる', () => {
+    const out = formatEntries(tagged, project, '2026-11-09')
+    expect(out).toContain('1. ［済］画面の設計')
+    expect(out).toContain('2. ［予定］API の設計')
+    const custom = formatEntries(tagged, project, '2026-11-09', { ...DEFAULT_DAILY_FORMAT, tag_done: 'DONE', tag_format: '<{tag}> ' })
+    expect(custom).toContain('1. <DONE> 画面の設計')
+  })
+
+  test('印の言葉を空にすると、その印は出さない', () => {
+    expect(formatEntries(tagged, project, '2026-11-09', { ...DEFAULT_DAILY_FORMAT, tag_plan: '' })).toContain('2. API の設計')
   })
 })

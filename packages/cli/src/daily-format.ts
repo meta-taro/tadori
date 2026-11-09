@@ -33,6 +33,14 @@ export interface DailyFormat {
   readonly upkeep: string
   /** 台帳の整備を出すか：show＝出す / hide＝出さない */
   readonly upkeep_mode: string
+  /** 行の印の言葉（空にすると、その印は出さない） */
+  readonly tag_done: string
+  readonly tag_doing: string
+  readonly tag_plan: string
+  readonly tag_upkeep: string
+  readonly tag_checked: string
+  /** 印の書き方（{tag}＝印の言葉） */
+  readonly tag_format: string
 }
 
 export const DEFAULT_DAILY_FORMAT: DailyFormat = {
@@ -50,6 +58,19 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   intro: '',
   upkeep: '台帳の整備',
   upkeep_mode: 'show',
+  tag_done: '済',
+  tag_doing: '作業中',
+  tag_plan: '予定',
+  tag_upkeep: '整備',
+  tag_checked: '確認',
+  tag_format: '［{tag}］',
+}
+
+/** 行の頭に付ける印（言葉が空なら付けない） */
+function tagText(tag: string | undefined, format: DailyFormat): string {
+  if (!tag) return ''
+  const word = (format as unknown as Record<string, string>)[`tag_${tag}`]
+  return word ? fill(format.tag_format, { tag: word }) : ''
 }
 
 /** 案件の設定（key と value）を、既定の形に重ねる。知らない key は使わない */
@@ -109,7 +130,7 @@ export function formatEntries(entries: readonly DailyEntry[], project: Project, 
   const perSection = format.numbering === 'per-section'
   let running = 0
   const numbered = sections.map(s => ({ ...s, items: s.list.map((entry, i) => ({ entry, no: perSection ? i + 1 : ++running })) }))
-  const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${entry.text}${wbsTail(project, entry.wbs, format)}`)
+  const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${tagText(entry.tag, format)}${entry.text}${wbsTail(project, entry.wbs, format)}`)
   const notes = numbered.flatMap(s => {
     const rows = s.items.flatMap(({ entry, no }) => noteLine(project, entry, no, format) ?? [])
     // 見出しごとに番号を振り直すときは、どの見出しの番号か分かるよう、補足を見出しの名前で分ける

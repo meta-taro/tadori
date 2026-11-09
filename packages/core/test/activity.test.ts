@@ -74,3 +74,22 @@ describe('readActivity の「台帳の整備」と「やったこと」の分け
     expect(entries).toContainEqual(expect.objectContaining({ section: 'upkeep', text: '台帳の DD-1（上限の判定）の change を直した' }))
   })
 })
+
+describe('readActivity の印（tag）', () => {
+  test('台帳の整備は upkeep、やったことに当たる種類は done、チェックの記録は checked', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tadori-act5-'))
+    made.push(dir)
+    await mkdir(join(dir, 'ledger'), { recursive: true })
+    await mkdir(join(dir, '.tadori'), { recursive: true })
+    git(dir, '2026-11-08', 'x', 'init', '-q')
+    await writeFile(join(dir, 'ledger/items.tsv'), `${ITEMS}DD-1\tDD\t上限\td.md\t\t\n`, 'utf8')
+    git(dir, '2026-11-08', 'a', 'add', '-A'); git(dir, '2026-11-08', 'a', 'commit', '-q', '-m', 'a')
+    await writeFile(join(dir, 'ledger/items.tsv'), `${ITEMS}DD-1\tDD\t上限\td.md\t\t変わる\nRUN-1\tRUN\t実施\tr.json\t\t\n`, 'utf8')
+    git(dir, '2026-11-09', 'a', 'commit', '-q', '-am', 'b')
+    await writeFile(join(dir, '.tadori/checks.tsv'), 'when\twho\twhat\twhere\twhy\thow\tresult\n2026-11-09 17:00\ta\tR9\t.\t\t\t満たす\n', 'utf8')
+    const entries = await readActivity(dir, '2026-11-09', '2026-11-09', [], { workKinds: ['RUN'] })
+    expect(entries.find(e => e.key === 'ledger:edit:DD-1')?.tag).toBe('upkeep')
+    expect(entries.find(e => e.key === 'ledger:add:RUN-1')?.tag).toBe('done')
+    expect(entries.find(e => (e.key ?? '').startsWith('check:'))?.tag).toBe('checked')
+  })
+})

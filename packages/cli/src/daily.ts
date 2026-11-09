@@ -1,5 +1,5 @@
 import {
-  buildDaily, DAILY_SECTIONS, entriesFromSheet, loadProject, mergeDaily, ownersOf, readActivity, readDaily, readDailyFormat, readMembers,
+  buildDaily, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, readActivity, readDaily, readDailyFormat, readMembers,
   readStatusChanges, writeDaily, type CommitResult, type DailyEntry, type DailySection,
 } from '@tadori/core'
 import { dailyFormatOf, formatEntries, type DailyFormat } from './daily-format.js'
@@ -91,6 +91,14 @@ function section(body: Record<string, unknown>, required: boolean): DailySection
   return value as DailySection
 }
 
+/** 行の印（done・doing・plan・upkeep・checked。空なら印なし） */
+function tag(body: Record<string, unknown>): string | undefined {
+  if (body.tag === undefined) return undefined
+  const value = typeof body.tag === 'string' ? body.tag.trim() : ''
+  if (value && !(DAILY_TAGS as readonly string[]).includes(value)) throw new DailyInputError(`tag は ${DAILY_TAGS.join(' / ')} のどれか（空なら印なし）にしてください`)
+  return value
+}
+
 const wbsList = (body: Record<string, unknown>): string[] | undefined => {
   const value = body.wbs
   if (value === undefined) return undefined
@@ -112,6 +120,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
   while (used.has(`m${n}`)) n += 1
   const issue = text(body, 'issue', false)
   const note = text(body, 'note', false)
+  const chosenTag = tag(body)
   const entry: DailyEntry = {
     id: `m${n}`,
     who: text(body, 'who', false) ?? '',
@@ -120,6 +129,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     wbs: wbsList(body) ?? [],
     ...(issue ? { issue } : {}),
     ...(note ? { note } : {}),
+    ...(chosenTag ? { tag: chosenTag } : {}),
     origin: 'manual',
   }
   const commit = await writeDaily(dir, date, [...entries, entry], `1 日の進行に行を足した（${date}）`)
@@ -139,6 +149,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     wbs: wbsList(body),
     issue: text(body, 'issue', false),
     note: text(body, 'note', false),
+    tag: tag(body),
   }
   const changed = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
   const entry: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited' }

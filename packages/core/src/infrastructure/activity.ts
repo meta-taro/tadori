@@ -42,7 +42,7 @@ function ledgerEntries(before: Rows, after: Rows, who: string, options: Activity
   const label = (kind: string) => options.kindLabels?.[kind] ?? kind
   const isWork = (kind: string) => (options.workKinds ?? []).includes(kind)
   const entry = (key: string, text: string, kind: string, id: string): LedgerEntry =>
-    ({ id: '', who, section: isWork(kind) ? 'today' : 'upkeep', text, wbs: [], origin: 'auto', key, kind, rowId: id })
+    ({ id: '', who, section: isWork(kind) ? 'today' : 'upkeep', text, wbs: [], origin: 'auto', key, kind, rowId: id, tag: isWork(kind) ? 'done' : 'upkeep' })
   return [...after].flatMap(([id, row]) => {
     const old = before.get(id)
     const kind = row.kind ?? ''
@@ -118,7 +118,7 @@ async function checkActivity(dir: string, date: string): Promise<DailyEntry[]> {
   return parseTsv(text).rows
     .filter(r => (r.when ?? '').startsWith(date))
     .map(r => ({
-      id: '', who: r.who ?? '', section: 'today' as const, wbs: [], origin: 'auto' as const,
+      id: '', who: r.who ?? '', section: 'today' as const, wbs: [], origin: 'auto' as const, tag: 'checked',
       text: `${r.what ?? ''} を確かめた（${r.result ?? ''}）`,
       key: `check:${r.when ?? ''}:${r.what ?? ''}`,
     }))

@@ -9,6 +9,9 @@ export type { Member }
  */
 
 /** today＝今日 / next＝次の作業日 / consult＝相談 */
+/** 行の印の種類（言葉は案件ごとに決める） */
+export const DAILY_TAGS = ['done', 'doing', 'plan', 'upkeep', 'checked'] as const
+
 /** upkeep＝台帳の整備（台帳の行を足した・直した。成果物の作業とは分けて出す） */
 export type DailySection = 'today' | 'next' | 'consult' | 'upkeep'
 export const DAILY_SECTIONS: readonly DailySection[] = ['today', 'next', 'consult', 'upkeep']
@@ -34,6 +37,11 @@ export interface DailyEntry {
   /** 補足に足す一言（聞かれたら読むもの） */
   readonly note?: string
   readonly origin: DailyOrigin
+  /**
+   * 行の印（やり終えたことか、これからのことかを一目で分けるため）。言葉は案件の daily-format.tsv で決める。
+   * done＝やり終えた / doing＝作業中 / plan＝予定 / upkeep＝台帳の整備 / checked＝確かめた
+   */
+  readonly tag?: string
   /** 自動の行がどの材料から来たか（作り直したとき同じものを見分ける。例：wbs:today:W-01） */
   readonly key?: string
 }
@@ -96,6 +104,8 @@ export function entriesFromSheet(sheet: DailySheet, continued = ''): DailyEntry[
       ...(line.issue ? { issue: line.issue.id } : {}),
       origin: 'auto',
       key: `wbs:${section}:${ids.join('+')}`,
+      // 今日に済みへ変わった作業は done、途中の状態へ変わった作業は doing、次の作業日の行は plan
+      tag: section === 'next' ? 'plan' : line.finished ? 'done' : 'doing',
     }
   }
   return [...sheet.today.map(toEntry('today')), ...sheet.next.map(toEntry('next'))]

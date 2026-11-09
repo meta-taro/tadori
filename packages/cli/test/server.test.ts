@@ -299,3 +299,18 @@ describe('1 日の進行を作る・足す・直す・消す', () => {
     expect((await fetch(`${base}/api/daily/${day}/generate`, { method: 'POST' })).status).toBe(403)
   })
 })
+
+describe('1 日の進行の行の印', () => {
+  const day = '2026-11-06'
+  const send = (method: string, path: string, body?: unknown) =>
+    fetch(`${base}${path}`, { method, headers: WRITE_HEADERS, ...(body ? { body: JSON.stringify(body) } : {}) })
+
+  test('足すときも直すときも印を付けられる。知らない印は断る', async () => {
+    const added = await (await send('POST', `/api/daily/${day}/entries`, { who: 'x', section: 'today', text: '観点表を見直した', tag: 'done' })).json()
+    expect(added.entry.tag).toBe('done')
+    expect((await send('PUT', `/api/daily/${day}/entries/${added.entry.id}`, { tag: 'doing' })).status).toBe(200)
+    const daily = await (await fetch(`${base}/api/daily?date=${day}`)).json()
+    expect(daily.text).toContain('［作業中］観点表を見直した')
+    expect((await send('PUT', `/api/daily/${day}/entries/${added.entry.id}`, { tag: 'nope' })).status).toBe(400)
+  })
+})

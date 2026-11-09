@@ -18,7 +18,7 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     ]
     const commit = await writeDaily(dir, '2026-11-09', entries, '1 日の進行を直した')
     expect(commit.committed).toBe(false) // git の外なので commit しない
-    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\n/)
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\n/)
     const back = await readDaily(dir, '2026-11-09')
     expect(back[0]).toEqual({ ...entries[0], text: '画面の設計 を直した' })
     expect(back[1]).toEqual(entries[1])
@@ -38,5 +38,14 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     await mkdir(join(dir, '.tadori'), { recursive: true })
     await writeFile(join(dir, '.tadori/members.tsv'), 'name\tgit\n設計担当\tsekkei-dev\n', 'utf8')
     expect(await readMembers(dir)).toEqual([{ name: '設計担当', git: 'sekkei-dev', roles: [] }])
+  })
+})
+
+describe('日ごとのファイルの印', () => {
+  test('印（tag）も書いて読める', async () => {
+    const dir = await dirOf()
+    const entries: DailyEntry[] = [{ id: 'a1', who: 'x', section: 'today', text: 't', wbs: [], tag: 'done', origin: 'auto' }]
+    await writeDaily(dir, '2026-11-09', entries, 'm')
+    expect((await readDaily(dir, '2026-11-09'))[0]?.tag).toBe('done')
   })
 })
