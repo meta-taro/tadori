@@ -16,7 +16,7 @@
 <meta property="og:title" content="Find missing post-change impact, down to the line number">
 <meta property="og:url" content="https://meta-taro.github.io/tadori/cases/design-change-gap.html">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://meta-taro.github.io/tadori/img/timeline.png">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/en/timeline.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../assets/site.css">
 <script type="application/ld+json">
@@ -24,7 +24,7 @@
   "@context": "https://schema.org",
   "@graph": [
     { "@type": "TechArticle", "headline": "Find missing post-change impact, down to the line number", "inLanguage": "en", "dateModified": "2026-11-09",
-      "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/timeline.png",
+      "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/en/timeline.png",
       "description": "A “column is filled” rule finds detailed design sections with no post-change impact, and shows the owner and the fix." },
     { "@type": "BreadcrumbList", "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "tadori", "item": "https://meta-taro.github.io/tadori/" },
@@ -81,7 +81,7 @@ R4	dd	filled	DD		change		Designer	Detailed design section states its post-change
       <h2>3. See the owner and the fix on the remaining work screen</h2>
       <p>Select the detailed design phase and DD-2.3 shows up as an R4 gap, along with the <strong>owner (the designer)</strong> and <strong>which column of which line of which file to fill in to close it</strong>.
         The md icon opens that row in md-business.</p>
-      <figure class="shot"><img src="../img/timeline.png" width="1426" height="893" loading="lazy" alt="The remaining work screen with detailed design selected. It shows the R4 gap DD-2.3 and the fix “write in the post-change impact column of the DD-2.3 row (line 6) of ledger/items.tsv”"></figure>
+      <figure class="shot"><img src="../img/en/timeline.png" width="1426" height="893" loading="lazy" alt="The remaining work screen with detailed design selected. It shows the R4 gap DD-2.3 and the fix “write in the post-change impact column of the DD-2.3 row (line 6) of ledger/items.tsv”"></figure>
 
       <h2>4. Check only the sections that change in the next phase</h2>
       <p>Sections whose post-change impact is “changes” should be referenced from a commit in the implementation phase. The rule's <code>only</code> column narrows the target to the sections that change. tadori won't demand commits for unchanged sections and produce gaps that exist only for show.</p>

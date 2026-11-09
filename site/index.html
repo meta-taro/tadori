@@ -18,7 +18,7 @@
 <meta property="og:title" content="tadori — see the remaining work to release through its links">
 <meta property="og:description" content="A ledger on git that links specs, tests and findings by ID. Per-phase rules show the gaps and how to fix them.">
 <meta property="og:url" content="https://meta-taro.github.io/tadori/">
-<meta property="og:image" content="https://meta-taro.github.io/tadori/img/timeline.png">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/en/timeline.png">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="assets/site.css">
@@ -91,7 +91,7 @@
       </div>
       <p class="cta-note">Free, MIT license. Requires Node.js 22 or later. Your data stays in TSV files on your machine and is never sent anywhere.</p>
       <figure class="shot">
-        <img src="img/timeline.png" width="1426" height="893" alt="The tadori “remaining work to release” screen. Each phase has its planned period as a horizontal bar: basic design has 1 pending approval, detailed design has 2 gaps, integration testing has 1 gap and 1 pending approval; days overdue and phases started before the previous phase gate are marked" fetchpriority="high">
+        <img src="img/en/timeline.png" width="1426" height="893" alt="The tadori “remaining work to release” screen. Each phase has its planned period as a horizontal bar: basic design has 1 pending approval, detailed design has 2 gaps, integration testing has 1 gap and 1 pending approval; days overdue and phases started before the previous phase gate are marked" fetchpriority="high">
       </figure>
     </div>
   </section>
@@ -132,7 +132,7 @@
             <li>Projects without a schedule get a card view that just shows the phases</li>
           </ul>
         </div>
-        <figure class="shot"><img src="img/cards.png" width="1426" height="893" loading="lazy" alt="Remaining work in card view. Five cards — basic design, detailed design, implementation, integration testing and release — each show the number of gaps and pending approvals and the rule IDs"></figure>
+        <figure class="shot"><img src="img/en/cards.png" width="1426" height="893" loading="lazy" alt="Remaining work in card view. Five cards — basic design, detailed design, implementation, integration testing and release — each show the number of gaps and pending approvals and the rule IDs"></figure>
       </div>
 
       <div class="feature flip">
@@ -141,7 +141,7 @@
           <p>For each gap, such as “TC-07 has no test run linked to it”, tadori shows the <strong>owner</strong> and <strong>what to write in which column of which line of which file to close it</strong>.</p>
           <p>The md / qa icons open the original spec in md-business, or run the test case in git-qa (once you configure the URL templates).</p>
         </div>
-        <figure class="shot"><img src="img/leaks.png" width="1426" height="893" loading="lazy" alt="Remaining rules for integration testing. The R9 gap “TC-07 has no test run linked to it” comes with the fix “add a test run (RUN) row to ledger/items.tsv and write TC-07 in its refs” and md and qa icons"></figure>
+        <figure class="shot"><img src="img/en/leaks.png" width="1426" height="893" loading="lazy" alt="Remaining rules for integration testing. The R9 gap “TC-07 has no test run linked to it” comes with the fix “add a test run (RUN) row to ledger/items.tsv and write TC-07 in its refs” and md and qa icons"></figure>
       </div>
 
       <div class="feature">
@@ -150,7 +150,7 @@
           <p>Starting from a finding raised in acceptance testing, tadori lines up everything upstream and downstream in phase order — test case, test viewpoint, detailed design, basic design, WBS task. Broken links are red; links that were gaps in an earlier check and are now fixed are marked “resolved”.</p>
           <p>In a meeting, just share a URL like <code>#trace-F-02</code> and everyone looks at the same chain.</p>
         </div>
-        <figure class="shot"><img src="img/trace.png" width="1426" height="893" loading="lazy" alt="The trace screen. Tracing from finding F-02 shows, as red dashed cards, that test case TC-07 has no test run and that there is no preventive action"></figure>
+        <figure class="shot"><img src="img/en/trace.png" width="1426" height="893" loading="lazy" alt="The trace screen. Tracing from finding F-02 shows, as red dashed cards, that test case TC-07 has no test run and that there is no preventive action"></figure>
       </div>
 
       <div class="feature flip">
@@ -159,7 +159,7 @@
           <p>Rules such as “every test viewpoint has a test case” or “every detailed design section states its post-change impact” are kept in TSV, per phase. There are four kinds of check: has something downstream, is based on something upstream, a column is filled, and human approval.</p>
           <p>Agents write the rules; people read and verify them on screen. Even past 1,000 rows you can follow them with search, filters and sorting.</p>
         </div>
-        <figure class="shot"><img src="img/rules.png" width="1426" height="893" loading="lazy" alt="The ruleset screen. Under a band for each phase, rows show the rule ID, what links to what, the condition, the kind of check, the owner and the current state"></figure>
+        <figure class="shot"><img src="img/en/rules.png" width="1426" height="893" loading="lazy" alt="The ruleset screen. Under a band for each phase, rows show the rule ID, what links to what, the condition, the kind of check, the owner and the current state"></figure>
       </div>
 
       <div class="feature">
@@ -168,7 +168,7 @@
           <p>Through MCP tools, an AI agent can read the usage guide, the remaining work, the gaps and the links. When it guides you, it points with its own <strong>agent cursor</strong> inside the app, with a yellow frame and a short note.</p>
           <p>It never uses your mouse. While the agent is working, you can use the same screen with your own mouse.</p>
         </div>
-        <figure class="shot"><img src="img/agent.png" width="1426" height="893" loading="lazy" alt="The agent cursor frames gap R4·DD-2.3 in yellow, with a note saying the designer will fix this gap"></figure>
+        <figure class="shot"><img src="img/en/agent.png" width="1426" height="893" loading="lazy" alt="The agent cursor frames gap R4·DD-2.3 in yellow, with a note saying the designer will fix this gap"></figure>
       </div>
 
       <div class="feature flip">
@@ -181,7 +181,7 @@
             <li>Rows you edited or added survive when the draft is regenerated</li>
           </ul>
         </div>
-        <figure class="shot"><img src="img/daily.png" width="1426" height="893" loading="lazy" alt="The daily progress screen. The today section lists rows where the agent checked rules, the next working day section lists each person's planned rows, and the agent cursor points at W-03 with a note saying it is the designer's next task"></figure>
+        <figure class="shot"><img src="img/en/daily.png" width="1426" height="893" loading="lazy" alt="The daily progress screen. The today section lists rows where the agent checked rules, the next working day section lists each person's planned rows, and the agent cursor points at W-03 with a note saying it is the designer's next task"></figure>
       </div>
 
       <div class="feature">
@@ -190,7 +190,7 @@
           <p>Light is the default, since it is easier to share in meetings. You can also choose dark or “follow the OS”. The choice applies only to that machine.</p>
           <p>When another app (such as md-business) or a git pull changes the ledger, the screen redraws on the spot.</p>
         </div>
-        <figure class="shot"><img src="img/dark.png" width="1426" height="893" loading="lazy" alt="The remaining work to release screen in the dark theme"></figure>
+        <figure class="shot"><img src="img/en/dark.png" width="1426" height="893" loading="lazy" alt="The remaining work to release screen in the dark theme"></figure>
       </div>
     </div>
   </section>
@@ -204,23 +204,23 @@
       </div>
       <div class="cards">
         <a class="card" href="cases/design-change-gap.html">
-          <img src="img/timeline.png" width="1426" height="893" loading="lazy" alt="">
+          <img src="img/en/timeline.png" width="1426" height="893" loading="lazy" alt="">
           <div class="card-body"><h3>Missing post-change impact</h3><p>Find detailed design sections that don't say whether they change — down to the line number.</p><span class="more">Read the case →</span></div>
         </a>
         <a class="card" href="cases/trace-from-finding.html">
-          <img src="img/trace.png" width="1426" height="893" loading="lazy" alt="">
+          <img src="img/en/trace.png" width="1426" height="893" loading="lazy" alt="">
           <div class="card-body"><h3>Trace from an acceptance finding</h3><p>From “an overdue user could still borrow” to a test case that was never run.</p><span class="more">Read the case →</span></div>
         </a>
         <a class="card" href="cases/early-start.html">
-          <img src="img/cards.png" width="1426" height="893" loading="lazy" alt="">
+          <img src="img/en/cards.png" width="1426" height="893" loading="lazy" alt="">
           <div class="card-body"><h3>Starting before the previous phase is done</h3><p>See detailed design underway while basic design is still sent back, next to the delays.</p><span class="more">Read the case →</span></div>
         </a>
         <a class="card" href="cases/agent-guide.html">
-          <img src="img/agent.png" width="1426" height="893" loading="lazy" alt="">
+          <img src="img/en/agent.png" width="1426" height="893" loading="lazy" alt="">
           <div class="card-body"><h3>Let an agent guide you</h3><p>The agent reads through MCP and explains to a newcomer while pointing with its cursor.</p><span class="more">Read the case →</span></div>
         </a>
         <a class="card" href="cases/daily-with-agent.html">
-          <img src="img/daily.png" width="1426" height="893" loading="lazy" alt="">
+          <img src="img/en/daily.png" width="1426" height="893" loading="lazy" alt="">
           <div class="card-body"><h3>Run daily progress with an agent</h3><p>Draft each person's day from the records, and work through it with an agent.</p><span class="more">Read the case →</span></div>
         </a>
       </div>

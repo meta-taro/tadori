@@ -46,7 +46,8 @@ function inlineHtml(line, links, tags, whoMarks = []) {
       html += `<span class="daily-who">${esc(text.replace(/[：:]\s*$/, '') || text)}</span>`
     } else if (tags.includes(text)) {
       // 札にするので、印を囲む括弧（［］【】[]）は見せない
-      html += `<span class="daily-pill">${esc(text.replace(/^[［【[]|[］】\]]$/g, '') || text)}</span>`
+      // 印の書き方の前後の空白（英語の既定は「[済] 」のように後ろに空白がある）も外してから、括弧を外す
+      html += `<span class="daily-pill">${esc(text.trim().replace(/^[［【[]|[］】\]]$/g, '') || text)}</span>`
     } else {
       html += `<a class="daily-ref mono" href="${esc(byText.get(text))}">${esc(text)}</a>`
     }

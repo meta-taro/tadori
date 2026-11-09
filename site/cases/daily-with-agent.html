@@ -16,7 +16,7 @@
 <meta property="og:title" content="Run each person's daily progress with an agent">
 <meta property="og:url" content="https://meta-taro.github.io/tadori/cases/daily-with-agent.html">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://meta-taro.github.io/tadori/img/daily.png">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/en/daily.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../assets/site.css">
 <script type="application/ld+json">
@@ -24,7 +24,7 @@
   "@context": "https://schema.org",
   "@graph": [
     { "@type": "TechArticle", "headline": "Run each person's daily progress with an agent", "inLanguage": "en", "dateModified": "2026-11-09",
-      "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/daily.png",
+      "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/en/daily.png",
       "description": "tadori drafts daily progress from the records; each person reviews it on screen and, with an agent over MCP, adds and edits rows and moves tasks forward." },
     { "@type": "BreadcrumbList", "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "tadori", "item": "https://meta-taro.github.io/tadori/" },
@@ -65,12 +65,12 @@
       <h2>1. The draft is built from the records</h2>
       <p>Nobody has to write it up from memory before every stand-up. tadori reads the days on which WBS statuses changed (git history), who added or edited ledger rows (looking up commit authors in the people table), and the check log, and drafts “today / next working day / questions” for each person.</p>
       <p>Ledger upkeep (adding or editing rows) goes under its own heading, so it isn't mistaken for work on deliverables. Each row starts with a marker such as done, in progress, planned or to confirm.</p>
-      <figure class="shot"><img src="../img/daily.png" width="1426" height="893" loading="lazy" alt="The daily progress screen. The today section lists rows where the agent checked rules R4 and R9, the next working day section lists each person's planned rows, and the agent cursor points at W-03 with a note saying it is the designer's next task, still in review and behind schedule"></figure>
+      <figure class="shot"><img src="../img/en/daily.png" width="1426" height="893" loading="lazy" alt="The daily progress screen. The today section lists rows where the agent checked rules R4 and R9, the next working day section lists each person's planned rows, and the agent cursor points at W-03 with a note saying it is the designer's next task, still in review and behind schedule"></figure>
 
       <h2>2. Each person sees only their own work</h2>
       <p>Pick a person under “Owner” in the top bar and every screen narrows to that person's work. Rows written with a role (such as the designer) are matched through the roles in the people table.</p>
       <p>The text view below is drawn with headings, numbered lists and marker labels for easy reading, and clicking a WBS or issue number jumps to it. “Copy text” gives you text ready to paste into the morning or evening stand-up.</p>
-      <figure class="shot"><img src="../img/daily-text.png" width="1426" height="893" loading="lazy" alt="Daily progress filtered to the designer. The text view has today, next working day, questions and notes headings, with numbered rows carrying planned labels"></figure>
+      <figure class="shot"><img src="../img/en/daily-text.png" width="1426" height="893" loading="lazy" alt="Daily progress filtered to the designer. The text view has today, next working day, questions and notes headings, with numbered rows carrying planned labels"></figure>
 
       <h2>3. Move things forward with an agent, on the spot</h2>
       <p>Each person's agent reads the same daily progress over MCP and, when asked, adds, edits or removes rows with its tools. Moving a task forward is done with <code>task_update</code>, which commits immediately, so the “day the status changed” in the next day's draft is accurate too.</p>

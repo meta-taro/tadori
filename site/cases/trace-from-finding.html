@@ -16,7 +16,7 @@
 <meta property="og:title" content="Trace from an acceptance finding to a test case that was never run">
 <meta property="og:url" content="https://meta-taro.github.io/tadori/cases/trace-from-finding.html">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://meta-taro.github.io/tadori/img/trace.png">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/en/trace.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../assets/site.css">
 <script type="application/ld+json">
@@ -24,7 +24,7 @@
   "@context": "https://schema.org",
   "@graph": [
     { "@type": "TechArticle", "headline": "Trace from an acceptance finding to a test case that was never run", "inLanguage": "en", "dateModified": "2026-11-09",
-      "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/trace.png",
+      "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/en/trace.png",
       "description": "Trace upstream from a finding to show that a test case has no test run and that the finding has no preventive action." },
     { "@type": "BreadcrumbList", "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "tadori", "item": "https://meta-taro.github.io/tadori/" },
@@ -68,7 +68,7 @@
       <h2>2. Upstream and downstream, in phase order</h2>
       <p>The chain is laid out as WBS task → basic design chapter → detailed design section → test viewpoint → test case → test run → finding → preventive action.
         Links are decided only by the IDs written in the ledger — never by guesswork.</p>
-      <figure class="shot"><img src="../img/trace.png" width="1426" height="893" loading="lazy" alt="The result of tracing from F-02. W-07, BD-3, DD-3.2 (resolved) and V-03 have no gaps; the missing test run for TC-07 and the missing preventive action for F-02 are shown with red dashed lines as “the chain breaks here”"></figure>
+      <figure class="shot"><img src="../img/en/trace.png" width="1426" height="893" loading="lazy" alt="The result of tracing from F-02. W-07, BD-3, DD-3.2 (resolved) and V-03 have no gaps; the missing test run for TC-07 and the missing preventive action for F-02 are shown with red dashed lines as “the chain breaks here”"></figure>
 
       <h2>3. See where the chain breaks</h2>
       <table>
@@ -82,7 +82,7 @@
 
       <h2>4. Run the test and link the record</h2>
       <p>On the remaining work screen, a qa icon appears next to TC-07 (once the git-qa URL template is configured). Click it to run that case in git-qa, and link the test record (run.json) as a RUN row in the ledger. Pass or fail is written by the person who saw the real thing.</p>
-      <figure class="shot"><img src="../img/leaks.png" width="1426" height="893" loading="lazy" alt="Remaining work for integration testing. The R9 gap TC-07 comes with a fix and md and qa icons"></figure>
+      <figure class="shot"><img src="../img/en/leaks.png" width="1426" height="893" loading="lazy" alt="Remaining work for integration testing. The R9 gap TC-07 comes with a fix and md and qa icons"></figure>
 
       <h2>5. Share a URL in the meeting</h2>
       <p>A URL like <code>#trace-F-02</code> shares the same chain, already open. Deciding where along this chain the gap was is up to people. Once confirmed, record it as a human row in the check log.</p>

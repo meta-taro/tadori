@@ -52,3 +52,16 @@ test.describe('用語集の言語', () => {
     await expect(page.locator('#view')).not.toContainText('完了判定')
   })
 })
+
+test.describe('英語の 1 日の進行の文の形', () => {
+  test.use({ locale: 'en-US' })
+  test('印は括弧も空白も付けずに札で出す（英語の既定は「[Planned] 」）', async ({ page }) => {
+    await page.goto('/#daily')
+    await page.locator('#daily-date').fill('2026-10-30')
+    await page.locator('#daily-date').dispatchEvent('change')
+    await expect(page.locator('.daily-preview h3').first()).toContainText('10/30')
+    const pills = await page.locator('.daily-preview .daily-pill').allTextContents()
+    expect(pills).toContain('Planned')
+    expect(pills.every(p => /^[A-Za-z ]+$/.test(p))).toBe(true)
+  })
+})

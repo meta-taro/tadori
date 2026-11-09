@@ -16,7 +16,7 @@
 <meta property="og:title" content="See early starts and delays side by side">
 <meta property="og:url" content="https://meta-taro.github.io/tadori/cases/early-start.html">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://meta-taro.github.io/tadori/img/timeline.png">
+<meta property="og:image" content="https://meta-taro.github.io/tadori/img/en/timeline.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../assets/site.css">
 <script type="application/ld+json">
@@ -24,7 +24,7 @@
   "@context": "https://schema.org",
   "@graph": [
     { "@type": "TechArticle", "headline": "See early starts and delays side by side", "inLanguage": "en", "dateModified": "2026-11-09",
-      "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/timeline.png",
+      "about": { "@id": "https://meta-taro.github.io/tadori/#app" }, "image": "https://meta-taro.github.io/tadori/img/en/timeline.png",
       "description": "From WBS tasks, show the phases that started before the previous phase gate, together with days overdue." },
     { "@type": "BreadcrumbList", "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "tadori", "item": "https://meta-taro.github.io/tadori/" },
@@ -65,12 +65,12 @@
       <h2>1. WBS tasks set each phase's period</h2>
       <p>Each task in the WBS (<code>ledger/wbs.tsv</code>) has a phase, start date, end date and status. tadori rolls them up into a period per phase and shows which tasks are active now.
         On the product screen you can expand and collapse the tasks by phase.</p>
-      <figure class="shot"><img src="../img/browse.png" width="1426" height="893" loading="lazy" alt="The product screen. WBS tasks are grouped by phase, with their status, period and a delay color"></figure>
+      <figure class="shot"><img src="../img/en/browse.png" width="1426" height="893" loading="lazy" alt="The product screen. WBS tasks are grouped by phase, with their status, period and a delay color"></figure>
 
       <h2>2. Work that didn't wait for the previous phase gate gets marked</h2>
       <p>The basic design phase gate (R2: the reviewer approved the basic design document) is still sent back. Even so, tasks in detailed design, implementation and integration testing have started,
         so those three phases are marked “started before the basic design phase gate”. On the timeline, those periods are hatched.</p>
-      <figure class="shot"><img src="../img/timeline.png" width="1426" height="893" loading="lazy" alt="The timeline. Basic design has 1 pending approval and is late; detailed design, implementation and integration testing are marked “started before the basic design phase gate”, hatched, and show days overdue"></figure>
+      <figure class="shot"><img src="../img/en/timeline.png" width="1426" height="893" loading="lazy" alt="The timeline. Basic design has 1 pending approval and is late; detailed design, implementation and integration testing are marked “started before the basic design phase gate”, hatched, and show days overdue"></figure>
 
       <h2>3. Delays are shown in days</h2>
       <p>A delay is the number of days past the planned end date, and its color shifts from blue to red as the days add up. There is no “x% complete”. That way nobody adds tasks or rows just to push a percentage up.</p>
