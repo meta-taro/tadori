@@ -23,7 +23,7 @@ const VIEWS = {
   browse: { label: 'プロダクト', render: id => renderWbs(view, state, reload, id) },
   phases: { label: 'リリースまでの残課題', render: phaseId => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }, phaseId) },
   daily: { label: '1 日の進行', render: () => renderDaily(view, state) },
-  rules: { label: 'ルールセット', render: () => renderRules(view, state) },
+  rules: { label: 'ルールセット', render: () => renderRules(view, state, reload) },
   log: { label: 'チェックの記録', render: () => renderLog(view, state) },
   trace: { label: 'つながりを辿る', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
   settings: { label: '設定', render: () => renderSettings(view, state, reload) },

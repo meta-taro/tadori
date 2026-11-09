@@ -198,3 +198,44 @@ test.describe('server の中の例外と版', () => {
     await expect(page.locator('.stale-chip')).toHaveText('server が古い版です')
   })
 })
+
+test.describe('ルールを画面から足す・直す・消す', () => {
+  test('空いている ID で足すと、すぐ一覧に出る。直す・消すもできる', async ({ page }) => {
+    await page.goto('/#rules')
+    await page.getByRole('button', { name: 'ルールを足す' }).click()
+    const form = page.locator('#rule-form')
+    await expect(form.locator('[name="id"]')).toHaveValue(/^R\d+$/)
+    const id = await form.locator('[name="id"]').inputValue()
+    await form.locator('[name="phase"]').selectOption('it')
+    await form.locator('[name="kind"]').selectOption('filled')
+    await form.locator('[name="from"]').fill('TC')
+    await form.locator('[name="field"]').fill('verifier')
+    await form.locator('[name="owner"]').fill('検証担当')
+    await form.locator('[name="label"]').fill('試験ケースに確かめる人がいる')
+    await form.getByRole('button', { name: '保存' }).click()
+    const row = page.locator('tr', { hasText: id })
+    await expect(row).toContainText('試験ケースに確かめる人がいる')
+
+    await row.getByRole('button', { name: '直す' }).click()
+    await form.locator('[name="owner"]').fill('開発担当')
+    await form.getByRole('button', { name: '保存' }).click()
+    await expect(page.locator('tr', { hasText: id })).toContainText('開発担当')
+
+    // 消すのは 2 回押す（1 回目で「もう一度押すと消す」に変わる）
+    // 直した直後は、ファイルの変化の知らせで画面が描き直されるが、1 回目に押した状態は保たれる
+    await page.locator('tr', { hasText: id }).getByRole('button', { name: '消す' }).click()
+    await page.waitForTimeout(800)
+    await page.locator('tr', { hasText: id }).getByRole('button', { name: 'もう一度押すと消す' }).click()
+    await expect(page.locator('tr', { hasText: id })).toHaveCount(0)
+  })
+
+  test('知らない種類のルールなど、保存できないときは理由を出し、一覧は変えない', async ({ page }) => {
+    await page.goto('/#rules')
+    await page.getByRole('button', { name: 'ルールを足す' }).click()
+    const form = page.locator('#rule-form')
+    await form.locator('[name="id"]').fill('R9')
+    await form.locator('[name="label"]').fill('x')
+    await form.getByRole('button', { name: '保存' }).click()
+    await expect(form.locator('.form-problems')).toContainText('R9')
+  })
+})

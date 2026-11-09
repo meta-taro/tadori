@@ -1,5 +1,5 @@
 // ルールセット：1,000 行を超えても探せるように、探す欄・絞り込み・工程ごとの帯・少しずつ出す
-import { esc, ICON_INFO, isMine, kindLabel } from './util.js'
+import { api, ApiError, esc, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, toastCommit } from './util.js'
 
 const PAGE = 50
 const KIND_NAMES = { covered: '下流が出ている', refers: '上流を元にしている', filled: '列が埋まっている', approval: '人の承認' }
@@ -8,6 +8,10 @@ const KIND_NAMES = { covered: '下流が出ている', refers: '上流を元に�
 const filters = { query: '', phase: 'all', judge: 'all', status: 'all', sort: 'id' }
 const closedPhases = new Set()
 const shownCount = new Map() // 工程 → いま出している件数
+// 「消す」を 1 回押したルール。ファイルの変化の知らせで画面が描き直されても、押した状態を保つ（しばらくで戻す）
+let armedRuleId = ''
+let armedTimer
+const ARMED_MS = 5000
 
 /** ルールのいまの状態：漏れ（件数）・承認待ち・満たす */
 function statusOf(state, rule) {
@@ -60,6 +64,7 @@ function ruleRow(state, r) {
     <td class="kind">${KIND_NAMES[r.kind]}</td>
     <td class="kind">${esc(r.owner ?? '')}</td>
     <td>${STATUS_HTML[s.key](s.count)}</td>
+    <td class="rule-actions"><button type="button" class="btn-ghost" data-edit="${esc(r.id)}">直す</button><button type="button" class="btn-ghost" data-remove="${esc(r.id)}">${r.id === armedRuleId ? 'もう一度押すと消す' : '消す'}</button></td>
   </tr>`
 }
 
@@ -76,7 +81,7 @@ function listHtml(state) {
     return `<details class="rules-group" data-group="${esc(phase.id)}" ${closedPhases.has(phase.id) ? '' : 'open'}>
       <summary class="rules-band"><span class="tw">›</span><span>${esc(phase.name)}</span>
         <span class="rules-band-counts">${leaks ? `<span class="nav-badge hole" title="漏れ ${leaks} 件">${leaks}</span>` : ''}<span class="pick-count">${inPhase.length} 件</span></span></summary>
-      <table><thead><tr><th style="width:72px">ID</th><th style="width:28%">何と何が</th><th>条件</th><th style="width:130px">判定</th><th style="width:96px">担当</th><th style="width:120px">いまの状態</th></tr></thead>
+      <table><thead><tr><th style="width:72px">ID</th><th style="width:28%">何と何が</th><th>条件</th><th style="width:130px">判定</th><th style="width:96px">担当</th><th style="width:120px">いまの状態</th><th style="width:120px"><span class="sr-only">操作</span></th></tr></thead>
       <tbody>${inPhase.slice(0, limit).map(r => ruleRow(state, r)).join('')}</tbody></table>${more}
     </details>`
   }).join('')
@@ -87,12 +92,56 @@ function segHtml(name, options) {
     `<button type="button" data-filter="${esc(name)}" data-value="${esc(value)}" aria-pressed="${filters[name] === value}">${esc(label)}</button>`).join('')}</div>`
 }
 
-export function renderRules(view, state) {
+/** 空いている次のルールの ID（R の後ろの数がいちばん大きいものの次） */
+function nextRuleId(state) {
+  const numbers = state.rules.map(r => /^R(\d+)$/.exec(r.id)?.[1]).filter(Boolean).map(Number)
+  return `R${(numbers.length ? Math.max(...numbers) : 0) + 1}`
+}
+
+/** ルールを足す・直す欄。rule を渡すと、その中身で直す（ID は変えない） */
+function ruleFormHtml(state, rule) {
+  const r = rule ?? { id: nextRuleId(state), phase: state.phases[0]?.id ?? '', kind: 'covered', from: '', to: '', field: '', owner: '', label: '' }
+  const only = rule?.only ? `${rule.only.field}=${rule.only.value}` : ''
+  const kinds = Object.keys(state.labels?.kinds ?? {})
+  const columns = Object.keys(state.labels?.columns ?? {})
+  return `<form class="add rule-form" id="rule-form" data-mode="${rule ? 'edit' : 'add'}">
+    <h2>${rule ? `ルール ${esc(rule.id)} を直す` : 'ルールを足す'}</h2>
+    <label>ID<input name="id" value="${esc(r.id)}" ${rule ? 'readonly' : ''} required maxlength="64"></label>
+    <label>工程<select name="phase">${state.phases.map(p => `<option value="${esc(p.id)}" ${p.id === r.phase ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <label>判定<select name="kind">${Object.entries(KIND_NAMES).map(([k, n]) => `<option value="${k}" ${k === r.kind ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    <label>元の種類<input name="from" value="${esc(r.from)}" list="rule-kinds" placeholder="例：TC"></label>
+    <label>先の種類<input name="to" value="${esc(r.to)}" list="rule-kinds" placeholder="例：RUN（下流・上流のとき）"></label>
+    <label>列<input name="field" value="${esc(r.field)}" list="rule-columns" placeholder="列が埋まっているのとき"></label>
+    <label>対象を絞る<input name="only" value="${esc(only)}" placeholder="例：change=変わる"></label>
+    <label>担当<input name="owner" value="${esc(r.owner ?? '')}" list="rule-people" placeholder="直す担当（役割）"></label>
+    <label class="grow">条件の文<input name="label" value="${esc(r.label)}" required maxlength="200" placeholder="人が読む一文（例：試験ケースに実施の記録がある）"></label>
+    <datalist id="rule-kinds">${kinds.map(k => `<option value="${esc(k)}">${esc(kindLabel(k))}</option>`).join('')}</datalist>
+    <datalist id="rule-columns">${columns.map(c => `<option value="${esc(c)}"></option>`).join('')}</datalist>
+    <datalist id="rule-people">${peopleOf(state).map(p => `<option value="${esc(p)}"></option>`).join('')}</datalist>
+    <div class="form-problems" role="alert"></div>
+    <div class="actions"><button type="button" class="btn-ghost" data-cancel>やめる</button><button type="submit" class="btn-primary">保存</button></div>
+  </form>`
+}
+
+/** 欄の中身を、API に渡す形にする（空の項目は、足すときは送らず、直すときは空にする） */
+function ruleBody(form, isEdit) {
+  const data = Object.fromEntries(new FormData(form).entries())
+  const body = {}
+  for (const key of ['phase', 'kind', 'from', 'to', 'field', 'only', 'owner', 'label']) {
+    const value = String(data[key] ?? '').trim()
+    if (value || isEdit) body[key] = value
+  }
+  return body
+}
+
+export function renderRules(view, state, reload) {
   const phaseOptions = [['all', 'すべての工程'], ...state.phases.map(p => [p.id, p.name])]
   view.innerHTML = `
     <h1>ルールセット</h1>
     <p class="lede">工程ごとのルールセットです。エージェントは作業の前にこれを読んで守り、チェックした結果を記録に残します。人の承認が要るルールは、人がチェックします。
-      ルールは <span class="mono">.tadori/rulesets/*.tsv</span> を編集して足します（画面からの追加は次の段）。</p>
+      ルールは <span class="mono">.tadori/rulesets/*.tsv</span> に書かれています。ここから足す・直す・消すと、保存して commit します（push は人）。</p>
+    <div class="rules-add"><button type="button" class="btn-primary" id="rule-add">ルールを足す</button></div>
+    <div id="rule-form-slot"></div>
     <div class="rules-tools">
       <input id="rules-query" class="glossary-query" type="search" placeholder="ルールを探す（例：R9、試験ケース、改修後、検証担当）" value="${esc(filters.query)}" aria-label="ルールを探す">
       ${segHtml('phase', phaseOptions)}
@@ -120,6 +169,7 @@ export function renderRules(view, state) {
     }))
   }
   draw()
+  bindRuleEditing(view, state, reload)
   // 打つたびに一覧だけ描き直す（欄ごと描き直すと、打っている途中で入力が切れる）
   view.querySelector('#rules-query').addEventListener('input', e => { filters.query = e.target.value; shownCount.clear(); draw() })
   view.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => {
@@ -127,6 +177,63 @@ export function renderRules(view, state) {
     shownCount.clear()
     renderRules(view, state)
   }))
+}
+
+/** 足す・直す・消す（保存したら案件を読み直す。断られたら理由を欄に出し、一覧は変えない） */
+function bindRuleEditing(view, state, reload) {
+  const slot = view.querySelector('#rule-form-slot')
+  const open = rule => {
+    slot.innerHTML = ruleFormHtml(state, rule)
+    const form = slot.querySelector('#rule-form')
+    form.querySelector('[data-cancel]').addEventListener('click', () => { slot.innerHTML = '' })
+    form.addEventListener('submit', async e => {
+      e.preventDefault()
+      const isEdit = form.dataset.mode === 'edit'
+      const id = String(new FormData(form).get('id') ?? '').trim()
+      const body = ruleBody(form, isEdit)
+      try {
+        const result = isEdit
+          ? await api(`/api/rules/${encodeURIComponent(id)}`, { method: 'PUT', body })
+          : await api('/api/rules', { method: 'POST', body: { id, ...body } })
+        toastCommit(`ルール ${id} `, result.commit)
+        slot.innerHTML = ''
+        await reload?.()
+      } catch (error) {
+        const problems = error instanceof ApiError && error.problems.length ? error.problems : [messageOf(error)]
+        form.querySelector('.form-problems').innerHTML = problems.map(p => `<div>${esc(p)}</div>`).join('')
+      }
+    })
+    form.querySelector(rule ? '[name="label"]' : '[name="id"]').focus()
+  }
+  view.querySelector('#rule-add').addEventListener('click', () => open(undefined))
+  view.querySelector('#rules-list').addEventListener('click', async e => {
+    const button = e.target instanceof Element ? e.target.closest('button[data-edit], button[data-remove]') : null
+    if (!button) return
+    const id = button.dataset.edit ?? button.dataset.remove
+    if (button.dataset.edit) { open(state.rules.find(r => r.id === id)); return }
+    // 消すのは 2 回押す（押し間違いで消さないように。消しても git の履歴からは戻せる）
+    if (armedRuleId !== id) {
+      armedRuleId = id
+      button.textContent = 'もう一度押すと消す'
+      clearTimeout(armedTimer)
+      // 描き直されていても、いま画面にあるボタンを戻す
+      armedTimer = setTimeout(() => {
+        armedRuleId = ''
+        view.querySelectorAll('button[data-remove]').forEach(b => { b.textContent = '消す' })
+      }, ARMED_MS)
+      return
+    }
+    armedRuleId = ''
+    clearTimeout(armedTimer)
+    try {
+      const result = await api(`/api/rules/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      toastCommit(`ルール ${id} の削除を`, result.commit)
+      await reload?.()
+    } catch (error) {
+      button.textContent = '消せませんでした'
+      button.title = messageOf(error)
+    }
+  })
 }
 
 /** 検索から開くとき、その言葉で絞った状態にする */

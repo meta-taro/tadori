@@ -88,10 +88,13 @@ export const messageOf = (/** @type {unknown} */ error) => (error instanceof Err
  * @returns {Promise<any>}
  */
 export async function api(path, { method = 'GET', body } = {}) {
+  // 書き込み（GET 以外）は、本文が無くても（DELETE など）x-tadori を付けて JSON で送る。
+  // サーバーは x-tadori と JSON の両方がそろった書き込みだけを受ける（ほかのサイトからの書き込みを防ぐ）
+  const isWrite = method !== 'GET'
   const res = await fetch(path, {
     method,
-    headers: body === undefined ? {} : { 'content-type': 'application/json', 'x-tadori': '1' },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    headers: isWrite ? { 'content-type': 'application/json', 'x-tadori': '1' } : {},
+    ...(isWrite ? { body: JSON.stringify(body ?? {}) } : {}),
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
