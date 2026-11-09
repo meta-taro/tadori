@@ -1,65 +1,67 @@
-# tadori（辿り）
+# tadori
 
-> ⚠ **MVP です。**架空の見本の案件で、判定（`check`・`why`）と手元で開く画面（`serve`）が動きます。
-> 方向性は [PRD.md](PRD.md)、決めたことと理由は [docs/decisions.md](docs/decisions.md)、
-> 画面と文書で使う言葉は [用語集（glossary.tsv）](packages/ui/static/glossary.tsv) にあります。
-> 紹介とダウンロードのページ：https://meta-taro.github.io/tadori/
+**English** | [日本語](README.ja.md)
 
-**仕様の 1 文から、試験ケース・実施の証跡・指摘・再発防止までを ID でつなぐ、git 上の台帳。**
-工程ごとにルールセットを持ち、「どこが漏れているか」を出します。漏れを認めるのは人です。
+> Under active development (the desktop app, CLI and MCP server work today).
+> Direction: [PRD.md](PRD.md) (Japanese). Decisions and the reasons behind them: [docs/decisions.md](docs/decisions.md) (Japanese).
+> Website and downloads: https://meta-taro.github.io/tadori/
 
-## なぜ作るか
+**A ledger on git that links every sentence of a spec to its test cases, test evidence, findings and preventive actions — by ID.**
+Each project phase has its own ruleset, and tadori shows *where the links are missing* ("gaps"). Deciding that a gap was really a gap is always left to a person.
 
-不具合が出たとき、「当時気づけたのか」「なぜ試験で拾えなかったのか」を説明するには、
-設計書・試験書・課題票・レビュー・会話ログの 4〜5 か所を掘り返すことになります。
-**記録はあります。記録どうしのつながりが人の頭の中にしかありません。**
+## Why
 
-AI に開発を任せる比率が上がるほど、AI が何を根拠に「確かめた」と言ったのかを
-後から辿れることが要ります。
+When a defect slips through, explaining "could we have caught it back then?" and "why didn't testing find it?" means digging through four or five places: design documents, test specs, issue tickets, reviews and chat logs.
+**The records exist. The links between them only live in people's heads.**
 
-## 動かす
+The more development is delegated to AI agents, the more you need to be able to trace, after the fact, what an agent based its "I checked it" on.
 
-Node.js 22 以上と pnpm が要ります。
+## Run it
+
+You need Node.js 22+ and pnpm.
 
 ```bash
 pnpm install
-pnpm dev          # ビルドして、架空の見本の案件で画面を開く → http://127.0.0.1:4870/
+pnpm dev          # build, then open the screen on the fictional sample project → http://127.0.0.1:4870/
 ```
 
-デスクトップアプリ（Tauri）として開くには、Rust も要ります。
+To open it as a desktop app (Tauri) you also need Rust.
 
 ```bash
-pnpm --filter @tadori/desktop dev   # 窓が開き、案件のフォルダ（.tadori のあるフォルダ）を選ぶ。次からは前回の案件を開く
+pnpm --filter @tadori/desktop dev   # a window opens; pick a project folder (one that contains .tadori). Next time it reopens the last project
 ```
 
-窓は裏で `tadori serve` を起こし、その画面を映すだけです（判定は CLI と同じ核）。
+The window just starts `tadori serve` in the background and shows its screen (the checks run on the same core as the CLI).
 
-インストーラー（macOS の Apple シリコン・Intel、Windows の x64・ARM）は、`v` で始まるタグ（例：`v0.1.0`）を push すると GitHub Actions が作り、下書きのリリースに付けます。中身を確かめてから公開してください。手元で作るなら `pnpm --filter @tadori/desktop bundle` です。
+Installers (macOS Apple silicon / Intel, Windows x64 / ARM) are built by GitHub Actions when you push a tag starting with `v` (e.g. `v0.1.0`), and attached to a draft release. Check the contents before publishing. To build locally: `pnpm --filter @tadori/desktop bundle`.
 
-commit の前に型の検査・テスト・置き場所の検査、個人や委託先の名前の検査を走らせるには（このリポジトリで 1 回だけ）。
-名前の一覧は公開できないので、リポジトリの外の `~/.config/oss-guard/deny-words.txt` に 1 行 1 語で書きます:
+To run the type check, tests, placement check and the personal/client-name check before every commit (once per clone). The name list cannot be public, so it lives outside the repository in `~/.config/oss-guard/deny-words.txt`, one word per line:
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-環境変数・秘密情報は要りません（`.env` は使いません）。
+No environment variables or secrets are needed (no `.env`).
 
-画面の裏の server の中で例外が起きたら、時刻・API・例外の要点を PC の手元に残します（Windows は `%LOCALAPPDATA%	adorilogs`、macOS は `~/Library/Logs/tadori`、`TADORI_LOG_DIR` で変えられます）。送られてきた本文（案件の中身）は残しません。エージェントは MCP の `server_errors` で読めます。
+If an exception happens inside the background server, tadori keeps the time, the API and a summary of the error on your machine (Windows: `%LOCALAPPDATA%\tadori\logs`, macOS: `~/Library/Logs/tadori`; override with `TADORI_LOG_DIR`). Request bodies (your project's content) are never recorded. Agents can read the log with the MCP tool `server_errors`.
 
-新しい版の確認：ヘルプの「バージョンと更新」と、起動したとき（1 日に 1 回）に、GitHub の公開リリースの最新の版だけを見に行きます。案件の中身は送りません。外へ出られない環境では `TADORI_UPDATE_CHECK=off` で切れます。新しい版があれば配布のページを開けるようにするだけで、入れ替えは人が行います。
+Update check: *Help › Version and updates* and, once a day at startup, tadori looks up the latest public release on GitHub — nothing about your project is sent. Turn it off with `TADORI_UPDATE_CHECK=off` in offline environments. When a newer version exists, tadori only offers to open the download page; installing it is up to you.
 
-## するもの
+## Language
 
-| コマンド | 出すもの |
+English and Japanese. English support for the app's screens and messages is being added step by step: the app will follow your OS / browser language and can be switched from the *View* menu. Everything you write in a project (phase names, column names, the daily-report wording, …) is kept exactly as you wrote it.
+
+## Commands
+
+| Command | What it does |
 |---|---|
-| `tadori init [案件] [--name 名前]` | 試す案件のリポジトリに、最小の設定（`.tadori/`）と台帳（`ledger/`）を置く。あるファイルは書き換えない。ルールは例をコメントで置くだけ（ルールが無い工程は「ルールなし」と出し、通ったようには見せない） |
-| `tadori check [案件]` | 工程ごとの漏れと人の承認待ち。漏れがあれば終了コード 1（CI でも使える）。`--log` でチェックの記録に 5W1H で足す |
-| `tadori daily [案件] [--who 担当] [--date 日付]` | 人単位の 1 日の進行（今日・次の作業日・相談・補足）。形は案件ごとに設定できる。画面の「1 日の進行」と MCP の `daily` も同じもの |
-| `tadori how-to [話題]` | 使い方（MCP の `how_to` と同じ中身）。話題は start・ledger・rules・check・screen・links・agent-rules |
-| `tadori why <ID> [案件]` | その 1 件から上下に辿った全部と、線が切れている所 |
-| `tadori serve [案件]` | 手元（127.0.0.1）で画面を開く。リリースまでの残課題（タイムライン／カード）・WBS・ルールセット・チェックの記録・つながりを辿る・設定 |
-| `tadori mcp [案件]` | MCP の口（標準入出力）。道具は使い方（`how_to`）・用語（`glossary`）・残課題（`get_remaining`）・漏れ（`list_leaks`）・つながり（`trace`）・台帳の行を探す（`find_items`）・画面の専用カーソル（`screen`）・1 日の進行・書く道具（台帳・WBS・ルール・人の表・工程・記録つきの check・案件の切り替え。使い方は how_to の write）。人の承認を書く道具は無い。`--screen` で操作する画面の場所を変えられる |
+| `tadori init [project] [--name name]` | Puts a minimal configuration (`.tadori/`) and ledger (`ledger/`) into a project repository. Existing files are never overwritten. Rules are only added as commented examples (a phase without rules shows "no rules", never "passed") |
+| `tadori check [project]` | Gaps and pending human approvals per phase. Exits with code 1 when there are gaps (usable in CI). `--log` appends a who/what/when/where/why/how record to the check log |
+| `tadori daily [project] [--who person] [--date date]` | Per-person daily progress (today, next working day, questions, notes). The wording is configurable per project. Same content as the *Daily* screen and the MCP tool `daily` |
+| `tadori how-to [topic]` | Usage guide (same as the MCP tool `how_to`). Topics: start, ledger, rules, check, daily, write, screen, links, sources, agent-rules |
+| `tadori why <ID> [project]` | Everything upstream and downstream of one item, and where the chain breaks |
+| `tadori serve [project]` | Opens the screen locally (127.0.0.1): remaining work to release (timeline / cards), WBS, rulesets, check log, trace, settings |
+| `tadori mcp [project]` | MCP server over stdio. Tools: usage (`how_to`), glossary, remaining work (`get_remaining`), gaps (`list_leaks`), trace, `find_items`, the in-app agent cursor (`screen`), daily progress, write tools (ledger, WBS, rules, people, phases, logged check, project switching — see `how_to write`), and `server_errors`. There is deliberately **no tool that records a human approval**. `--screen` changes which screen the cursor drives |
 
 ```bash
 node packages/cli/dist/main.js check examples/lend-v12
@@ -67,80 +69,78 @@ node packages/cli/dist/main.js why F-02 examples/lend-v12
 node packages/cli/dist/main.js serve examples/lend-v12 --port 4870
 ```
 
-画面で設定や WBS のステータスを変えると、TSV に書き戻します。案件のフォルダがそれ自身の git リポジトリなら commit します。
-**push はしません。**各担当が自分のクローンで中身を確かめてから push してください。
+Changes made on the screen (settings, WBS status, rules, daily progress) are written back to the TSV files, and committed if the project folder is its own git repository.
+**tadori never pushes.** Each person checks the contents in their own clone and pushes.
 
-### エージェントから使う（MCP）
+### Use it from an agent (MCP)
 
-Claude Code なら、ビルドしたあとに次の 1 行でつなげます（パスは手元に合わせてください）。
-
-```bash
-claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp /path/to/案件のフォルダ
-```
-
-つないだエージェントは、まず `how_to`（使い方）の `start` と `agent-rules`（守ること）を読みます。使い方の中身は [packages/cli/guide.md](packages/cli/guide.md) です。
-`screen` を使うと、人が開いている tadori の画面を、画面の中の専用カーソルで操作して見せられます（人のマウスは使いません）。
-
-## 案件のフォルダの置き方
-
-台帳はすべて git 上の TSV です。tadori が無くても人が読めます。
-
-```text
-.tadori/project.tsv        案件の名前
-.tadori/phases.tsv         工程の並び（企業・プロダクトごとに違う）
-.tadori/statuses.tsv       WBS のステータスの設定
-.tadori/kinds.tsv          台帳の種類の読み方（無くてもよい。例：TC → 試験ケース）
-.tadori/columns.tsv        台帳の列の読み方（無くてもよい。例：change → 改修後の対応）
-.tadori/sources.tsv        正本（外の文書・シート・課題）の URL と、反映が古いとする日数（無くてもよい。台帳の source 列の先頭の名前で引く。tadori how-to sources）
-.tadori/links.tsv          ほかの道具を開く URL の雛形（無くてもよい。差し込み：{path}・{repopath}・{abspath}・{line}・{id}。例は examples/lend-v12/.tadori/links.tsv）
-                           差し込み：{path} 案件の中の場所 / {abspath} 手元の絶対パス / {line} 行番号 / {id} 行の ID。javascript: などは使えない
-.tadori/rulesets/*.tsv     工程ごとのルールセット（判定は covered / refers / filled / approval。owner 列に担当の役割）
-.tadori/checks.tsv         チェックの記録（5W1H）
-ledger/items.tsv           台帳（設計書の章・節、commit、観点、試験ケース、試験の記録、指摘、再発防止）
-ledger/wbs.tsv             WBS のタスク
-ledger/approvals.tsv       人の承認の記録（人が書く）
-```
-
-見本は [examples/lend-v12](examples/lend-v12)（架空の「備品貸出アプリ 改修 v1.2」）です。
-**実案件のデータはこのリポジトリに入れません。**実案件の台帳は、その案件のリポジトリに置きます。
-
-## リポジトリの中身
-
-```text
-packages/core   判定の核（台帳を読み、漏れ・完了判定・つながりの辿りを出す）。実行時の依存なし
-packages/cli    tadori コマンドと、手元のサーバー
-packages/ui     画面（tadori serve がそのまま配る）
-packages/desktop デスクトップアプリ（Tauri 2）。裏で tadori serve を起こし、その画面を窓に映す
-site/           紹介のサイト（GitHub Pages。ビルドの要らない HTML）
-examples/       架空の見本の案件
-```
+With Claude Code, after building, connect it with one line (adjust the paths):
 
 ```bash
-pnpm verify       # 型の検査とテスト
-pnpm e2e          # 画面のテスト（Playwright。架空の見本を開いて確かめる。Windows では入っている Edge を使う）
+claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp /path/to/your-project
 ```
 
-## やらないこと
+A connected agent first reads `how_to` → `start` and `agent-rules` (the rules it must follow). The guide itself is [packages/cli/guide.md](packages/cli/guide.md).
+With `screen`, the agent can operate the tadori screen a person has open, using its own cursor inside the app (it never takes over the person's mouse).
 
-- 課題管理・試験の実行・文書の編集画面（それぞれ既存の道具を使います）
-- 品質の点数化・割合
-- 外の道具（GitHub・GitLab・課題管理）との同期
+## Project folder layout
 
-## 一緒に使う道具
+The whole ledger is TSV on git. People can read it without tadori.
 
-- [md-business](https://github.com/meta-taro/md-business) — 仕様と検証シート
-- [git-qa](https://github.com/meta-taro/git-qa) — 試験の実施と証跡
+```text
+.tadori/project.tsv        project name
+.tadori/phases.tsv         order of phases (differs per company / product)
+.tadori/statuses.tsv       WBS status settings
+.tadori/kinds.tsv          display names of ledger kinds (optional, e.g. TC → test case)
+.tadori/columns.tsv        display names of ledger columns (optional)
+.tadori/sources.tsv        URLs of the sources of truth (external docs, sheets, issues) and when a synced row counts as stale (optional; see `tadori how-to sources`)
+.tadori/links.tsv          URL templates for opening other tools (optional; placeholders {path}, {repopath}, {abspath}, {line}, {id}; javascript: etc. are rejected)
+.tadori/rulesets/*.tsv     rulesets per phase (checks: covered / refers / filled / approval; owner = role responsible)
+.tadori/checks.tsv         check log (who, what, when, where, why, how)
+.tadori/daily/*.tsv        daily progress, one file per day
+ledger/items.tsv           the ledger (design sections, commits, test viewpoints, test cases, test runs, findings, preventive actions)
+ledger/wbs.tsv             WBS tasks
+ledger/approvals.tsv       human approvals (written by people)
+```
 
-## 次の段
+The sample is [examples/lend-v12](examples/lend-v12) (a fictional "equipment lending app, revision 1.2"; written in Japanese).
+**Real project data never goes into this repository.** Keep a real project's ledger in that project's own repository.
 
-- MCP の口を広げる（台帳やルールを書く道具はこれから。人の承認だけは口を作らない）
-- 画面の TypeScript 化、資料の版と差分の画面、デスクトップアプリとして包む
+## Repository layout
 
-## ライセンス
+```text
+packages/core     the checking core (reads the ledger, finds gaps, phase gates, traces). No runtime dependencies
+packages/cli      the tadori command and the local server
+packages/ui       the screen (served as-is by tadori serve)
+packages/desktop  the desktop app (Tauri 2). Starts tadori serve in the background and shows its screen
+site/             the website (GitHub Pages, plain HTML, no build step)
+examples/         the fictional sample project
+```
+
+```bash
+pnpm verify       # type check and tests
+pnpm e2e          # screen tests (Playwright; opens the sample project. On Windows it uses the installed Edge)
+```
+
+## Out of scope
+
+- Issue tracking, running tests, or editing documents (use the tools you already have)
+- Quality scores or percentages
+- Syncing with external tools (GitHub, GitLab, issue trackers)
+
+## Works with
+
+- [md-business](https://github.com/meta-taro/md-business) — specs and verification sheets
+- [git-qa](https://github.com/meta-taro/git-qa) — running tests and keeping evidence
+
+## Roadmap
+
+https://meta-taro.github.io/tadori/roadmap.html
+
+## License
 
 MIT
 
-## 開発ルール
+## How this repository is developed
 
-人と AI エージェントが一緒に開発します。ルールは [CLAUDE.md](CLAUDE.md) と
-[`.claude/rules/product-baseline.md`](.claude/rules/product-baseline.md) にあります。
+People and AI agents develop it together. The rules are in [CLAUDE.md](CLAUDE.md) and [`.claude/rules/product-baseline.md`](.claude/rules/product-baseline.md) (Japanese).
