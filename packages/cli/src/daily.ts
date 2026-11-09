@@ -132,7 +132,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
   const issue = text(body, 'issue', false)
   const note = text(body, 'note', false)
   const chosenTag = tag(body)
-  const entry: DailyEntry = {
+  const entry: DailyEntry = await withIssueHead(dir, {
     id: `m${n}`,
     who: text(body, 'who', false) ?? '',
     section: section(body, true) as DailySection,
@@ -142,9 +142,20 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     ...(note ? { note } : {}),
     ...(chosenTag ? { tag: chosenTag } : {}),
     origin: 'manual',
-  }
+  })
   const commit = await writeDaily(dir, date, [...entries, entry], `1 日の進行に行を足した（${date}）`)
   return { entry, commit }
+}
+
+/**
+ * 課題のある行の頭に、自動の行と同じ「課題番号 短い件名 」を付ける（読み上げで、どの課題の話か分かるように）。
+ * もう課題番号で始まっていれば付けない（二重にしない）。短い件名は台帳の short 列、無ければ title
+ */
+async function withIssueHead(dir: string, entry: DailyEntry): Promise<DailyEntry> {
+  if (!entry.issue || entry.text.startsWith(`${entry.issue} `) || entry.text === entry.issue) return entry
+  const item = (await loadProject(dir)).items.find(i => i.id === entry.issue)
+  const name = item ? (item.fields.short || item.title) : ''
+  return { ...entry, text: `${entry.issue} ${name ? `${name} ` : ''}${entry.text}` }
 }
 
 /** 行を直す。自動の行は「直した」になり、作り直しても上書きされない */
@@ -163,7 +174,9 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     tag: tag(body),
   }
   const changed = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
-  const entry: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited' }
+  // 本文か課題を変えたときだけ、課題番号と短い件名を頭に付け直す
+  const merged: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited' }
+  const entry = patch.text !== undefined || patch.issue !== undefined ? await withIssueHead(dir, merged) : merged
   const commit = await writeDaily(dir, date, entries.map(e => (e.id === id ? entry : e)), `1 日の進行の行 ${id} を直した（${date}）`)
   return { entry, commit }
 }

@@ -112,6 +112,17 @@ describe('MCP で 1 日の進行を作る・足す・直す・消す', () => {
     expect(after).not.toContain('試験の環境はいつ空くか')
   })
 
+  test('issue を渡して足した行・直した行も、自動の行と同じく頭に課題番号と短い件名が付く（二重には付けない）', async () => {
+    const added = await tool('daily_add', { date: '2026-11-05', who: '設計担当', section: 'today', text: '祝日の扱いを確かめた', issue: 'Q-1' })
+    const id = added.content[0]?.text.match(/\[(m\d+)\]/)?.[1]
+    await tool('daily_update', { date: '2026-11-05', id, text: 'Q-1 返却期限の祝日扱い 祝日の扱いを決めた' })
+    const listed = (await tool('daily', { date: '2026-11-05' })).content[0]?.text ?? ''
+    expect(listed).toContain('Q-1 返却期限の祝日扱い 祝日の扱いを決めた')
+    expect(listed).not.toContain('Q-1 返却期限の祝日扱い Q-1')
+    await tool('daily_add', { date: '2026-11-05', who: '設計担当', section: 'next', text: '祝日の一覧をもらう', issue: 'Q-1' })
+    expect((await tool('daily', { date: '2026-11-05' })).content[0]?.text).toContain('Q-1 返却期限の祝日扱い 祝日の一覧をもらう')
+  })
+
   test('無い行を直そうとしたら isError', async () => {
     expect((await tool('daily_update', { date: '2026-11-05', id: 'zz9', text: 'a' })).isError).toBe(true)
   })
