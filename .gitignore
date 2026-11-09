@@ -32,3 +32,6 @@ SECRETS.local.md
 # 実案件の仕様・指摘・証跡は、その案件のリポジトリに置く。
 ledger.local/
 *.local.tsv
+
+# md-business がこのフォルダを開いたときに置く作業の記録（手元だけのもの。commit しない）
+/.md-business/
