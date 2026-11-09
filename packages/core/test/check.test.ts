@@ -128,3 +128,14 @@ describe('値で判定するルール', () => {
     expect(leaks[0]?.message).toContain('pending')
   })
 })
+
+describe('検証シートから読んだ行の漏れ', () => {
+  test('直す行が検証シートの行なら、漏れに md-business の行 ID が付く（その行を選んで開くため）', () => {
+    const project = {
+      ...sampleProject,
+      rules: [{ id: 'RS', phase: sampleProject.phases[0]?.id ?? '', kind: 'filled' as const, from: 'TCS', to: '', field: '結果', label: '結果がある' }],
+      items: [{ id: 'TC-90', kind: 'TCS', title: '見本', source: 'qa/sheet.tsv', refs: [], fields: { 結果: '' }, file: 'qa/sheet.tsv', line: 4, rowId: 'r00000000000a' }],
+    }
+    expect(runChecks(project).find(l => l.rule === 'RS')).toMatchObject({ itemId: 'TC-90', file: 'qa/sheet.tsv', line: 4, rowId: 'r00000000000a' })
+  })
+})

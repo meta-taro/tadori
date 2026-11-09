@@ -27,6 +27,8 @@ export interface Item {
   /** この行が書かれている TSV と、その何行目か（md-business でその行を開くため） */
   readonly file?: string
   readonly line?: number
+  /** md-business の検証シートから読んだ行なら、その行の ID（行を挿しても変わらない。md-business でその行を開くため） */
+  readonly rowId?: string
 }
 
 /** WBS のタスク。期間は入っていないこともある */
@@ -124,6 +126,8 @@ export interface Leak {
   /** 直す行が書かれている TSV と行番号（分かるとき） */
   readonly file?: string
   readonly line?: number
+  /** 直す行が md-business の検証シートの行なら、その行 ID */
+  readonly rowId?: string
 }
 
 /** 存在しない ID を指している、を表すルール ID（どのルールセットにも属さない） */

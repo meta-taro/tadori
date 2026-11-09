@@ -13,7 +13,7 @@ const rowOf = (item: Item): string => item.line
   : t('the {id} row in {file}', { id: item.id, file: fileOf(item) })
 
 /** 漏れに、直す行のファイルと行番号を付ける（分かるとき） */
-const at = (item: Item): Pick<Leak, 'file' | 'line'> => ({ file: fileOf(item), ...(item.line ? { line: item.line } : {}) })
+const at = (item: Item): Pick<Leak, 'file' | 'line' | 'rowId'> => ({ file: fileOf(item), ...(item.line ? { line: item.line } : {}), ...(item.rowId ? { rowId: item.rowId } : {}) })
 
 /** 漏れに、担当（ルールの owner）を付ける */
 const withOwner = (rule: Rule, leak: Leak): Leak => (rule.owner ? { ...leak, owner: rule.owner } : leak)

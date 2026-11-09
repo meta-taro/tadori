@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from 'vitest'
-import { cp, mkdtemp, readFile, rm } from 'node:fs/promises'
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { loadProject } from '../src/infrastructure/repository.js'
@@ -17,6 +17,17 @@ beforeEach(async () => {
 afterAll(async () => { for (const d of made) await rm(d, { recursive: true, force: true }) })
 
 describe('台帳の行（saveItem・removeItem）', () => {
+  test('検証シートや WBS から読んだ行は、台帳に書き写さず、直す・消すを断る（その場所で直す）', async () => {
+    await writeFile(join(dir, 'qa-sheet.tsv'), '#! md-business:test-spec-tsv/v1\nケースID\t項目\t_id\nTC-90\t見本\tr00000000000a\n', 'utf8')
+    await writeFile(join(dir, '.tadori/sheets.tsv'), 'path\tkind\tid\ttitle\nqa-sheet.tsv\tTC\tケースID\t項目\n', 'utf8')
+    const before = await readFile(join(dir, 'ledger/items.tsv'), 'utf8')
+    await expect(saveItem(dir, { id: 'TC-90', title: 'x' }, { create: false })).rejects.toThrow(/qa-sheet\.tsv/)
+    await expect(removeItem(dir, 'TC-90')).rejects.toThrow(/qa-sheet\.tsv/)
+    const task = (await loadProject(dir)).tasks[0]?.id as string
+    await expect(saveItem(dir, { id: task, title: 'x' }, { create: false })).rejects.toThrow(/wbs\.tsv/)
+    expect(await readFile(join(dir, 'ledger/items.tsv'), 'utf8')).toBe(before)
+  })
+
   test('足す・直す。refs は台帳にある ID だけ', async () => {
     await saveItem(dir, { id: 'RUN-0013', kind: 'RUN', title: 'TC-07 の実施', source: 'runs/RUN-0013/run.json', refs: ['TC-07'] }, { create: true })
     expect((await loadProject(dir)).items.find(i => i.id === 'RUN-0013')?.refs).toEqual(['TC-07'])

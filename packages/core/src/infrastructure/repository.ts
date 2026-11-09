@@ -1,9 +1,10 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { isAbsolute, join, normalize } from 'node:path'
 import type { Approval, ApprovalStatus, Item, Phase, Project, Rule, RuleKind, StatusDef, Task } from '../domain/model.js'
 import { validateLinkTemplate, type LinkTemplate } from '../domain/links.js'
 import type { SourceDef } from '../domain/sources.js'
 import { t } from '../i18n.js'
+import { parseTestSheet, type TestSheetRow } from './test-sheet.js'
 import { parseTsv } from './tsv.js'
 
 /**
@@ -33,6 +34,7 @@ export const PATHS = {
   links: '.tadori/links.tsv',
   sources: '.tadori/sources.tsv',
   columns: '.tadori/columns.tsv',
+  sheets: '.tadori/sheets.tsv',
 } as const
 
 /** 読み込みで見つかった問題をまとめて返す（1 つずつ直させない） */
@@ -114,6 +116,55 @@ function toItem({ row, line }: NumberedRow): Item {
     file: PATHS.items,
     line,
   }
+}
+
+/** 案件のフォルダの外を指していないか（../ や絶対パスは読まない） */
+const isInsideProject = (path: string) => !isAbsolute(path) && !normalize(path).startsWith('..')
+
+/**
+ * md-business の検証シートの行を、台帳の行として読む（.tadori/sheets.tsv に書いたシートだけ）。
+ * WBS と同じく、台帳へ書き写さない（正本を 2 つにしない）。tadori はシートに書き戻さない。
+ * sheets.tsv の列：path（案件の中の場所）・kind（台帳の種類）・id／title／refs（それぞれに使うシートの列名）
+ */
+async function loadSheetItems(dir: string, rows: readonly Record<string, string>[], problems: string[]): Promise<Item[]> {
+  const items: Item[] = []
+  for (const row of rows) {
+    const path = (row.path ?? '').trim()
+    const kind = (row.kind ?? '').trim()
+    if (!path) continue
+    if (!isInsideProject(path)) { problems.push(t('{file}, {path}: the sheet must be inside the project folder', { file: PATHS.sheets, path })); continue }
+    if (!kind) { problems.push(t('{file}, {path}: write the ledger kind for its rows in the kind column', { file: PATHS.sheets, path })); continue }
+    if (!(await exists(join(dir, path)))) { problems.push(t('{file}: {path} is missing', { file: PATHS.sheets, path })); continue }
+    const sheet = parseTestSheet(await readFile(join(dir, path), 'utf8'))
+    if (!sheet) { problems.push(t('{file}: {path} is not an md-business verification sheet (its first line must be "#! md-business:test-spec-tsv/v1")', { file: PATHS.sheets, path })); continue }
+    items.push(...sheetRowsToItems(sheet.rows, { path, kind, id: (row.id ?? '').trim(), title: (row.title ?? '').trim(), refs: (row.refs ?? '').trim() }, problems))
+  }
+  return items
+}
+
+interface SheetColumns { readonly path: string; readonly kind: string; readonly id: string; readonly title: string; readonly refs: string }
+
+function sheetRowsToItems(rows: readonly TestSheetRow[], columns: SheetColumns, problems: string[]): Item[] {
+  const used = new Set([columns.id, columns.title, columns.refs].filter(Boolean))
+  return rows.flatMap(r => {
+    // ID の列が空の行は、md-business の行 ID で指す（まだ ID を振っていない行も落とさず、漏れとして見せる）
+    const id = (columns.id ? (r.cells[columns.id] ?? '').trim() : '') || r.rowId || ''
+    if (!id) {
+      problems.push(t('{path}, line {line}: the row has no ID (fill the "{column}" column, or open the sheet in md-business once so it gives the row an ID)', { path: columns.path, line: r.line, column: columns.id || '_id' }))
+      return []
+    }
+    return [{
+      id,
+      kind: columns.kind,
+      title: columns.title ? (r.cells[columns.title] ?? '').trim() : '',
+      source: columns.path,
+      refs: columns.refs ? splitRefs(r.cells[columns.refs] ?? '') : [],
+      fields: Object.fromEntries(Object.entries(r.cells).filter(([name]) => !used.has(name))),
+      file: columns.path,
+      line: r.line,
+      ...(r.rowId ? { rowId: r.rowId } : {}),
+    }]
+  })
 }
 
 function toTask({ row, line }: NumberedRow, problems: string[]): Task {
@@ -265,7 +316,7 @@ export async function loadProject(dir: string): Promise<Project> {
     throw new ProjectLoadError([t('{dir} has no .tadori folder. Specify a tadori project folder', { dir })])
   }
   const problems: string[] = []
-  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows, sourceRows] = await Promise.all([
+  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows, sourceRows, sheetRows] = await Promise.all([
     readRows(dir, PATHS.project),
     readRequiredRows(dir, PATHS.phases, problems),
     readRequiredRows(dir, PATHS.statuses, problems),
@@ -277,6 +328,7 @@ export async function loadProject(dir: string): Promise<Project> {
     readRows(dir, PATHS.columns),
     readRows(dir, PATHS.links),
     readRows(dir, PATHS.sources),
+    readRows(dir, PATHS.sheets),
   ])
   const phases: Phase[] = phaseRows.map(row => {
     const order = Number(row.order)
@@ -286,7 +338,7 @@ export async function loadProject(dir: string): Promise<Project> {
   const tasks = wbsRows.map(row => toTask(row, problems))
   // WBS のタスクは台帳の行（種類 W）としても辿れるようにする。台帳へ書き写すと正本が 2 つになるため
   const taskItems: Item[] = tasks.map(t => ({ id: t.id, kind: 'W', title: t.name, source: PATHS.wbs, refs: [], fields: {}, file: PATHS.wbs, ...(t.line ? { line: t.line } : {}) }))
-  const items = [...taskItems, ...itemRows.map(toItem)]
+  const items = [...taskItems, ...itemRows.map(toItem), ...(await loadSheetItems(dir, sheetRows, problems))]
   problems.push(...duplicateIdProblems(items))
   const project: Project = {
     name: projectRows.at(0)?.name ?? '',

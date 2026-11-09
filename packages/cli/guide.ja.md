@@ -42,6 +42,13 @@ TSV（タブ区切り）です。`#` で始まる行はコメントとして読�
 書いても書かなくてもよい列：`owner`（担当）・`issue`（この作業の課題の ID）。人単位の 1 日の進行に使います（topic: daily）。
 WBS のタスクは台帳の行（種類 `W`）としても辿れます。台帳へ書き写さないでください。
 
+**md-business の検証シートは、そのまま読みます。**`.tadori/sheets.tsv`（列 `path kind id title refs`）に書くと、シートの各行が書き写さずに台帳の行になります。
+- `path` 案件のフォルダの中のシート（1 行目が `#! md-business:test-spec-tsv/v1` のもの）
+- `kind` その行の台帳の種類（例：`TC`）
+- `id` `title` `refs` 行の ID・名前・元にしている ID に使う、シートの列名（例：`ケースID`・`項目`・`仕様`）。ID が空の行は md-business の行 ID（`r` ＋ 16 進 12 桁）で指します
+- ほかの列は、台帳の列と同じようにルールで使えます。md-business で控えにした行は読みません
+- tadori はシートに書きません。`item_update`・`item_remove` はこの行を断ります。md-business で直してください
+
 `ledger/approvals.tsv` の列：`rule`（approval のルールの ID）・`status`（`承認` か、差し戻しなど）・`who`・`when`。
 **ここは承認した人が書きます。エージェントは書きません。**
 
@@ -176,8 +183,8 @@ WBS（`ledger/wbs.tsv`）と台帳に、書かなくてもよい列がありま�
 ## links ほかの道具を開く
 
 `.tadori/links.tsv`（列 `tool url`）に URL の雛形を書くと、漏れの横の md / qa のアイコンが押せるようになります。
-差し込める値：`{path}`（案件のフォルダからの場所）・`{repopath}`（git リポジトリの最上位からの場所）・`{abspath}`・`{line}`・`{id}`。
-例：`md-business	md-business://open?repo=github.com/<持ち主>/<リポジトリ>&path={repopath}&line={line}`
+差し込める値：`{path}`（案件のフォルダからの場所）・`{repopath}`（git リポジトリの最上位からの場所）・`{abspath}`・`{line}`・`{id}`・`{rowid}`（検証シートの行の、md-business の行 ID）。差し込んだ値が空の引数は、リンクから外します。
+例：`md-business	md-business://open?repo=github.com/<持ち主>/<リポジトリ>&path={repopath}&line={line}&id={rowid}`（md-business は `line=` より `id=` を使い、その行を選んだ状態でシートを開きます）
 `javascript:` `data:` `file:` などの雛形は読み込みで止めます。
 
 ## sources 正本へのリンクと、反映した日時

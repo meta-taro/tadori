@@ -225,3 +225,39 @@ describe('値で判定するルールを読む', () => {
     await expect(loadProject(dir)).rejects.toThrow(/values/)
   })
 })
+
+describe('md-business の検証シートを台帳の行として読む（.tadori/sheets.tsv）', () => {
+  const SHEET = [
+    '#! md-business:test-spec-tsv/v1',
+    '#@ rowid _id',
+    'ケースID\t項目\t結果:enum(OK|NG)\t仕様\t_id',
+    'TC-01\t章を確かめる\tOK\tBD-1\tr00000000000a',
+    '\tまだ ID の無い行\t\tDD-1\tr00000000000b',
+    '',
+  ].join('\n')
+
+  test('シートの行が、書き写さずに台帳の行になる（ID・名前・つながり・ほかの列・場所・行 ID）', async () => {
+    await writeMinimalProject()
+    await put('qa/sheet.tsv', SHEET)
+    await put('.tadori/sheets.tsv', 'path\tkind\tid\ttitle\trefs\nqa/sheet.tsv\tTC\tケースID\t項目\t仕様\n')
+    const items = (await loadProject(dir)).items.filter(i => i.kind === 'TC')
+    expect(items[0]).toEqual({ id: 'TC-01', kind: 'TC', title: '章を確かめる', source: 'qa/sheet.tsv', refs: ['BD-1'], fields: { 結果: 'OK' }, file: 'qa/sheet.tsv', line: 4, rowId: 'r00000000000a' })
+    // ケースID が空の行は、md-business の行 ID で指す（行を落とさない）
+    expect(items[1]).toMatchObject({ id: 'r00000000000b', title: 'まだ ID の無い行', refs: ['DD-1'] })
+  })
+
+  test('書いたシートが無い・検証シートでない・種類が無いときは、問題として止める', async () => {
+    await writeMinimalProject()
+    await put('qa/plain.tsv', '項目\nA\n')
+    await put('.tadori/sheets.tsv', 'path\tkind\tid\ttitle\trefs\nqa/none.tsv\tTC\t\t\t\nqa/plain.tsv\tTC\t\t\t\nqa/plain.tsv\t\t\t\t\n')
+    const error = await loadProject(dir).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ProjectLoadError)
+    expect((error as ProjectLoadError).problems.join('\n')).toMatch(/qa\/none\.tsv[\s\S]*qa\/plain\.tsv[\s\S]*kind/)
+  })
+
+  test('シートの外へ出る場所は読まない', async () => {
+    await writeMinimalProject()
+    await put('.tadori/sheets.tsv', 'path\tkind\n../outside.tsv\tTC\n')
+    await expect(loadProject(dir)).rejects.toThrow(/outside/)
+  })
+})

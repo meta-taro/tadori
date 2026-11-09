@@ -1,4 +1,4 @@
-# URL templates for opening other tools. Placeholders: {path} (inside the project folder), {repopath} (from the top of the git repository), {abspath}, {line}, {id}
+# URL templates for opening other tools. Placeholders: {path} (inside the project folder), {repopath} (from the top of the git repository), {abspath}, {line}, {id}, {rowid} (the md-business row ID of a verification sheet row; a parameter with an empty value is left out)
 # md-business only opens folders that have been opened once on that PC. line= works from md-business 0.38.0
 tool	url
-md-business	md-business://open?repo=github.com/meta-taro/tadori&path={repopath}&line={line}
+md-business	md-business://open?repo=github.com/meta-taro/tadori&path={repopath}&line={line}&id={rowid}

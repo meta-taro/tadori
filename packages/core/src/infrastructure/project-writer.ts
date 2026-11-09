@@ -1,5 +1,6 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import type { Item } from '../domain/model.js'
 import { ownersOf } from '../domain/people.js'
 import { joinList, t } from '../i18n.js'
 import { commitFiles, type CommitResult } from './git.js'
@@ -83,12 +84,22 @@ export interface ItemInput {
  * 台帳の行を足す（create）か直す。refs は台帳と WBS にある ID だけ。
  * synced を渡すと、正本から手元へ反映した日時とだれが（synced_at・synced_by 列）も書く。
  */
+/**
+ * 台帳（items.tsv）の外から読んだ行（WBS・md-business の検証シート）は、ここでは書かない。
+ * 台帳に同じ ID の行を足すと正本が 2 つになるため。直すのは、その行が書かれている場所
+ */
+function refuseOutsideLedger(items: readonly Item[], id: string): void {
+  const file = items.find(i => i.id === id)?.file
+  if (file && file !== PATHS.items) throw new WriteRefused([t('{id} is read from {file}. Change it there (tadori does not write to that file)', { id, file })])
+}
+
 export async function saveItem(dir: string, input: ItemInput, { create, synced }: { create: boolean; synced?: { at: string; who: string } }): Promise<CommitResult> {
   const id = checkId(input.id, 'item')
   const project = await loadProject(dir)
   const exists = project.items.some(i => i.id === id)
   if (create && exists) throw new WriteRefused([t('{id} is already in the ledger (use update to change it)', { id })])
   if (!create && !exists) throw new WriteRefused([t('{id} is not in the ledger (use add to add it)', { id })])
+  refuseOutsideLedger(project.items, id)
   if (create && !input.kind?.trim()) throw new WriteRefused([t('A new row needs a kind')])
   const known = new Set(project.items.map(i => i.id))
   const missing = (input.refs ?? []).filter(r => !known.has(r))
@@ -113,6 +124,7 @@ export async function removeItem(dir: string, rawId: string): Promise<CommitResu
   const id = checkId(rawId, 'item')
   const project = await loadProject(dir)
   if (!project.items.some(i => i.id === id)) throw new WriteRefused([t('{id} is not in the ledger', { id })])
+  refuseOutsideLedger(project.items, id)
   const referrers = [
     ...project.items.filter(i => i.refs.includes(id)).map(i => i.id),
     ...project.tasks.filter(t => t.issue === id).map(t => t.id),

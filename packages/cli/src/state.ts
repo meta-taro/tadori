@@ -88,7 +88,7 @@ function withOpenLinks(project: Project, dir: string, prefix: string, leaks: rea
     // 試験ケースの漏れは git-qa で実施できる。シートの場所は台帳の source 列（例：qa/test-spec.tsv）
     const runnable = item?.kind === 'TC'
     const openUrl = mdBusiness && l.file
-      ? buildLink(mdBusiness.url, { path: l.file, repopath: prefix + l.file, abspath: join(dir, l.file), id: l.itemId, ...(l.line ? { line: l.line } : {}) })
+      ? buildLink(mdBusiness.url, { path: l.file, repopath: prefix + l.file, abspath: join(dir, l.file), id: l.itemId, ...(l.line ? { line: l.line } : {}), ...(l.rowId ? { rowid: l.rowId } : {}) })
       : undefined
     const sheet = item?.source.split(/\s/)[0] ?? ''
     const runUrl = gitQa && runnable

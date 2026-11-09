@@ -14,8 +14,15 @@ describe('buildLink', () => {
       .toBe('md-business://open?repo=github.com/o/r&path=examples%2Flend-v12%2Fledger%2Fitems.tsv')
   })
 
-  test('値の無い差し込みは空にする', () => {
-    expect(buildLink('x://open?path={path}&line={line}', { path: 'a.tsv' })).toBe('x://open?path=a.tsv&line=')
+  test('値の無い差し込みだけの引数は、リンクから外す（空の line= や id= を渡さない）', () => {
+    expect(buildLink('x://open?path={path}&line={line}', { path: 'a.tsv' })).toBe('x://open?path=a.tsv')
+    expect(buildLink('x://open?line={line}&path={path}&mode=grid', { path: 'a.tsv' })).toBe('x://open?path=a.tsv&mode=grid')
+    expect(buildLink('x://open?id={rowid}', {})).toBe('x://open')
+  })
+
+  test('{rowid} には md-business の検証シートの行 ID を差し込む（行を挿しても変わらないので、その行を開ける）', () => {
+    expect(buildLink('md-business://open?path={path}&line={line}&id={rowid}', { path: 'qa/sheet.tsv', line: 4, rowid: 'r3f9a2c81b40e' }))
+      .toBe('md-business://open?path=qa%2Fsheet.tsv&line=4&id=r3f9a2c81b40e')
   })
 })
 

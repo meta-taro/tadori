@@ -42,6 +42,13 @@ Columns of `ledger/wbs.tsv`: `id` (starts with W), `phase` (phase ID), `name`, `
 Optional columns: `owner` and `issue` (the ID of the issue this work is for). They are used for each person's daily progress (topic: daily).
 WBS tasks can also be traced as ledger rows (kind `W`). Do not copy them into the ledger.
 
+**md-business verification sheets are read directly.** List them in `.tadori/sheets.tsv` (columns `path kind id title refs`) and each row of the sheet becomes a ledger row, without copying:
+- `path` the sheet inside the project folder (a file whose first line is `#! md-business:test-spec-tsv/v1`)
+- `kind` the ledger kind of its rows (e.g. `TC`)
+- `id` `title` `refs` the names of the sheet's columns to use as the row ID, the name and the IDs it is based on (e.g. `Case ID`, `Item`, `Spec`). A row with no ID uses md-business's row ID (`r` + 12 hex digits)
+- The other columns can be used by rules like any ledger column. Rows hidden in md-business are not read
+- tadori never writes to the sheet. `item_update` / `item_remove` refuse these rows; change them in md-business
+
 Columns of `ledger/approvals.tsv`: `rule` (the ID of an approval rule), `status` (`承認` (approved), or sent back and so on), `who`, `when`.
 **This file is written by the person who approved. Agents do not write it.**
 
@@ -176,8 +183,8 @@ The desktop app is at `http://127.0.0.1:4873`. If it is open on another port, st
 ## links Opening other tools
 
 Write URL templates in `.tadori/links.tsv` (columns `tool url`) and the md / qa icons next to a gap become clickable.
-Values you can insert: `{path}` (location from the project folder), `{repopath}` (location from the top of the git repository), `{abspath}`, `{line}`, `{id}`.
-Example: `md-business	md-business://open?repo=github.com/<owner>/<repository>&path={repopath}&line={line}`
+Values you can insert: `{path}` (location from the project folder), `{repopath}` (location from the top of the git repository), `{abspath}`, `{line}`, `{id}`, `{rowid}` (the md-business row ID of a verification sheet row). A parameter whose inserted value is empty is left out of the link.
+Example: `md-business	md-business://open?repo=github.com/<owner>/<repository>&path={repopath}&line={line}&id={rowid}` (md-business uses `id=` before `line=`, and opens the sheet with that row selected)
 Templates such as `javascript:` `data:` `file:` are rejected when loading.
 
 ## sources Links to the source of truth, and when it was synced

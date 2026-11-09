@@ -22,14 +22,37 @@ export interface LinkValues {
   readonly line?: number
   /** 行の ID（例：DD-2.3・TC-07） */
   readonly id?: string
+  /** md-business の検証シートの行 ID（例 r3f9a2c81b40e）。台帳の TSV の行には無い */
+  readonly rowid?: string
 }
 
-/** 雛形の差し込み（{path} など）に、URL で崩れない形にした値を入れる。値が無ければ空 */
+const PLACEHOLDER = /\{(path|repopath|abspath|line|id|rowid)\}/g
+
+const fill = (text: string, values: LinkValues) => text.replace(PLACEHOLDER, (_, key: keyof LinkValues) => {
+  const value = values[key]
+  return value === undefined || value === '' ? '' : encodeURIComponent(String(value))
+})
+
+/** 引数（「名前=値」）が差し込みを含み、差し込んだ結果の値が空か */
+function isEmptyParam(param: string, values: LinkValues): boolean {
+  const [, value = ''] = param.split(/=(.*)/s)
+  return PLACEHOLDER.test(value) && fill(value, values) === ''
+}
+
+/**
+ * 雛形の差し込み（{path} など）に、URL で崩れない形にした値を入れる。
+ * 値の無い差し込みだけでできた引数（例：行番号の無い行の line=）は、リンクから外す。
+ * 空の値を渡すと、開く側が「その値を探す」ことになり、見つからないと知らせが出るため。
+ */
 export function buildLink(template: string, values: LinkValues): string {
-  return template.replace(/\{(path|repopath|abspath|line|id)\}/g, (_, key: keyof LinkValues) => {
-    const value = values[key]
-    return value === undefined ? '' : encodeURIComponent(String(value))
+  const at = template.indexOf('?')
+  if (at < 0) return fill(template, values)
+  const params = template.slice(at + 1).split('&').filter(p => {
+    PLACEHOLDER.lastIndex = 0
+    return !isEmptyParam(p, values)
   })
+  const base = fill(template.slice(0, at), values)
+  return params.length ? `${base}?${params.map(p => fill(p, values)).join('&')}` : base
 }
 
 /** 押すと画面の中で命令が動く形・手元のファイルを直接開く形は使わない */
