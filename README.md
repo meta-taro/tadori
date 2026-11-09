@@ -55,7 +55,7 @@ git config core.hooksPath .githooks
 | `tadori how-to [話題]` | 使い方（MCP の `how_to` と同じ中身）。話題は start・ledger・rules・check・screen・links・agent-rules |
 | `tadori why <ID> [案件]` | その 1 件から上下に辿った全部と、線が切れている所 |
 | `tadori serve [案件]` | 手元（127.0.0.1）で画面を開く。リリースまでの残課題（タイムライン／カード）・WBS・ルールセット・チェックの記録・つながりを辿る・設定 |
-| `tadori mcp [案件]` | MCP の口（標準入出力）。道具は使い方（`how_to`）・用語（`glossary`）・残課題（`get_remaining`）・漏れ（`list_leaks`）・つながり（`trace`）・台帳の行を探す（`find_items`）・画面の専用カーソル（`screen`）。案件の中身は読むだけ。`--screen` で操作する画面の場所を変えられる |
+| `tadori mcp [案件]` | MCP の口（標準入出力）。道具は使い方（`how_to`）・用語（`glossary`）・残課題（`get_remaining`）・漏れ（`list_leaks`）・つながり（`trace`）・台帳の行を探す（`find_items`）・画面の専用カーソル（`screen`）・1 日の進行・書く道具（台帳・WBS・ルール・人の表・工程・記録つきの check・案件の切り替え。使い方は how_to の write）。人の承認を書く道具は無い。`--screen` で操作する画面の場所を変えられる |
 
 ```bash
 node packages/cli/dist/main.js check examples/lend-v12

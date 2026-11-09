@@ -8,6 +8,7 @@ import { loadState, localToday } from './state.js'
 import { startServer } from './server.js'
 import { serveMcp } from './mcp.js'
 import { howTo } from './guide.js'
+import { runCheck } from './check-log.js'
 import { isDay, loadDaily } from './daily.js'
 
 const DEFAULT_PORT = 4870
@@ -54,24 +55,6 @@ function fail(message: string): never {
   process.exit(2)
 }
 
-/** check の結果をチェックの記録の行にする（ルールごとに 1 行） */
-function toRecords(state: Awaited<ReturnType<typeof loadState>>['state'], dir: string): CheckRecord[] {
-  const now = new Date()
-  const when = `${today} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-  return state.rules.filter(r => r.kind !== 'approval').map(rule => {
-    const leaks = state.leaks.filter(l => l.rule === rule.id)
-    return {
-      when,
-      who: values.who ?? 'エージェント',
-      what: `${rule.id} · ${rule.label}`,
-      where: relative(process.cwd(), dir) || '.',
-      why: values.why ?? 'tadori check',
-      how: 'tadori check',
-      result: leaks.length ? `漏れ ${leaks.length} 件（${leaks.map(l => l.itemId).join('・')}）` : '満たす',
-    }
-  })
-}
-
 async function main(): Promise<void> {
   if (values.help || !command) {
     process.stdout.write(`${USAGE}\n`)
@@ -98,16 +81,16 @@ async function main(): Promise<void> {
 
   if (command === 'check') {
     const dir = resolve(rest[0] ?? '.')
-    const { state } = await loadState(dir, today)
-    process.stdout.write(`${formatCheck(state)}\n`)
-    if (values.log) {
-      const commit = await appendChecks(dir, toRecords(state, dir), `チェックの記録を追加（${values.why ?? 'tadori check'}）`)
+    const run = await runCheck(dir, { today, ...(values.log ? { log: true } : {}), ...(values.who ? { who: values.who } : {}), ...(values.why ? { why: values.why } : {}) })
+    process.stdout.write(`${run.text}\n`)
+    if (run.commit) {
+      const commit = run.commit
       const pushNote = commit.unpushed === null || commit.unpushed === undefined
         ? '（push 先が設定されていません）'
         : `（push していない commit が ${commit.unpushed} 件。中身を確かめてから push してください）`
       process.stdout.write(commit.committed ? `チェックの記録を足して commit しました${pushNote}\n` : `チェックの記録を足しました（${commit.reason}）\n`)
     }
-    process.exitCode = state.leaks.length ? 1 : 0
+    process.exitCode = run.leakCount ? 1 : 0
     return
   }
 

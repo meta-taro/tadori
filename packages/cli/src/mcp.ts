@@ -3,6 +3,7 @@ import { createInterface } from 'node:readline'
 import { parseTsv, trace } from '@tadori/core'
 import { formatCheck, formatTrace } from './format.js'
 import { howTo } from './guide.js'
+import { writeTools, type WriteContext } from './mcp-write.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 import { loadState, localToday } from './state.js'
 
@@ -223,7 +224,8 @@ async function sendToScreen(screenUrl: string, args: Record<string, unknown>): P
 
 function buildTools(options: McpOptions): Tool[] {
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
-  return [...buildProjectTools(options), {
+  // 書く道具は、open_project で替えた案件を読むので、同じ入れ物（options）を渡す
+  return [...buildProjectTools(options), ...writeTools(options as WriteContext), {
     name: 'how_to',
     description: 'tadori の使い方を返す（はじめ方・台帳とルールの書き方・確かめ方・画面の案内の仕方・エージェントが守ること）。'
       + 'topic を空にすると話題の一覧。初めて使うときは start と agent-rules を読むこと。',
@@ -266,7 +268,9 @@ function buildTools(options: McpOptions): Tool[] {
 
 /** 1 つのメッセージに返事を作る。通知（id が無いもの）には null を返す */
 export function createMcpHandler(options: McpOptions): (message: JsonRpcMessage) => Promise<JsonRpcResponse | null> {
-  const tools = buildTools(options)
+  // 開く案件は open_project で替わるので、呼び出し元の options は変えずに写しを持つ
+  const context: { -readonly [K in keyof McpOptions]: McpOptions[K] } = { ...options }
+  const tools = buildTools(context)
   return async message => {
     if (message.id === undefined) return null
     const id = message.id
