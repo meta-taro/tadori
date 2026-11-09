@@ -68,7 +68,25 @@ export function lateDays(state, task) {
   return Math.max(0, day(state.today) - day(task.end))
 }
 
-/** API を呼ぶ。書き込みには x-tadori ヘッダを付ける（ほかのサイトからの書き込みを防ぐため） */
+/** API が断ったときの誤り（problems に、設定の読み込みで見つかった問題が並ぶ） */
+export class ApiError extends Error {
+  /** @param {string} message @param {string[]} problems */
+  constructor(message, problems) {
+    super(message)
+    this.name = 'ApiError'
+    this.problems = problems
+  }
+}
+
+/** 誤りを人に見せる 1 行にする（Error でないものが投げられても落ちないように） */
+export const messageOf = (/** @type {unknown} */ error) => (error instanceof Error ? error.message : String(error))
+
+/**
+ * API を呼ぶ。書き込みには x-tadori ヘッダを付ける（ほかのサイトからの書き込みを防ぐため）
+ * @param {string} path
+ * @param {{ method?: string, body?: unknown }} [options]
+ * @returns {Promise<any>}
+ */
 export async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch(path, {
     method,
@@ -77,17 +95,16 @@ export async function api(path, { method = 'GET', body } = {}) {
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const error = new Error(data.error ?? `サーバーが ${res.status} を返しました`)
-    error.problems = data.problems ?? []
-    throw error
+    throw new ApiError(data.error ?? `サーバーが ${res.status} を返しました`, data.problems ?? [])
   }
   return data
 }
 
-let toastTimer = null
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let toastTimer
 /** 画面の下に短い知らせを出す（alert は使わない） */
 export function toast(message, durationMs = 4000) {
-  const el = document.getElementById('toast')
+  const el = /** @type {HTMLElement} */ (document.getElementById('toast'))
   el.textContent = message
   el.classList.add('show')
   clearTimeout(toastTimer)
@@ -122,4 +139,15 @@ export function originHtml(origin) {
   const when = origin.syncedAt ? `反映 ${esc(origin.syncedAt.slice(5, 16).replace('-', '/'))}${origin.syncedBy ? ` ${esc(origin.syncedBy)}` : ''}` : '反映の記録なし'
   const title = origin.stale ? '正本から手元へ反映してから日が経っています（または記録がありません）。正本と見比べてください' : '正本から手元へ反映した日時'
   return `<span class="origin ${origin.stale ? 'stale' : ''}">${link}<span class="origin-sync" title="${title}">${when}${origin.stale ? ' · 古い' : ''}</span></span>`
+}
+
+/**
+ * ID で要素を取る。画面の骨組み（index.html）にあるはずのものが無いのは作りの誤りなので、黙って進まずに止める
+ * @param {string} id
+ * @returns {HTMLElement}
+ */
+export function byId(id) {
+  const el = document.getElementById(id)
+  if (!el) throw new Error(`画面に #${id} がありません`)
+  return el
 }

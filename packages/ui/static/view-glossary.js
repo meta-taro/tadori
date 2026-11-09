@@ -1,5 +1,5 @@
 // 用語：glossary.tsv（用語集の正本）を読んで並べる。言葉で絞り込める
-import { esc } from './util.js'
+import { esc, messageOf } from './util.js'
 
 let query = ''
 
@@ -40,7 +40,7 @@ export async function renderGlossary(view) {
     body.innerHTML = rowsHtml(entries)
     view.querySelector('#glossary-query').addEventListener('input', e => { query = e.target.value; body.innerHTML = rowsHtml(entries) })
   } catch (error) {
-    body.innerHTML = `<div class="cond">${esc(error.message)}</div>`
+    body.innerHTML = `<div class="cond">${esc(messageOf(error))}</div>`
   }
 }
 

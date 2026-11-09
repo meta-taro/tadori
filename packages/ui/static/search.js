@@ -1,8 +1,9 @@
 // 画面の上の検索：打っている途中から、どの画面のどこに出てくるかをグループに分けて並べる
-import { esc, kindLabel } from './util.js'
+import { byId, esc, kindLabel } from './util.js'
 
 const PER_GROUP = 5
-let glossary = null // 用語集は最初に検索したときに 1 回だけ読む
+/** @type {Array<Record<string, string>> | null} 用語集は最初に検索したときに 1 回だけ読む */
+let glossary = null
 
 async function loadGlossary() {
   if (glossary) return glossary
@@ -78,8 +79,8 @@ function mark(text, raw) {
  * 検索の欄を動かす。getState で最新の案件を読み、navigate(open) で画面を移す。
  */
 export function initSearch({ getState, navigate }) {
-  const form = document.getElementById('jump')
-  const input = document.getElementById('jump-input')
+  const form = byId('jump')
+  const input = /** @type {HTMLInputElement} */ (byId('jump-input'))
   const panel = document.createElement('div')
   panel.className = 'search-panel'
   panel.setAttribute('role', 'listbox')
@@ -111,11 +112,11 @@ export function initSearch({ getState, navigate }) {
         <span class="search-where">${esc(e.where)}</span>
       </button>` }).join('')}`).join('')
     panel.hidden = false
-    panel.querySelectorAll('[data-n]').forEach(b => b.addEventListener('mousedown', ev => { ev.preventDefault(); choose(flat[Number(b.dataset.n)]) }))
+    panel.querySelectorAll('[data-n]').forEach(b => b.addEventListener('mousedown', ev => { ev.preventDefault(); choose(flat[Number(/** @type {HTMLElement} */ (b).dataset.n)]) }))
   }
 
   const highlight = () => panel.querySelectorAll('[data-n]').forEach(b => {
-    const on = Number(b.dataset.n) === active
+    const on = Number(/** @type {HTMLElement} */ (b).dataset.n) === active
     b.classList.toggle('on', on)
     if (on) b.scrollIntoView({ block: 'nearest' })
   })

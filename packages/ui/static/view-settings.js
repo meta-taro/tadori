@@ -1,5 +1,5 @@
 // 設定：工程とステータス。保存すると TSV に書き戻し、案件が git リポジトリなら commit する
-import { api, chip, esc, ICON_INFO, toast, toastCommit } from './util.js'
+import { api, ApiError, chip, esc, ICON_INFO, messageOf, toast, toastCommit } from './util.js'
 
 const TONES = { none: '色なし', wait: '青灰（途中）', hole: '琥珀（止まっている）', ok: '緑（済み）' }
 let problems = []
@@ -31,7 +31,7 @@ async function save(path, body, what, reload) {
     toastCommit(what, commit)
     await reload()
   } catch (error) {
-    problems = error.problems?.length ? error.problems : [error.message]
+    problems = error instanceof ApiError && error.problems.length ? error.problems : [messageOf(error)]
     toast(`${what}を保存できませんでした`)
     await reload()
   }

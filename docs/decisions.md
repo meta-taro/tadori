@@ -179,3 +179,12 @@ PM はプロダクト単位と人単位の両方で進行を見る。プロダ�
 - 手元の Windows では入っている Edge を使い、ブラウザを別に落とさない。CI（`.github/workflows/ci.yml`）では Chromium を入れる
 - CI は push と pull request のたびに、型・単体のテスト・画面のテストを回す。デスクトップアプリ（Rust）はインストーラーを作る側で建てる
 - 画面の TypeScript 化は、テストで振る舞いを押さえてから行う（先に変えると、壊したかどうかが分からない）
+
+## 2026-11-09 画面は JavaScript のまま、TypeScript で型を検査する（段階を分けて進める）
+
+画面（packages/ui/static）は、tadori serve がそのまま配る素の JavaScript で、ビルドの段が無い。TypeScript で書き直してビルドを足すと、CLI とデスクトップアプリの配り方まで変わる。
+
+- まず `checkJs` で、いまの JavaScript を TypeScript の検査にかける（`pnpm --filter @tadori/ui typecheck`。commit 前の検査と CI でも回る）
+- 画面が受け取るデータの型は、サーバー（packages/cli）の型をそのまま読む（`static/types.d.ts`）。画面とサーバーで形が食い違えば、検査で止まる
+- 第 1 段は「引数に型が書いていない」だけを見逃し、null の扱い・無い項目の読み取り・誤りの型（unknown）を直した。第 2 段で、ファイルごとに JSDoc で引数の型を書き、`noImplicitAny` を有効にする
+- 振る舞いは画面のテスト（Playwright）で押さえてから変える

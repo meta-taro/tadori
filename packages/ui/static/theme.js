@@ -5,9 +5,10 @@
   var CHOICES = ['light', 'dark', 'system']
   var media = window.matchMedia('(prefers-color-scheme: dark)')
 
+  /** @returns {string} */
   function choice() {
-    var saved = null
-    try { saved = localStorage.getItem(KEY) } catch (e) { /* 覚えられない環境では既定のまま */ }
+    var saved = ''
+    try { saved = localStorage.getItem(KEY) || '' } catch (e) { /* 覚えられない環境では既定のまま */ }
     return CHOICES.indexOf(saved) >= 0 ? saved : 'light'
   }
   function apply() {

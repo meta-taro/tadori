@@ -1,5 +1,5 @@
 // チェックの記録・つながりを辿る
-import { api, chip, esc, ICON_INFO, kindLabel, originHtml, toast } from './util.js'
+import { api, chip, esc, ICON_INFO, kindLabel, messageOf, originHtml, toast } from './util.js'
 import { renderPicker } from './trace-picker.js'
 
 const RESULT_TONE = result => (/^漏れ|差し戻し/.test(result) ? 'hole' : /^満たす|承認/.test(result) ? 'ok' : '')
@@ -102,6 +102,6 @@ export async function renderTrace(view, state, startId) {
     view.querySelector('#story').innerHTML = storyPath(result, state.resolved ?? [], state.origins ?? {})
     view.querySelector('#trace-summary').innerHTML = traceSummary(result, state.resolved ?? [])
   } catch (error) {
-    view.querySelector('#story').innerHTML = `<div class="note">${ICON_INFO}<span>${esc(error.message)}</span></div>`
+    view.querySelector('#story').innerHTML = `<div class="note">${ICON_INFO}<span>${esc(messageOf(error))}</span></div>`
   }
 }

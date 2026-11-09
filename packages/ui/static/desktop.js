@@ -6,6 +6,15 @@ import { esc, toast } from './util.js'
 
 const tauri = window.__TAURI__
 
+/**
+ * Rust 側の命令を呼ぶ（デスクトップアプリの窓の中だけ）
+ * @template T
+ * @param {string} command
+ * @param {Record<string, unknown>} [args]
+ * @returns {Promise<T>}
+ */
+const invoke = (command, args) => (tauri ? tauri.core.invoke(command, args) : Promise.reject(new Error('デスクトップアプリの窓ではありません')))
+
 /** 押しても窓を動かさない所（欄・ボタン・リンク・メニュー） */
 const INTERACTIVE = 'input, button, a, select, textarea, label, .win-menu, .win-controls, .search-panel'
 
@@ -14,14 +23,14 @@ const THEMES = [['light', 'ライト'], ['dark', 'ダーク'], ['system', 'OS �
 export function initDesktop() {
   if (!tauri?.window || !tauri?.core) return
   const win = tauri.window.getCurrentWindow()
-  const topbar = document.querySelector('.topbar')
+  const topbar = /** @type {HTMLElement} */ (document.querySelector('.topbar'))
   document.documentElement.classList.add('desktop')
   // 正本へのリンクは、窓の中で外のページへ移らず、OS の既定のブラウザで開く（Rust 側で http・https だけを受ける）
   document.addEventListener('click', e => {
-    const link = e.target.closest('a[data-external]')
-    if (!link) return
+    const link = e.target instanceof Element ? e.target.closest('a[data-external]') : null
+    if (!(link instanceof HTMLAnchorElement)) return
     e.preventDefault()
-    tauri.core.invoke('open_external', { url: link.href }).catch(error => toast(String(error)))
+    invoke('open_external', { url: link.href }).catch(error => toast(String(error)))
   })
 
   topbar.insertAdjacentHTML('afterbegin', `<div class="win-menu" role="menubar" aria-label="メニュー">
@@ -38,14 +47,14 @@ export function initDesktop() {
 
   // 帯の空いている所をつかむと窓が動く。ダブルクリックで最大化 / 元に戻す
   topbar.addEventListener('mousedown', e => {
-    if (e.button !== 0 || e.target.closest(INTERACTIVE)) return
+    if (e.button !== 0 || (e.target instanceof Element && e.target.closest(INTERACTIVE))) return
     if (e.detail === 2) win.toggleMaximize(); else win.startDragging()
   })
-  document.querySelector('aside .brand')?.addEventListener('mousedown', e => { if (e.button === 0) win.startDragging() })
+  document.querySelector('aside .brand')?.addEventListener('mousedown', e => { if (/** @type {MouseEvent} */ (e).button === 0) win.startDragging() })
 
-  topbar.querySelector('[data-win="minimize"]').addEventListener('click', () => win.minimize())
-  topbar.querySelector('[data-win="maximize"]').addEventListener('click', () => win.toggleMaximize())
-  topbar.querySelector('[data-win="close"]').addEventListener('click', () => win.close())
+  topbar.querySelector('[data-win="minimize"]')?.addEventListener('click', () => win.minimize())
+  topbar.querySelector('[data-win="maximize"]')?.addEventListener('click', () => win.toggleMaximize())
+  topbar.querySelector('[data-win="close"]')?.addEventListener('click', () => win.close())
 
   initMenus(topbar.querySelector('.win-menu'))
 }
@@ -84,7 +93,8 @@ function initMenus(bar) {
 
 async function menuHtml(key) {
   if (key === 'file') {
-    const recent = await tauri.core.invoke('recent_projects').catch(() => [])
+    /** @type {Array<[string, string]>} */
+    const recent = await invoke('recent_projects').catch(() => [])
     const items = recent.map(([path, name], i) =>
       `<button type="button" role="menuitem" data-action="open" data-value="${esc(path)}" title="${esc(path)}">${i === 0 ? '<span class="check">✓</span>' : '<span class="check"></span>'}${esc(name)}</button>`).join('')
     return `<button type="button" role="menuitem" data-action="pick"><span class="check"></span>案件を開く…</button>
@@ -102,8 +112,8 @@ async function menuHtml(key) {
 }
 
 function runAction(action, value) {
-  if (action === 'pick') tauri.core.invoke('pick_project').catch(error => toast(String(error)))
-  if (action === 'open') tauri.core.invoke('open_project', { path: value }).catch(error => toast(String(error)))
+  if (action === 'pick') invoke('pick_project').catch(error => toast(String(error)))
+  if (action === 'open') invoke('open_project', { path: value }).catch(error => toast(String(error)))
   if (action === 'theme') window.tadoriTheme?.set(value)
   if (action === 'reload') location.reload()
   if (action === 'glossary') location.hash = '#glossary'

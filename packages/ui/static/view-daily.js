@@ -1,7 +1,7 @@
 // 1 日の進行：担当ごとに見て、その場で直す（プロダクト単位の残課題とは別に、人単位で見る）。
 // 材料（WBS の状態の変化・台帳の差分・チェックの記録）から作った下書きを、日ごとのファイルに置き、行を足す・直す・消す。
 // 直した行・足した行・消した行は、下書きを作り直しても上書きしない。
-import { api, esc, getWho, ICON_INFO, toast, toastCommit, webUrl } from './util.js'
+import { api, esc, getWho, ICON_INFO, messageOf, toast, toastCommit, webUrl } from './util.js'
 import { previewHtml } from './daily-preview.js'
 
 // 担当は上の帯で選ぶ（どの画面も同じ）
@@ -66,7 +66,7 @@ async function write(path, method, body, what, rerender) {
     const result = await api(path, { method, body: body ?? {} })
     toastCommit(what, result.commit)
   } catch (error) {
-    toast(`${what}できませんでした：${error.message}`)
+    toast(`${what}できませんでした：${messageOf(error)}`)
   }
   rerender()
 }
@@ -79,7 +79,7 @@ export async function renderDaily(view, state) {
     const who = getWho()
     daily = await api(`/api/daily?date=${encodeURIComponent(date)}${who ? `&who=${encodeURIComponent(who)}` : ''}`)
   } catch (error) {
-    view.innerHTML = `<h1>1 日の進行</h1><div class="note">${ICON_INFO}<span>${esc(error.message)}</span></div>`
+    view.innerHTML = `<h1>1 日の進行</h1><div class="note">${ICON_INFO}<span>${esc(messageOf(error))}</span></div>`
     return
   }
   const base = `/api/daily/${encodeURIComponent(date)}`

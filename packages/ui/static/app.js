@@ -1,5 +1,5 @@
 // tadori の画面の入口：/api/state を読み、#名前 で画面を切り替える
-import { api, chip, esc, getWho, ICON_INFO, peopleOf, setKindLabels, setWho, toast } from './util.js'
+import { api, ApiError, byId, chip, esc, getWho, ICON_INFO, messageOf, peopleOf, setKindLabels, setWho, toast } from './util.js'
 import { renderGates } from './view-gates.js'
 import { renderWbs } from './view-wbs.js'
 import { renderLog, renderTrace } from './view-records.js'
@@ -11,8 +11,12 @@ import { renderSettings } from './view-settings.js'
 import { renderGlossary, setGlossaryQuery } from './view-glossary.js'
 import { renderDaily } from './view-daily.js'
 
-const view = document.getElementById('view')
-let state = null
+const view = byId('view')
+/**
+ * 案件のいまの姿（/api/state）。読み込むまでは画面を描かないので、描く関数の中では必ずある
+ * @type {import('./types').ProjectState}
+ */
+let state = /** @type {any} */ (null)
 
 const VIEWS = {
   browse: { label: 'プロダクト', render: id => renderWbs(view, state, reload, id) },
@@ -39,12 +43,13 @@ function renderChrome(key) {
   // 最後にチェックを記録したのは、いつ・誰か（チェックの記録の最後の行。無ければ出さない）
   const last = state.checks.at(-1)
   const lastCheck = last ? `<a class="chip last-check" href="#log" title="チェックの記録を開く">最後のチェック ${esc(String(last.when).slice(5, 16).replace('-', '/'))}${last.who ? ` ${esc(last.who)}` : ''}</a>` : ''
-  document.getElementById('summary').innerHTML = chip('hole', `漏れ ${state.leaks.length} 件`) + chip('wait', `承認待ち ${waits} 件`) + lastCheck
-  document.getElementById('side-project').textContent = state.project.name
-  document.getElementById('crumb-project').textContent = state.project.name
-  document.getElementById('crumb-view').textContent = VIEWS[key].label
+  byId('summary').innerHTML = chip('hole', `漏れ ${state.leaks.length} 件`) + chip('wait', `承認待ち ${waits} 件`) + lastCheck
+  byId('side-project').textContent = state.project.name
+  byId('crumb-project').textContent = state.project.name
+  byId('crumb-view').textContent = VIEWS[key].label
   document.title = `tadori · ${VIEWS[key].label}`
-  document.querySelectorAll('nav a').forEach(a => {
+  document.querySelectorAll('nav a').forEach(el => {
+    const a = /** @type {HTMLAnchorElement} */ (el)
     if (a.dataset.view === key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current')
   })
   renderWhoFilter()
@@ -53,14 +58,14 @@ function renderChrome(key) {
 
 /** 上の帯の「担当」：人の表と WBS の担当から選ぶ。選ぶと、どの画面もその人の分だけになる */
 function renderWhoFilter() {
-  const select = document.getElementById('who-filter')
+  const select = /** @type {HTMLSelectElement} */ (byId('who-filter'))
   const people = peopleOf(state)
   const who = getWho()
   select.innerHTML = `<option value="">全員</option>${people.map(p => `<option ${p === who ? 'selected' : ''}>${esc(p)}</option>`).join('')}`
   // 選んでいた人が案件にいなくなったら（案件を切り替えたときなど）、全員に戻す
   if (who && !people.includes(who)) setWho('')
 }
-document.getElementById('who-filter').addEventListener('change', e => { setWho(e.target.value); route() })
+byId('who-filter').addEventListener('change', e => { setWho(/** @type {HTMLSelectElement} */ (e.target).value); route() })
 // エージェントが専用カーソルで人を切り替えたとき（agent.js の filter）
 window.addEventListener('tadori-who', () => route())
 
@@ -74,7 +79,8 @@ function renderNavBadges(waits) {
     phases: [[state.leaks.length, 'hole', `漏れ ${state.leaks.length} 件`], [waits, 'wait', `承認待ち ${waits} 件`]],
     trace: [[leakRows, 'hole', `漏れのある行 ${leakRows} 件`]],
   }
-  document.querySelectorAll('nav a[data-view]').forEach(a => {
+  document.querySelectorAll('nav a[data-view]').forEach(el => {
+    const a = /** @type {HTMLAnchorElement} */ (el)
     a.querySelector('.nav-badges')?.remove()
     const shown = (badges[a.dataset.view] ?? []).filter(([n]) => n > 0)
     if (!shown.length) return
@@ -118,7 +124,7 @@ function navigate(open) {
 /** いま動いている所（広い画面では中身の列、狭い画面ではページ全体） */
 const scroller = () => {
   const main = document.querySelector('.main > main')
-  return main && getComputedStyle(main).overflowY === 'auto' ? main : document.scrollingElement
+  return main && getComputedStyle(main).overflowY === 'auto' ? main : (document.scrollingElement ?? document.documentElement)
 }
 
 async function reload() {
@@ -129,7 +135,7 @@ async function reload() {
     route()
     scroller().scrollTop = top
   } catch (error) {
-    view.innerHTML = `<h1>案件を読めませんでした</h1><div class="note">${ICON_INFO}<span>${esc(error.message)}${(error.problems ?? []).map(p => `<br>${esc(p)}`).join('')}</span></div>`
+    view.innerHTML = `<h1>案件を読めませんでした</h1><div class="note">${ICON_INFO}<span>${esc(messageOf(error))}${(error instanceof ApiError ? error.problems : []).map(p => `<br>${esc(p)}`).join('')}</span></div>`
   }
 }
 

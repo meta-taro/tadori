@@ -1,7 +1,7 @@
 // エージェントの専用カーソル。人のマウスは使わない（奪わない）。
 // エージェントは tadori のサーバーへ指示を送り（POST /api/agent）、画面はこのカーソルを動かして、ページの中で指す・押す・打つ。
 // 人は自分のマウスで、同じ画面を同時に触っていてよい。
-import { setWho } from './util.js'
+import { messageOf, setWho } from './util.js'
 
 const MOVE_MS = 650 // カーソルが動く時間（style.css の .agent-cursor の transition と合わせる）
 const HIGHLIGHT_MS = 2600
@@ -9,22 +9,37 @@ const HIGHLIGHT_MS = 2600
 /** 押せる・打てる所（ここから target の言葉で探す） */
 const TARGETS = 'button, a, input, select, textarea, [role="menuitem"], [role="menuitemradio"], [role="tab"], [data-trace], tr, h1, h2, .chip, .leak-id, .rule-id'
 
-let cursor = null
-let box = null
+/** @type {HTMLDivElement | null} */
+let cursorEl = null
+/** @type {HTMLDivElement | null} */
+let boxEl = null
 
+/**
+ * カーソルと強調の枠（はじめて使うときに作る）
+ * @returns {{ cursor: HTMLDivElement, box: HTMLDivElement }}
+ */
 function ensureCursor() {
-  if (cursor) return
-  cursor = document.createElement('div')
+  if (cursorEl && boxEl) return { cursor: cursorEl, box: boxEl }
+  const cursor = document.createElement('div')
   cursor.className = 'agent-cursor'
   cursor.hidden = true
   cursor.setAttribute('aria-hidden', 'true')
   cursor.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 2l15 9.5-6.6 1.4L16 20.5l-3 1.3-3.5-7.6L4 18z" fill="#5e6ad2" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg><span class="tag">エージェント</span>'
   document.body.appendChild(cursor)
-  box = document.createElement('div')
+  const box = document.createElement('div')
   box.className = 'hl-box'
   box.hidden = true
   box.innerHTML = '<span class="hl-label"></span>'
   document.body.appendChild(box)
+  cursorEl = cursor
+  boxEl = box
+  return { cursor, box }
+}
+
+/** 札（エージェントの名前・一言）の文字を替える */
+const setTag = (/** @type {HTMLElement} */ cursor, /** @type {string} */ text) => {
+  const tag = cursor.querySelector('.tag')
+  if (tag) tag.textContent = text
 }
 
 /** 人に見えているか（隠れた要素は押させない） */
@@ -42,7 +57,7 @@ const namesOf = el => [
 /** target の言葉で要素を探す。ぴったり同じ名前を先に、無ければ名前に含むものを、画面の上から順に */
 function findTarget(target) {
   const want = target.replace(/\s+/g, ' ').trim()
-  const candidates = [...document.querySelectorAll(TARGETS)].filter(isVisible)
+  const candidates = [...document.querySelectorAll(TARGETS)].filter(el => el instanceof HTMLElement && isVisible(el)).map(el => /** @type {HTMLElement} */ (el))
   return candidates.find(el => namesOf(el).some(n => n === want))
     ?? candidates.find(el => namesOf(el).some(n => n.startsWith(want)))
     ?? candidates.find(el => namesOf(el).some(n => n.includes(want)))
@@ -61,8 +76,9 @@ function keepInWindow(label) {
   else if (overLeft > 0) label.style.left = `${-2 + overLeft}px`
 }
 
+/** @param {HTMLElement} el @param {string} [message] */
 async function moveTo(el, message) {
-  ensureCursor()
+  const { cursor, box } = ensureCursor()
   // 見えていないものは画面の中ほどへ寄せる（端に寄せると、札やその先の中身が隠れるため）。見えていれば動かさない
   const before = el.getBoundingClientRect()
   const isInView = before.top >= 0 && before.bottom <= window.innerHeight
@@ -73,7 +89,7 @@ async function moveTo(el, message) {
   box.hidden = false
   // 中身の列だけが動く作りなので、枠は画面に対して置く（どこが動いても、指した所に重なる）
   Object.assign(box.style, { position: 'fixed', left: `${r.left - 4}px`, top: `${r.top - 4}px`, width: `${r.width + 8}px`, height: `${r.height + 8}px` })
-  const label = box.querySelector('.hl-label')
+  const label = /** @type {HTMLElement} */ (box.querySelector('.hl-label'))
   label.textContent = message ?? ''
   keepInWindow(label)
   await wait(MOVE_MS)
@@ -82,23 +98,26 @@ async function moveTo(el, message) {
 /** しばらく指示が無ければ、カーソルも消す（画面に残って人の邪魔をしないように） */
 const CURSOR_IDLE_MS = 6000
 
-let hideTimer = null
-let idleTimer = null
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let hideTimer
+/** @type {ReturnType<typeof setTimeout> | undefined} */
+let idleTimer
 function hideLater() {
   clearTimeout(hideTimer)
   clearTimeout(idleTimer)
-  hideTimer = setTimeout(() => { if (box) box.hidden = true }, HIGHLIGHT_MS)
+  hideTimer = setTimeout(() => { if (boxEl) boxEl.hidden = true }, HIGHLIGHT_MS)
   idleTimer = setTimeout(() => {
-    if (!cursor) return
-    cursor.hidden = true
-    cursor.querySelector('.tag').textContent = 'エージェント'
+    if (!cursorEl) return
+    cursorEl.hidden = true
+    setTag(cursorEl, 'エージェント')
   }, CURSOR_IDLE_MS)
 }
 
+/** @param {string} message @param {HTMLElement} [el] */
 async function say(message, el) {
-  ensureCursor()
+  const { cursor } = ensureCursor()
   if (el) await moveTo(el, message)
-  else { cursor.hidden = false; cursor.querySelector('.tag').textContent = message }
+  else { cursor.hidden = false; setTag(cursor, message) }
   hideLater()
 }
 
@@ -125,12 +144,13 @@ async function run(command, toast) {
   }
   await moveTo(el, command.message)
   if (command.action === 'click') {
+    const { cursor } = ensureCursor()
     cursor.classList.remove('click'); void cursor.offsetWidth; cursor.classList.add('click')
     // ページの中で押す（人のマウスは動かさない）。mousedown も送り、メニューなどが人の操作と同じに動くようにする
     el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
     el.click()
   }
-  if (command.action === 'type') {
+  if (command.action === 'type' && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) {
     el.focus()
     el.value = command.value
     el.dispatchEvent(new Event('input', { bubbles: true }))
@@ -146,6 +166,6 @@ export function initAgent(events, toast) {
   events.addEventListener('agent', e => {
     let command
     try { command = JSON.parse(e.data) } catch { return } // 壊れた知らせは捨てる（サーバーが検査済みの形しか流さない）
-    queue = queue.then(() => run(command, toast)).catch(error => toast(`エージェントの操作に失敗しました：${error.message}`))
+    queue = queue.then(() => run(command, toast)).catch(error => toast(`エージェントの操作に失敗しました：${messageOf(error)}`))
   })
 }

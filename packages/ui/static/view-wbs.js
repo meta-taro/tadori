@@ -1,5 +1,5 @@
 // プロダクト → プロジェクト → WBS（Finder の列表示）。MVP では開いている案件 1 つを出す
-import { api, chip, day, esc, fullDate, ICON_INFO, isDoneStatus, isMine, lateColor, lateDays, shortDate, toast, toastCommit } from './util.js'
+import { api, chip, day, esc, fullDate, ICON_INFO, isDoneStatus, isMine, lateColor, lateDays, messageOf, shortDate, toast, toastCommit } from './util.js'
 
 let wbsFilter = 'all'
 let wbsSort = 'wbs'
@@ -94,7 +94,7 @@ export function renderWbs(view, state, reload, highlightId) {
       toastCommit(`${e.target.dataset.task} のステータス`, commit)
       await reload()
     } catch (error) {
-      toast(error.message)
+      toast(messageOf(error))
     }
   }))
 }
