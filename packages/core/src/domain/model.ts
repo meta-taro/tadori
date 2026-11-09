@@ -46,13 +46,28 @@ export interface Task {
 }
 
 /**
- * ルール。判定の種類は 4 つ。
+ * ルール。判定の種類は 5 つ。
  * - covered : from の種類のどの行にも、それを refs に持つ to の種類の行が 1 つ以上ある（下流が出ている）
  * - refers  : from の種類のどの行も、to の種類の行を 1 つ以上 refs に持つ（上流を元にしている）
  * - filled  : from の種類のどの行にも、field 列の値が入っている
+ * - allowed : from の種類のどの行も、field 列の値が values のどれか（空の行はここでは見ない。filled で見る）
  * - approval: 人の承認が要る（判定は承認の記録を見るだけ。tadori は代わりに承認しない）
  */
-export type RuleKind = 'covered' | 'refers' | 'filled' | 'approval'
+export type RuleKind = 'covered' | 'refers' | 'filled' | 'allowed' | 'approval'
+
+/**
+ * ルールの対象を絞る条件（rulesets の only 列）。
+ * 「列名=値」「列名=値1|値2」（どれかに合う）、「列名!=値」（その値でない。|で複数も可）
+ */
+export interface RuleOnly {
+  readonly field: string
+  /** 書いたままの値（「a|b」など。画面と書き戻しに使う） */
+  readonly value: string
+  /** 「|」で分けた値。どれかに合えば（negate なら、どれにも合わなければ）対象 */
+  readonly values?: readonly string[]
+  /** 「!=」で書いたとき true */
+  readonly negate?: boolean
+}
 
 export interface Rule {
   readonly id: string
@@ -63,7 +78,9 @@ export interface Rule {
   readonly field: string
   readonly label: string
   /** 対象の行を絞る（例：change 列が「変わる」の行だけ）。無ければ from の種類の全行 */
-  readonly only?: { readonly field: string; readonly value: string }
+  readonly only?: RuleOnly
+  /** allowed で使う、列に書いてよい値（rulesets の values 列を「|」で分けたもの） */
+  readonly values?: readonly string[]
   /** 担当の役割（例：設計担当・検証担当・PM）。漏れを直す人・承認する人。案件ごとに自由に書く */
   readonly owner?: string
 }
@@ -78,7 +95,11 @@ export const LEDGER_FILES = {
 /** ルールの対象の行か（種類が from で、only があればその列の値も合う） */
 export function isRuleTarget(rule: Rule, item: Item): boolean {
   if (item.kind !== rule.from) return false
-  return !rule.only || item.fields[rule.only.field] === rule.only.value
+  if (!rule.only) return true
+  const actual = (item.fields[rule.only.field] ?? '').trim()
+  const values = rule.only.values ?? [rule.only.value]
+  const matches = values.includes(actual)
+  return rule.only.negate ? !matches : matches
 }
 
 export type ApprovalStatus = '承認' | '差し戻し' | '待ち'

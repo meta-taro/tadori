@@ -141,4 +141,7 @@ export const JA: Readonly<Record<string, string>> = {
   'Choose kinds freely (e.g. SPEC = spec section, TC = test case). You can give them readable names in .tadori/kinds.tsv': 'kind は自由に決める（例：SPEC=仕様の節・TC=試験ケース）。読み方は .tadori/kinds.tsv に書ける',
   'WBS tasks. They can also be traced as ledger rows (kind W). Dates are YYYY-MM-DD': 'WBS のタスク。台帳の行（種類 W）としても辿れる。日付は YYYY-MM-DD',
   'Approvals by people. status is "approved" or anything else (e.g. 差し戻し, sent back). tadori never approves on anyone\'s behalf': '人の承認の記録。status は「承認」か、それ以外（差し戻しなど）。tadori は代わりに承認しない',
+  '{file}, rule {id}: an "allowed" rule needs a field and its allowed values in the values column (e.g. OK|NG)': '{file} のルール {id}：allowed は、見る列（field）と、書いてよい値（values 列。例：OK|NG）が要ります',
+  '{id} "{title}" has {column} = "{value}", which is not one of {allowed} ({rule})': '{id}「{title}」の{column}が「{value}」で、{allowed} のどれでもない（{rule}）',
+  'Change the "{column}" column of {row} to one of {allowed}': '{row}の「{column}」列を {allowed} のどれかにする',
 }

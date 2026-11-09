@@ -99,3 +99,32 @@ describe('runChecks', () => {
     expect(leak?.message).toContain('BD-2')
   })
 })
+
+describe('値で判定するルール', () => {
+  // 架空：試験ケースの結果（result 列）と、指摘（F）のつながり
+  const items = [
+    { id: 'TC-1', kind: 'TC', title: '上限ちょうど', source: 'qa', refs: [], fields: { result: 'OK' } },
+    { id: 'TC-2', kind: 'TC', title: '延滞中', source: 'qa', refs: [], fields: { result: 'NG' } },
+    { id: 'TC-3', kind: 'TC', title: '同時押し', source: 'qa', refs: [], fields: { result: 'NG' } },
+    { id: 'TC-4', kind: 'TC', title: '祝日', source: 'qa', refs: [], fields: { result: 'pending' } },
+    { id: 'F-1', kind: 'F', title: '延滞中に借りられた', source: 'issues', refs: ['TC-2'], fields: {} },
+  ]
+  const project = (rules: object[]) => ({ ...sampleProject, items, rules }) as typeof sampleProject
+
+  test('only に「|」で複数の値：どれかに合う行だけを対象にする（結果が NG か保留の試験ケースには指摘がある）', () => {
+    const rule = { id: 'V1', phase: 'it', kind: 'covered', from: 'TC', to: 'F', field: '', label: 'NG には指摘', only: { field: 'result', value: 'NG|pending', values: ['NG', 'pending'], negate: false } }
+    expect(runChecks(project([rule])).filter(l => l.rule === 'V1').map(l => l.itemId)).toEqual(['TC-3', 'TC-4'])
+  })
+
+  test('only に「!=」：その値でない行だけを対象にする', () => {
+    const rule = { id: 'V2', phase: 'it', kind: 'covered', from: 'TC', to: 'F', field: '', label: 'OK 以外には指摘', only: { field: 'result', value: 'OK', values: ['OK'], negate: true } }
+    expect(runChecks(project([rule])).filter(l => l.rule === 'V2').map(l => l.itemId)).toEqual(['TC-3', 'TC-4'])
+  })
+
+  test('allowed：列の値が決めた値のどれかでなければ漏れにする（空はここでは見ない。filled で見る）', () => {
+    const rule = { id: 'V3', phase: 'it', kind: 'allowed', from: 'TC', to: '', field: 'result', values: ['OK', 'NG'], label: '結果は OK か NG' }
+    const leaks = runChecks(project([rule])).filter(l => l.rule === 'V3')
+    expect(leaks.map(l => l.itemId)).toEqual(['TC-4'])
+    expect(leaks[0]?.message).toContain('pending')
+  })
+})

@@ -82,6 +82,28 @@ function checkFilled(rule: Rule, items: readonly Item[], labels?: Labels): Leak[
     })
 }
 
+/** allowed：from の種類の各行で、field 列の値が values のどれかか（空の行は filled に任せる） */
+function checkAllowed(rule: Rule, items: readonly Item[], labels?: Labels): Leak[] {
+  const allowed = rule.values ?? []
+  const columnName = nameOf(labels?.columns, rule.field)
+  const column = columnName ?? rule.field
+  return items
+    .filter(i => {
+      const value = (i.fields[rule.field] ?? '').trim()
+      return isRuleTarget(rule, i) && value !== '' && !allowed.includes(value)
+    })
+    .map(i => {
+      const vars = { id: i.id, title: i.title, column, value: (i.fields[rule.field] ?? '').trim(), allowed: joinList(allowed, '・'), rule: rule.label, row: rowOf(i) }
+      return withOwner(rule, {
+        rule: rule.id,
+        itemId: i.id,
+        message: t('{id} "{title}" has {column} = "{value}", which is not one of {allowed} ({rule})', vars),
+        fix: t('Change the "{column}" column of {row} to one of {allowed}', vars),
+        ...at(i),
+      })
+    })
+}
+
 /** どのルールにも依らず、存在しない ID を指している行を出す */
 function checkDangling(items: readonly Item[]): Leak[] {
   const ids = new Set(items.map(i => i.id))
@@ -108,6 +130,7 @@ export function runChecks(project: Project): Leak[] {
     if (rule.kind === 'covered') return checkCovered(rule, project.items, project.labels)
     if (rule.kind === 'refers') return checkRefers(rule, project.items, project.labels)
     if (rule.kind === 'filled') return checkFilled(rule, project.items, project.labels)
+    if (rule.kind === 'allowed') return checkAllowed(rule, project.items, project.labels)
     return []
   })
   return [...byRule, ...checkDangling(project.items)]

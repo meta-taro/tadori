@@ -43,7 +43,7 @@ export class ProjectLoadError extends Error {
   }
 }
 
-const RULE_KINDS: readonly RuleKind[] = ['covered', 'refers', 'filled', 'approval']
+const RULE_KINDS: readonly RuleKind[] = ['covered', 'refers', 'filled', 'allowed', 'approval']
 const APPROVAL_STATUSES: readonly ApprovalStatus[] = ['承認', '差し戻し', '待ち']
 const TONES: readonly StatusDef['tone'][] = ['none', 'wait', 'hole', 'ok']
 const ITEM_BASE_COLUMNS = new Set(['id', 'kind', 'title', 'source', 'refs'])
@@ -135,11 +135,18 @@ function toTask({ row, line }: NumberedRow, problems: string[]): Task {
   }
 }
 
-/** only 列「列名=値」を読む。空なら絞らない */
-function parseOnly(value: string): Rule['only'] | undefined {
-  const at = value.indexOf('=')
+/** 「a|b」を値の並びにする（前後の空白を外し、空は捨てる） */
+const splitValues = (text: string) => text.split('|').map(v => v.trim()).filter(Boolean)
+
+/** only 列「列名=値」「列名=値1|値2」「列名!=値」を読む。空なら絞らない */
+function parseOnly(text: string): Rule['only'] | undefined {
+  const at = text.indexOf('=')
   if (at <= 0) return undefined
-  return { field: value.slice(0, at).trim(), value: value.slice(at + 1).trim() }
+  const negate = text[at - 1] === '!'
+  const field = text.slice(0, negate ? at - 1 : at).trim()
+  const value = text.slice(at + 1).trim()
+  if (!field) return undefined
+  return { field, value, values: splitValues(value), negate }
 }
 
 async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
@@ -159,9 +166,16 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
       }
       const only = parseOnly(row.only ?? '')
       const owner = (row.owner ?? '').trim()
+      const values = splitValues(row.values ?? '')
+      // allowed は、書いてよい値（values 列）と見る列（field 列）が無いと判定できない
+      if (kind === 'allowed' && (!values.length || !(row.field ?? '').trim())) {
+        problems.push(t('{file}, rule {id}: an "allowed" rule needs a field and its allowed values in the values column (e.g. OK|NG)', { file: `${PATHS.rulesets}/${file}`, id: String(row.id) }))
+        return []
+      }
       return [{
         id: row.id ?? '', phase: row.phase ?? '', kind, from: row.from ?? '', to: row.to ?? '', field: row.field ?? '', label: row.label ?? '',
         ...(only ? { only } : {}),
+        ...(values.length ? { values } : {}),
         ...(owner ? { owner } : {}),
       }]
     })

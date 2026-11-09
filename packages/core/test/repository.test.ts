@@ -78,7 +78,7 @@ describe('loadProject', () => {
     await writeMinimalProject()
     await put('.tadori/rulesets/implementation.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tonly\tlabel\nR6\tdd\tcovered\tDD\tCOMMIT\t\tchange=変わる\tx\n')
     const rule = (await loadProject(dir)).rules.find(r => r.id === 'R6')
-    expect(rule?.only).toEqual({ field: 'change', value: '変わる' })
+    expect(rule?.only).toMatchObject({ field: 'change', value: '変わる', negate: false })
   })
 
   test('日付が YYYY-MM-DD でなければ止める（画面に埋め込まれる値なので形を確かめる）', async () => {
@@ -210,5 +210,18 @@ describe('承認の状態の英語の値', () => {
     await put('ledger/approvals.tsv', 'rule\tstatus\twho\twhen\nR1\tApproved\tReviewer\t2026-10-20\nR2\tsent back\tReviewer\t2026-10-21\nR3\tpending\tReviewer\t2026-10-22\n')
     const project = await loadProject(dir)
     expect(project.approvals.map(a => a.status)).toEqual(['承認', '差し戻し', '待ち'])
+  })
+})
+
+describe('値で判定するルールを読む', () => {
+  test('only の「a|b」「!=」と、allowed の values 列を読む。allowed に values が無ければ問題にする', async () => {
+    await writeMinimalProject()
+    await put('.tadori/rulesets/values.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\tlabel\nV1\tdd\tcovered\tBD\tDD\t\tchange=a|b\t\t複数\nV2\tdd\tcovered\tBD\tDD\t\tchange!=c\t\t否定\nV3\tdd\tallowed\tDD\t\tchange\t\t変わる|変わらない\t値\n')
+    const rules = (await loadProject(dir)).rules
+    expect(rules.find(r => r.id === 'V1')?.only).toEqual({ field: 'change', value: 'a|b', values: ['a', 'b'], negate: false })
+    expect(rules.find(r => r.id === 'V2')?.only).toEqual({ field: 'change', value: 'c', values: ['c'], negate: true })
+    expect(rules.find(r => r.id === 'V3')).toMatchObject({ kind: 'allowed', field: 'change', values: ['変わる', '変わらない'] })
+    await put('.tadori/rulesets/values.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\tlabel\nV3\tdd\tallowed\tDD\t\tchange\t\t\t値\n')
+    await expect(loadProject(dir)).rejects.toThrow(/values/)
   })
 })
