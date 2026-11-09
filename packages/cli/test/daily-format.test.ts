@@ -163,3 +163,12 @@ describe('行のリンクと、担当で絞っていないときの担当名', (
     expect(formatEntries(entries, project, '2026-11-09')).not.toContain('設計担当：')
   })
 })
+
+describe('行のリンクの重複', () => {
+  test('同じ表示名と URL のリンクは、補足に 1 回だけ出す', () => {
+    const link = { label: 'QA表', url: 'https://sheets.example.com/qa#row=12' }
+    const entries = [{ id: 'm1', who: '設計担当', section: 'today' as const, text: 'QA を返した', wbs: [], origin: 'manual' as const, links: [link, { ...link }] }]
+    const text = formatEntries(entries, project, '2026-11-09')
+    expect(text.match(/QA表：/g)).toHaveLength(1)
+  })
+})

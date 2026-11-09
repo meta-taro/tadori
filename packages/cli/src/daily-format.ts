@@ -125,7 +125,7 @@ function noteLine(project: Project, entry: DailyEntry, no: number, format: Daily
     }),
     ...(entry.note ? [entry.note] : []),
     // 行のリンクは読み上げる行には入れず、補足に「表示名：URL」で出す（聞かれたら開くもの）
-    ...(entry.links ?? []).map(l => `${l.label}：${l.url}`),
+    ...[...new Set((entry.links ?? []).map(l => `${l.label}：${l.url}`))], // 同じ表示名と URL は 1 回だけ
   ]
   return parts.length ? `${no}. ${parts.join('／')}` : null
 }

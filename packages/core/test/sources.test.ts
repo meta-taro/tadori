@@ -42,3 +42,11 @@ describe('originOf（台帳の行の正本と、手元へ反映した記録）',
     expect(originOf(item({}, 'docs/a.md'), sources, '2026-11-09')).toBeUndefined()
   })
 })
+
+describe('source の場所に URL をそのまま書いたとき', () => {
+  test('場所が http(s):// で始まれば、locator を通さずその URL を正本のリンクにする（基底の URL に二重に付けない）', () => {
+    const issue: SourceDef[] = [{ name: '課題管理', url: 'https://issues.example.com/browse/', locator: '{url}{loc}', staleDays: 7 }]
+    expect(sourceLinkOf('課題管理 https://issues.example.com/browse/ABC-12', issue)).toEqual({ name: '課題管理', url: 'https://issues.example.com/browse/ABC-12', place: 'https://issues.example.com/browse/ABC-12' })
+    expect(sourceLinkOf('課題管理 ABC-12', issue)?.url).toBe('https://issues.example.com/browse/ABC-12')
+  })
+})

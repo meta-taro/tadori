@@ -57,3 +57,13 @@ describe('日ごとのファイルの印', () => {
     expect((await readDaily(dir, '2026-11-09'))[0]?.tag).toBe('done')
   })
 })
+
+describe('行のリンクの語（anchor）', () => {
+  test('anchor と何番目か（nth）も書いて読める。書き方は「表示名 URL > 語 #番目」', async () => {
+    const dir = await dirOf()
+    const links = [{ label: 'QA表', url: 'https://sheets.example.com/qa', anchor: 'QA の返事', nth: 2 }, { label: 'MR', url: 'https://git.example.com/mr/3', anchor: 'MR' }, { label: '設計書', url: 'https://docs.example.com/d' }]
+    await writeDaily(dir, '2026-11-09', [{ id: 'm1', who: '設計担当', section: 'today', text: 'x', wbs: [], origin: 'manual', links }], 'x')
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toContain('QA表 https://sheets.example.com/qa > QA の返事 #2 | MR https://git.example.com/mr/3 > MR | 設計書 https://docs.example.com/d')
+    expect((await readDaily(dir, '2026-11-09'))[0]?.links).toEqual(links)
+  })
+})

@@ -239,3 +239,25 @@ test.describe('ルールを画面から足す・直す・消す', () => {
     await expect(form.locator('.form-problems')).toContainText('R9')
   })
 })
+
+test.describe('1 日の進行の本文の語のリンク（anchor）', () => {
+  test('本文の語（何回目か）をリンクにし、行末には出さない。本文に無い語は行末に「表示名 ↗」で出す', async ({ page }) => {
+    const res = await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: 'QA を読んで QA を返した', links: [{ label: 'QA表', url: 'https://sheets.example.com/qa', anchor: 'QA', nth: 2 }, { label: 'MR', url: 'https://git.example.com/mr/3', anchor: 'プルリク' }] },
+    })
+    expect(res.ok()).toBe(true)
+    await openDaily(page)
+    const anchor = page.locator('.daily-preview a.daily-anchor', { hasText: 'QA' })
+    await expect(anchor).toHaveCount(1)
+    await expect(anchor).toHaveAttribute('href', 'https://sheets.example.com/qa')
+    // 2 回目の QA だけがリンクで、1 回目は文字のまま
+    const li = page.locator('.daily-preview li', { hasText: 'QA を読んで' })
+    await expect(li).toContainText('QA を読んで QA を返した')
+    expect(await li.innerHTML()).toMatch(/QA を読んで <a class="daily-anchor"[^>]*>QA<\/a> を返した/)
+    // 行の一覧：語が見つかったリンクは行末に出さず、見つからないリンクは出す
+    const row = page.locator('.daily-entry').filter({ has: page.locator('input[value="QA を読んで QA を返した"]') })
+    await expect(row.locator('.daily-link', { hasText: 'QA表' })).toHaveCount(0)
+    await expect(row.locator('.daily-link', { hasText: 'MR ↗' })).toHaveCount(1)
+  })
+})

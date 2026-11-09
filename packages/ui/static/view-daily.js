@@ -1,7 +1,7 @@
 // 1 日の進行：担当ごとに見て、その場で直す（プロダクト単位の残課題とは別に、人単位で見る）。
 // 材料（WBS の状態の変化・台帳の差分・チェックの記録）から作った下書きを、日ごとのファイルに置き、行を足す・直す・消す。
 // 直した行・足した行・消した行は、下書きを作り直しても上書きしない。
-import { api, esc, getWho, ICON_INFO, messageOf, toast, toastCommit, webUrl, within } from './util.js'
+import { api, esc, getWho, ICON_INFO, messageOf, nthIndexOf, toast, toastCommit, webUrl, within } from './util.js'
 import { previewHtml } from './daily-preview.js'
 
 /** @typedef {import('./types').DailyEntry} DailyEntry */
@@ -31,7 +31,10 @@ const tagSelect = (/** @type {DailyEntry} */ entry) => `<select class="inline-se
 const outLink = (label, url, title, extra = '') => `<a class="daily-link ${extra}" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(title)}">${esc(label)} ↗</a>`
 
 /** その作業でさわった正本の場所（エージェントや人が links で付けたもの） */
-const entryLinks = (/** @type {DailyEntry} */ entry) => (entry.links ?? []).flatMap(l => (webUrl(l.url) ? [outLink(l.label, webUrl(l.url), `${l.label} を開く：${l.url}`)] : [])).join('')
+// 本文の語（anchor）が見つかるリンクは、文の形でその語をリンクにするので、行末には出さない（見つからなければ行末に出す）
+const entryLinks = (/** @type {DailyEntry} */ entry) => (entry.links ?? [])
+  .filter(l => !l.anchor || nthIndexOf(entry.text, l.anchor, l.nth ?? 1) < 0)
+  .flatMap(l => (webUrl(l.url) ? [outLink(l.label, webUrl(l.url), `${l.label} を開く：${l.url}`)] : [])).join('')
 
 /**
  * 課題の正本へ飛ぶ小さなリンク（会議の場で正本を開けるように）。表示名は正本の表の名前。反映が古ければ目立たせる
@@ -142,7 +145,7 @@ export async function renderDaily(view, state) {
       </form>
     </div>
     <h2>文の形（補足つき）</h2>
-    <div class="panel daily-preview">${previewHtml(daily.text, daily.links ?? [], daily.tags ?? [], daily.whoMarks ?? [])}</div>`
+    <div class="panel daily-preview">${previewHtml(daily.text, daily.links ?? [], daily.tags ?? [], daily.whoMarks ?? [], daily.entries ?? [])}</div>`
 
   const dateInput = /** @type {HTMLInputElement} */ (within(view, '#daily-date'))
   dateInput.addEventListener('change', () => { if (dateInput.value) { date = dateInput.value; rerender() } })

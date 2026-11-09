@@ -28,6 +28,8 @@ export function sourceLinkOf(source: string, sources: readonly SourceDef[]): Sou
   const def = [...sources].sort((a, b) => b.name.length - a.name.length).find(s => text === s.name || text.startsWith(`${s.name} `) || text.startsWith(`${s.name}　`))
   if (!def) return undefined
   const place = text.slice(def.name.length).trim()
+  // 場所に URL をそのまま書いた行は、その URL を使う（locator を通すと基底の URL に二重に付いて開けなくなる）
+  if (/^https?:\/\//i.test(place)) return { name: def.name, url: place, place }
   const num = place.match(/\d+/)?.[0] ?? ''
   const url = def.locator
     ? def.locator.replace(/\{(url|loc|num)\}/g, (_, key: string) => (key === 'url' ? def.url : encodeURIComponent(key === 'loc' ? place : num)))

@@ -3,7 +3,7 @@
 // - 「1. 」で始まる行は字下げした番号付きの一覧
 // - 印（例：［済］）は小さな札
 // - WBS・課題は文字を押すと画面の中のその場所へ、正本などの URL は「正本 ↗」の文字で開く（URL をそのまま出さない）
-import { esc, webUrl } from './util.js'
+import { esc, nthIndexOf, webUrl } from './util.js'
 
 // URL は空白・括弧・補足の区切り（／・、）の手前まで
 const URL_PATTERN = 'https?:\\/\\/[^\\s（）()／、]+'
@@ -54,13 +54,49 @@ function inlineHtml(line, links, tags, whoMarks = []) {
 }
 
 /**
+ * 読み上げる行の中で、行のリンクの語（anchor）をリンクにする。語の外は rest で描く（印・担当・WBS の番号など）。
+ * どの行かは、その行の本文が読み上げる行に含まれているかで見分ける（番号・印・担当名・末尾の WBS は本文の外にある）
+ * @param {string} line
+ * @param {readonly import('./types').DailyEntry[]} entries
+ * @param {(text: string) => string} rest
+ */
+function anchoredHtml(line, entries, rest) {
+  const entry = entries.find(e => e.text && (e.links ?? []).some(l => l.anchor) && line.includes(e.text))
+  if (!entry) return rest(line)
+  const base = line.indexOf(entry.text)
+  /** @type {Array<{ start: number, end: number, label: string, url: string }>} */
+  const spans = []
+  for (const link of entry.links ?? []) {
+    const url = webUrl(link.url)
+    if (!link.anchor || !url) continue
+    const at = nthIndexOf(entry.text, link.anchor, link.nth ?? 1)
+    if (at < 0) continue
+    const start = base + at
+    const end = start + link.anchor.length
+    // 重なる語は、先に決まったほうを使う
+    if (spans.some(s => start < s.end && end > s.start)) continue
+    spans.push({ start, end, label: link.label, url })
+  }
+  spans.sort((a, b) => a.start - b.start)
+  let html = ''
+  let last = 0
+  for (const s of spans) {
+    html += rest(line.slice(last, s.start))
+    html += `<a class="daily-anchor" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(`${s.label} を開く：${s.url}`)}">${esc(line.slice(s.start, s.end))}</a>`
+    last = s.end
+  }
+  return html + rest(line.slice(last))
+}
+
+/**
  * 文全体を、見出し・番号付きの一覧・小見出しに分けて描く
  * @param {string | null | undefined} text
  * @param {readonly DailyTextLink[]} [links]
  * @param {readonly string[]} [tags]
  * @param {readonly string[]} [whoMarks]
+ * @param {readonly import('./types').DailyEntry[]} [entries] 行のリンクの語（anchor）を本文の中でリンクにするため
  */
-export function previewHtml(text, links = [], tags = [], whoMarks = []) {
+export function previewHtml(text, links = [], tags = [], whoMarks = [], entries = []) {
   const blocks = String(text ?? '').split(/\n{2,}/).map(b => b.split('\n').filter(l => l.trim()))
   return blocks.filter(lines => lines.length).map(lines => {
     const [head, ...rest] = lines
@@ -71,7 +107,7 @@ export function previewHtml(text, links = [], tags = [], whoMarks = []) {
       if (item && !listOpen) { body += '<ol class="daily-preview-list">'; listOpen = true }
       if (!item && listOpen) { body += '</ol>'; listOpen = false }
       body += item
-        ? `<li value="${Number(item[1])}">${inlineHtml(item[2], links, tags, whoMarks)}</li>`
+        ? `<li value="${Number(item[1])}">${anchoredHtml(item[2], entries, html => inlineHtml(html, links, tags, whoMarks))}</li>`
         : `<h4>${inlineHtml(line, links, tags)}</h4>`
     }
     if (listOpen) body += '</ol>'

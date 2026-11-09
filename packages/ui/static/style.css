@@ -607,3 +607,6 @@
   .rule-actions .btn-ghost { padding:2px 8px; font-size:12px; margin-left:4px; }
   .form-problems { width:100%; color:var(--hole); font-size:12.5px; }
   .form-problems:empty { display:none; }
+
+  /* 1 日の進行の行の中の語のリンク（anchor）。本文の流れを崩さないよう、下線だけで示す */
+  .daily-anchor { color:var(--accent); text-decoration:underline; text-underline-offset:2px; }

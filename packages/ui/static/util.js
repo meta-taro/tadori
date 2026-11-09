@@ -169,6 +169,19 @@ export function originHtml(origin) {
 }
 
 /**
+ * text の中で、word の nth 回目が始まる位置（無ければ -1）。1 日の進行の行のリンクの語（anchor）を探すのに使う
+ * @param {string} text @param {string} word @param {number} [nth]
+ */
+export function nthIndexOf(text, word, nth = 1) {
+  let at = -1
+  for (let i = 0; i < nth; i += 1) {
+    at = text.indexOf(word, at + 1)
+    if (at < 0) return -1
+  }
+  return at
+}
+
+/**
  * ID で要素を取る。画面の骨組み（index.html）にあるはずのものが無いのは作りの誤りなので、黙って進まずに止める
  * @param {string} id
  * @returns {HTMLElement}

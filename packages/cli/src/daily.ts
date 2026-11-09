@@ -133,7 +133,33 @@ function linkList(body: Record<string, unknown>): DailyLink[] | undefined {
     let parsed: URL
     try { parsed = new URL(url) } catch { throw new DailyInputError(`links の ${i + 1} 件目：URL として読めません`) }
     if (!['http:', 'https:'].includes(parsed.protocol) || /\s/.test(url)) throw new DailyInputError(`links の ${i + 1} 件目：URL は http か https で、空白を含めないでください`)
-    return { label, url }
+    const anchor = typeof link.anchor === 'string' ? link.anchor.replace(/[\t\r\n]+/g, ' ').trim() : ''
+    if (anchor.length > MAX_LABEL * 2 || anchor.includes('|') || anchor.includes(' > ')) throw new DailyInputError(`links の ${i + 1} 件目：anchor は ${MAX_LABEL * 2} 文字までで、「|」「 > 」を含めないでください`)
+    const nth = link.nth === undefined ? 1 : Number(link.nth)
+    if (!Number.isInteger(nth) || nth < 1 || nth > MAX_NTH) throw new DailyInputError(`links の ${i + 1} 件目：nth は 1〜${MAX_NTH} の整数で渡してください`)
+    return { label, url, ...(anchor ? { anchor } : {}), ...(anchor && nth > 1 ? { nth } : {}) }
+  }).filter((l, i, all) => all.findIndex(o => linkKey(o) === linkKey(l)) === i) // 同じリンクは 1 つにまとめる
+}
+
+const MAX_NTH = 20
+const linkKey = (l: DailyLink) => `${l.label}\t${l.url}\t${l.anchor ?? ''}\t${l.nth ?? 1}`
+
+/** text の中で、word の nth 回目が始まる位置（無ければ -1） */
+export function nthIndexOf(text: string, word: string, nth = 1): number {
+  let at = -1
+  for (let i = 0; i < nth; i += 1) {
+    at = text.indexOf(word, at + 1)
+    if (at < 0) return -1
+  }
+  return at
+}
+
+/** 本文に見つからない語（画面では行末に「表示名 ↗」で出る）を、エージェントと人に知らせる文にする */
+export function anchorWarnings(entry: DailyEntry): string[] {
+  return (entry.links ?? []).flatMap(l => {
+    if (!l.anchor || nthIndexOf(entry.text, l.anchor, l.nth ?? 1) >= 0) return []
+    const which = (l.nth ?? 1) > 1 ? `の ${l.nth} 回目` : ''
+    return [`リンク「${l.label}」の語「${l.anchor}」${which}が本文に見つかりません（画面では行末に「${l.label} ↗」で出します）`]
   })
 }
 
@@ -150,7 +176,7 @@ const asBody = (body: unknown): Record<string, unknown> => {
 }
 
 /** 行を足す（人かエージェントが書いた行。作り直しても残る） */
-export async function addDaily(dir: string, date: string, input: unknown): Promise<{ entry: DailyEntry; commit: CommitResult }> {
+export async function addDaily(dir: string, date: string, input: unknown): Promise<{ entry: DailyEntry; commit: CommitResult; warnings: string[] }> {
   const body = asBody(input)
   const { entries } = await mergedEntries(dir, date)
   const used = new Set(entries.map(e => e.id))
@@ -173,7 +199,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     origin: 'manual',
   })
   const commit = await writeDaily(dir, date, [...entries, entry], `1 日の進行に行を足した（${date}）`)
-  return { entry, commit }
+  return { entry, commit, warnings: anchorWarnings(entry) }
 }
 
 /**
@@ -188,7 +214,7 @@ async function withIssueHead(dir: string, entry: DailyEntry): Promise<DailyEntry
 }
 
 /** 行を直す。自動の行は「直した」になり、作り直しても上書きされない */
-export async function updateDaily(dir: string, date: string, id: string, input: unknown): Promise<{ entry: DailyEntry; commit: CommitResult }> {
+export async function updateDaily(dir: string, date: string, id: string, input: unknown): Promise<{ entry: DailyEntry; commit: CommitResult; warnings: string[] }> {
   const body = asBody(input)
   const { entries } = await mergedEntries(dir, date)
   const current = entries.find(e => e.id === id && visible(e))
@@ -208,7 +234,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
   const merged: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited' }
   const entry = patch.text !== undefined || patch.issue !== undefined ? await withIssueHead(dir, merged) : merged
   const commit = await writeDaily(dir, date, entries.map(e => (e.id === id ? entry : e)), `1 日の進行の行 ${id} を直した（${date}）`)
-  return { entry, commit }
+  return { entry, commit, warnings: anchorWarnings(entry) }
 }
 
 /** 行を消す。自動の行は「消した」印を残し、作り直しても戻ってこないようにする。足した行はそのまま消す */

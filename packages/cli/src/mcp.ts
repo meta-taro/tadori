@@ -143,7 +143,7 @@ function dailyTools(options: McpOptions): Tool[] {
     wbs: { type: 'array', items: { type: 'string' }, description: 'つながる WBS の ID（例：W-03）' },
     links: {
       type: 'array', maxItems: 8,
-      items: { type: 'object', properties: { label: { type: 'string', description: '表示名（例：QA表・MR・設計書 3.2.5）' }, url: { type: 'string', description: 'http か https の URL' } }, required: ['label', 'url'], additionalProperties: false },
+      items: { type: 'object', properties: { label: { type: 'string', description: '表示名（例：QA表・MR・設計書 3.2.5）' }, url: { type: 'string', description: 'http か https の URL' }, anchor: { type: 'string', description: '本文の中の語。画面ではその語をリンクにする（行末には出さない）。本文に無ければ行末に「表示名 ↗」で出す' }, nth: { type: 'number', description: '同じ語が何回も出るとき、何回目か（既定 1）' } }, required: ['label', 'url'], additionalProperties: false },
       description: 'その作業でさわった正本の場所。画面では行の末尾に「表示名 ↗」で出て押すと開く。読み上げる文には入れず、補足に出す。直すときは全件を渡し直す',
     },
     issue: { type: 'string', description: '課題の ID（台帳の行）' },
@@ -188,8 +188,8 @@ function dailyTools(options: McpOptions): Tool[] {
       description: '1 日の進行に行を足す（相談や、材料に出ない作業）。足した行は作り直しても残る。',
       inputSchema: { type: 'object', properties: { date: DATE, section: SECTION, ...ENTRY_FIELDS }, required: ['section', 'text'], additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
-        const { entry, commit } = await addDaily(dir, date, args)
-        return text(`[${entry.id}] を足しました。${committed(commit)}`)
+        const { entry, commit, warnings } = await addDaily(dir, date, args)
+        return text([`[${entry.id}] を足しました。${committed(commit)}`, ...warnings.map(w => `注意：${w}`)].join('\n'))
       }),
     },
     {
@@ -197,8 +197,8 @@ function dailyTools(options: McpOptions): Tool[] {
       description: '1 日の進行の行を直す（id は daily の [ID]）。渡した項目だけ変わる。自動の行は「直した行」になり、作り直しても上書きされない。',
       inputSchema: { type: 'object', properties: { date: DATE, id: { type: 'string' }, section: SECTION, ...ENTRY_FIELDS }, required: ['id'], additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
-        const { entry, commit } = await updateDaily(dir, date, str(args.id), args)
-        return text(`[${entry.id}] を直しました。${committed(commit)}`)
+        const { entry, commit, warnings } = await updateDaily(dir, date, str(args.id), args)
+        return text([`[${entry.id}] を直しました。${committed(commit)}`, ...warnings.map(w => `注意：${w}`)].join('\n'))
       }),
     },
     {

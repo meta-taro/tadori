@@ -131,6 +131,19 @@ describe('MCP で 1 日の進行を作る・足す・直す・消す', () => {
     expect(bad.isError).toBe(true)
   })
 
+  test('links に anchor（本文の語）と nth を渡せる。本文に無い語は、足したうえで知らせる。同じリンクは 1 つにまとめる', async () => {
+    const link = { label: 'QA表', url: 'https://sheets.example.com/qa', anchor: 'QA', nth: 2 }
+    const ok = await tool('daily_add', { date: '2026-11-06', who: '設計担当', section: 'today', text: 'QA を読んで QA を返した', links: [link, link] })
+    expect(ok.content[0]?.text).not.toContain('見つかりません')
+    const listed = (await tool('daily', { date: '2026-11-06' })).content[0]?.text ?? ''
+    expect(listed.match(/QA表：/g)).toHaveLength(1)
+    const missing = await tool('daily_add', { date: '2026-11-06', who: '設計担当', section: 'today', text: 'MR を出した', links: [{ label: 'MR', url: 'https://git.example.com/mr/3', anchor: 'プルリク' }] })
+    expect(missing.isError).toBeUndefined()
+    expect(missing.content[0]?.text).toContain('「プルリク」が本文に見つかりません')
+    const tooFar = await tool('daily_add', { date: '2026-11-06', who: '設計担当', section: 'today', text: 'MR を出した', links: [{ label: 'MR', url: 'https://git.example.com/mr/3', anchor: 'MR', nth: 2 }] })
+    expect(tooFar.content[0]?.text).toContain('「MR」の 2 回目が本文に見つかりません')
+  })
+
   test('無い行を直そうとしたら isError', async () => {
     expect((await tool('daily_update', { date: '2026-11-05', id: 'zz9', text: 'a' })).isError).toBe(true)
   })

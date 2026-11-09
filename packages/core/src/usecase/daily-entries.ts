@@ -52,6 +52,10 @@ export interface DailyEntry {
 export interface DailyLink {
   readonly label: string
   readonly url: string
+  /** 本文の中の語。あれば画面ではその語をリンクにし、行末には出さない（本文に無ければ行末に出す） */
+  readonly anchor?: string
+  /** 同じ語が本文に何回も出るとき、何番目か（1 から。無ければ最初） */
+  readonly nth?: number
 }
 
 /** 人かエージェントが触った行か */

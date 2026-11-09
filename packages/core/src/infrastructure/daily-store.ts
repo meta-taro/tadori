@@ -15,11 +15,20 @@ const COLUMNS = ['id', 'who', 'section', 'text', 'wbs', 'issue', 'note', 'origin
 
 /** 行のリンクは「表示名 URL | 表示名 URL」の 1 セルに書く（人が TSV を開いても読める。URL に空白は入らないので、最後の空白で分けられる） */
 const LINK_SEPARATOR = ' | '
-const linksToCell = (links: readonly DailyLink[] | undefined) => (links ?? []).map(l => `${l.label} ${l.url}`).join(LINK_SEPARATOR)
+// 本文の語をリンクにするときは「表示名 URL > 語 #番目」（#番目は 2 回目以降のときだけ）
+const ANCHOR_MARK = ' > '
+const linkToText = (l: DailyLink) => `${l.label} ${l.url}${l.anchor ? `${ANCHOR_MARK}${l.anchor}${l.nth && l.nth > 1 ? ` #${l.nth}` : ''}` : ''}`
+const linksToCell = (links: readonly DailyLink[] | undefined) => (links ?? []).map(linkToText).join(LINK_SEPARATOR)
 function linksFromCell(cell: string): DailyLink[] {
   return cell.split(LINK_SEPARATOR).map(part => part.trim()).filter(Boolean).flatMap(part => {
-    const at = part.lastIndexOf(' ')
-    return at > 0 ? [{ label: part.slice(0, at).trim(), url: part.slice(at + 1) }] : []
+    // URL は空白を含まない。最初の http(s):// の語が URL で、その前が表示名、後ろが語
+    const match = /^(.*?)\s+(https?:\/\/\S+)(?:\s+>\s+(.+?))?$/.exec(part)
+    if (!match) return []
+    const [, label = '', url = '', anchorPart] = match
+    const nthMatch = anchorPart ? /^(.*?)\s+#(\d+)$/.exec(anchorPart) : null
+    const anchor = nthMatch ? nthMatch[1] : anchorPart
+    const nth = nthMatch ? Number(nthMatch[2]) : undefined
+    return [{ label: label.trim(), url, ...(anchor ? { anchor: anchor.trim() } : {}), ...(nth && nth > 1 ? { nth } : {}) }]
   })
 }
 const ORIGINS: readonly DailyOrigin[] = ['auto', 'edited', 'manual', 'removed']
