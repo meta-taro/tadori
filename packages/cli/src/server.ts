@@ -1,4 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { checkUpdate, type UpdateInfo } from './update-check.js'
+import { CLI_VERSION } from './version.js'
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { ProjectLoadError, saveSettings, saveTaskStatus, trace, validatePhases, validateStatuses, type Phase, type StatusDef } from '@tadori/core'
@@ -14,6 +16,10 @@ export interface ServerOptions {
   readonly today?: string
   /** 画面のファイルの置き場所。null なら API だけ */
   readonly uiDir: string | null
+  /** 画面に出す版（デスクトップアプリから起こしたときはアプリの版）。無ければ CLI の版 */
+  readonly appVersion?: string
+  /** 新しい版があるかを確かめる（テストでは差し替える）。既定は GitHub の公開リリースを見る */
+  readonly checkUpdate?: (current: string) => Promise<UpdateInfo>
 }
 
 export interface RunningServer {
@@ -197,6 +203,18 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
     } catch (error: unknown) {
       if (error instanceof DailyInputError) throw new HttpError(error.status, error.message)
       throw error
+    }
+  }
+
+  // ヘルプの「バージョンと更新」。見に行くのは GitHub の公開リリースだけで、案件の中身は送らない
+  if (req.method === 'GET' && url.pathname === '/api/version') {
+    return sendJson(res, 200, { version: options.appVersion ?? CLI_VERSION })
+  }
+  if (req.method === 'GET' && url.pathname === '/api/update') {
+    try {
+      return sendJson(res, 200, await (options.checkUpdate ?? checkUpdate)(options.appVersion ?? CLI_VERSION))
+    } catch (error: unknown) {
+      throw new HttpError(502, error instanceof Error ? error.message : String(error))
     }
   }
 

@@ -587,3 +587,14 @@
   .daily-bar label { display:inline-flex; flex-direction:row; align-items:center; gap:8px; margin:0; white-space:nowrap; }
   .daily-bar .inline-input, .daily-bar .inline-select { height:34px; margin:0; }
   .daily-bar button { height:34px; }
+
+  /* ---- バージョンと更新 ---- */
+  .update-chip { cursor:pointer; background:var(--accent-soft); color:var(--accent); border-color:transparent; font:inherit; font-size:12px; font-weight:600; }
+  .update-chip:hover { border-color:var(--accent); }
+  .update-panel { position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,.25); z-index:60; }
+  .update-card { position:relative; width:min(440px, calc(100vw - 32px)); background:var(--surface-1); border:1px solid var(--hairline-strong); border-radius:var(--r-lg); padding:22px 24px 18px; box-shadow:0 16px 40px rgba(0,0,0,.25); color:var(--ink); }
+  .update-card h2 { margin:0 0 12px; font-size:16px; }
+  .update-card p { margin:0 0 8px; line-height:1.7; }
+  .update-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+  .update-actions a { text-decoration:none; }
+  .update-close { position:absolute; top:14px; right:14px; }

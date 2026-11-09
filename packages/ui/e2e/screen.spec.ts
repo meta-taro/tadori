@@ -155,3 +155,31 @@ test.describe('1 日の進行の文の形の担当', () => {
     await page.locator('#who-filter').selectOption('')
   })
 })
+
+test.describe('バージョンと更新', () => {
+  const newer = { current: '0.1.0', latest: '0.2.0', isNewer: true, releaseUrl: 'https://github.com/meta-taro/tadori/releases/tag/v0.2.0', downloadUrl: 'https://meta-taro.github.io/tadori/download.html' }
+
+  test('新しい版があれば上の帯に札を出し、押すと配布のページを開くリンクを出す', async ({ page }) => {
+    await page.route('**/api/update', route => route.fulfill({ json: newer }))
+    await page.goto('/#phases')
+    const chip = page.locator('.update-chip')
+    await expect(chip).toHaveText('新しい版 0.2.0')
+    await chip.click()
+    const panel = page.getByRole('dialog', { name: 'バージョンと更新' })
+    await expect(panel).toContainText('新しい版 0.2.0 があります')
+    await expect(panel.getByRole('link', { name: '配布のページを開く' })).toHaveAttribute('href', newer.downloadUrl)
+    await panel.getByRole('button', { name: '閉じる' }).click()
+    await expect(panel).toHaveCount(0)
+  })
+
+  test('最新なら札を出さず、確かめられないときは理由を出す（「最新」と決めつけない）', async ({ page }) => {
+    await page.goto('/#phases')
+    await expect(page.locator('#summary')).toContainText('漏れ')
+    await expect(page.locator('.update-chip')).toHaveCount(0)
+    // 画面が配る update.js を、ブラウザの中で読み込んで開く（型の検査では、ブラウザの URL は解決できないので文字で渡す）
+    await page.evaluate(async path => { const m = await import(path); await m.showUpdatePanel() }, '/update.js')
+    const panel = page.getByRole('dialog', { name: 'バージョンと更新' })
+    await expect(panel).toContainText('tadori 0.1.0')
+    await expect(panel).toContainText('切ってあります')
+  })
+})

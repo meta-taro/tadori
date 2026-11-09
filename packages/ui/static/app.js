@@ -10,6 +10,7 @@ import { initAgent } from './agent.js'
 import { renderSettings } from './view-settings.js'
 import { renderGlossary, setGlossaryQuery } from './view-glossary.js'
 import { renderDaily } from './view-daily.js'
+import { checkUpdateQuietly } from './update.js'
 
 const view = byId('view')
 /**
@@ -144,6 +145,8 @@ window.addEventListener('hashchange', route)
 window.addEventListener('focus', reload)
 initSearch({ getState: () => state, navigate })
 initDesktop()
+// 1 日に 1 回、新しい版があるかを確かめ、あれば上の帯に札を出す
+void checkUpdateQuietly(byId('summary'))
 
 /**
  * ほかのアプリ（md-business など）や git pull で TSV が書き換わったら、その場で読み直す。

@@ -6,6 +6,7 @@ import { appendChecks, initProject, ProjectLoadError, trace, type CheckRecord } 
 import { formatCheck, formatTrace } from './format.js'
 import { loadState, localToday } from './state.js'
 import { startServer } from './server.js'
+import { CLI_VERSION } from './version.js'
 import { serveMcp } from './mcp.js'
 import { howTo } from './guide.js'
 import { runCheck } from './check-log.js'
@@ -112,7 +113,14 @@ async function main(): Promise<void> {
     if (!Number.isInteger(port) || port < 0 || port > 65535) fail(`--port が正しくありません：${values.port}`)
     const uiDir = fileURLToPath(new URL('../../ui/static', import.meta.url))
     // --today を渡したときだけ日付を固定する。渡さなければ、サーバーが読むたびにその日の日付を使う
-    const server = await startServer({ dir, port, uiDir, ...(values.today ? { today } : {}) })
+    // デスクトップアプリから起こしたときは、アプリの版を画面に出す（ヘルプの「バージョンと更新」）
+    const appVersion = process.env.TADORI_APP_VERSION?.trim()
+    // TADORI_UPDATE_CHECK=off なら、新しい版を見に行かない（外へ出られない環境や、テストのため）
+    const updateOff = process.env.TADORI_UPDATE_CHECK?.trim().toLowerCase() === 'off'
+    const server = await startServer({
+      dir, port, uiDir, ...(values.today ? { today } : {}), ...(appVersion ? { appVersion } : {}),
+      ...(updateOff ? { checkUpdate: async () => { throw new Error('新しい版の確認は切ってあります（TADORI_UPDATE_CHECK=off）') } } : {}),
+    })
     // --port 0 のときは OS が空いている番号を選ぶので、実際につないだ番号を出す（デスクトップアプリはこの行から URL を読む）
     const bound = typeof server.address === 'object' && server.address ? server.address.port : port
     process.stdout.write(`tadori を立ち上げました：http://127.0.0.1:${bound}/\n案件：${dir}\n止めるときは Ctrl+C\n`)
@@ -142,7 +150,7 @@ async function main(): Promise<void> {
       glossaryPath: fileURLToPath(new URL('../../ui/static/glossary.tsv', import.meta.url)),
       guidePath: fileURLToPath(new URL('../guide.md', import.meta.url)),
       ...(values.screen ? { screenUrl: values.screen.replace(/\/+$/, '') } : {}),
-      version: '0.0.1',
+      version: CLI_VERSION,
       today,
       ...(rest[0] ? { projectDir: resolve(rest[0]) } : {}),
     })

@@ -326,3 +326,22 @@ describe('1 日の進行の行の印', () => {
     expect((await send('PUT', `/api/daily/${day}/entries/${added.entry.id}`, { tag: 'nope' })).status).toBe(400)
   })
 })
+
+describe('GET /api/version・/api/update（ヘルプのバージョンと更新）', () => {
+  test('いまの版と、新しい版があるかを返す。確かめられなければ 502 で理由を返す', async () => {
+    const app = await startServer({
+      dir, port: 0, uiDir: null, appVersion: '0.1.0',
+      checkUpdate: async current => ({ current, latest: '0.2.0', isNewer: true, releaseUrl: 'https://github.com/meta-taro/tadori/releases/tag/v0.2.0', downloadUrl: 'https://meta-taro.github.io/tadori/download.html' }),
+    })
+    const url = `http://127.0.0.1:${(app.address as { port: number }).port}`
+    expect(await (await fetch(`${url}/api/version`)).json()).toEqual({ version: '0.1.0' })
+    expect(await (await fetch(`${url}/api/update`)).json()).toMatchObject({ current: '0.1.0', latest: '0.2.0', isNewer: true })
+    await app.close()
+
+    const offline = await startServer({ dir, port: 0, uiDir: null, appVersion: '0.1.0', checkUpdate: async () => { throw new Error('新しい版があるか確かめられませんでした（offline）') } })
+    const res = await fetch(`http://127.0.0.1:${(offline.address as { port: number }).port}/api/update`)
+    expect(res.status).toBe(502)
+    expect((await res.json()).error).toMatch(/確かめられません/)
+    await offline.close()
+  })
+})

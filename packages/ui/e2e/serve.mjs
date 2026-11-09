@@ -11,7 +11,8 @@ const example = resolve(here, '../../../examples/lend-v12')
 const dir = await mkdtemp(join(tmpdir(), 'tadori-e2e-'))
 await cp(example, dir, { recursive: true })
 
-const server = spawn(process.execPath, [resolve(here, '../../cli/dist/main.js'), 'serve', dir, '--port', port], { stdio: 'inherit' })
+// テストでは GitHub に新しい版を見に行かない（確かめる画面のテストは、返事を差し替えて見る）
+const server = spawn(process.execPath, [resolve(here, '../../cli/dist/main.js'), 'serve', dir, '--port', port], { stdio: 'inherit', env: { ...process.env, TADORI_UPDATE_CHECK: 'off', TADORI_APP_VERSION: '0.1.0' } })
 const cleanup = async () => {
   server.kill()
   await rm(dir, { recursive: true, force: true })

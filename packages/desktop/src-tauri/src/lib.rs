@@ -187,6 +187,8 @@ fn start_and_show(handle: &AppHandle, project: &Path) -> Result<(), String> {
     let mut command = Command::new("node");
     command
         .args(sidecar::serve_args(&cli, project, sidecar::choose_port(sidecar::PREFERRED_PORT)))
+        // 画面のヘルプ「バージョンと更新」に、アプリの版を出すため
+        .env("TADORI_APP_VERSION", handle.package_info().version.to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     hide_console(&mut command);

@@ -3,6 +3,7 @@
 // ブラウザで開いたときは何もしない（window.__TAURI__ が無い）。
 // 呼べるのは、窓の操作と、案件を開く 3 つの命令と、正本を OS のブラウザで開く命令だけ（それ以外は Tauri の側で断られる）
 import { esc, toast } from './util.js'
+import { showUpdatePanel } from './update.js'
 
 const tauri = window.__TAURI__
 
@@ -108,6 +109,7 @@ async function menuHtml(key) {
       + '<div class="menu-sep"></div><button type="button" role="menuitem" data-action="reload"><span class="check"></span>読み直す</button>'
   }
   return `<button type="button" role="menuitem" data-action="glossary"><span class="check"></span>用語</button>
+    <button type="button" role="menuitem" data-action="version"><span class="check"></span>バージョンと更新…</button>
     <button type="button" role="menuitem" data-action="about"><span class="check"></span>tadori について</button>`
 }
 
@@ -117,5 +119,6 @@ function runAction(action, value) {
   if (action === 'theme') window.tadoriTheme?.set(value)
   if (action === 'reload') location.reload()
   if (action === 'glossary') location.hash = '#glossary'
+  if (action === 'version') void showUpdatePanel()
   if (action === 'about') toast('tadori — 仕様から試験・指摘までのつながりと、リリースまでの残課題を出す道具（判定は CLI と同じ核）', 4000)
 }
