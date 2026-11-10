@@ -126,6 +126,8 @@ examples/       架空の見本の案件
 ```bash
 pnpm verify       # 型の検査とテスト
 pnpm e2e          # 画面のテスト（Playwright。架空の見本を開いて確かめる。Windows では入っている Edge を使う）
+pnpm harness      # 出す前の試験：組んだ CLI・MCP（本物の標準入出力のプロセス）・serve（本物の HTTP）を、使う人と同じ道で動かす
+pnpm release:check  # 上の全部。push の前（.githooks/pre-push）と、インストーラーを作る前に走る
 ```
 
 ## やらないこと

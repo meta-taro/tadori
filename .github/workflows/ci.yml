@@ -41,6 +41,9 @@ jobs:
       - name: 画面のテスト
         run: pnpm --filter @tadori/ui e2e
 
+      - name: 出す前の試験（組んだ CLI・MCP・serve を本物のプロセスで動かす）
+        run: pnpm exec vitest run --config harness/vitest.config.ts
+
       - name: 画面のテストの結果を残す（落ちたとき）
         if: failure()
         uses: actions/upload-artifact@v4

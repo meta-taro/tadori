@@ -12,7 +12,31 @@ permissions:
   contents: read
 
 jobs:
+  # インストーラーを作る前に、単体のテスト・画面のテスト・出す前の試験を全部通す。
+  # 通らない版は配らない（試験導入している人に、壊れたものを先に見つけさせないため）
+  harness:
+    name: 出す前の試験
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: 依存を入れる
+        run: pnpm install --frozen-lockfile
+      - name: 建てる
+        run: pnpm -r --filter '!@tadori/desktop' build
+      - name: 型と単体のテスト
+        run: pnpm -r --filter '!@tadori/desktop' typecheck && pnpm -r --filter '!@tadori/desktop' test
+      - name: 画面のテスト
+        run: pnpm --filter @tadori/ui exec playwright install --with-deps chromium && pnpm --filter @tadori/ui e2e
+      - name: 出す前の試験（組んだ CLI・MCP・serve を本物のプロセスで動かす）
+        run: pnpm exec vitest run --config harness/vitest.config.ts
+
   installers:
+    needs: harness
     name: ${{ matrix.name }}
     permissions:
       contents: write # 下書きのリリースにインストーラーを付けるため

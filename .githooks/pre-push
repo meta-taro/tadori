@@ -1,0 +1,6 @@
+#!/bin/sh
+# push の前に、出す前の試験（単体・画面・組んだ CLI と MCP と serve）を全部通す。
+# 試験導入している人へ届く前に、壊れたものを止めるため。
+set -e
+cd "$(git rev-parse --show-toplevel)"
+pnpm -s release:check

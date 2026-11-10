@@ -14,7 +14,9 @@
     "dev": "pnpm build && node packages/cli/dist/main.js serve examples/lend-v12",
     "dev:en": "pnpm build && node packages/cli/dist/main.js serve examples/lend-v12-en",
     "check:example": "node packages/cli/dist/main.js check examples/lend-v12",
-    "e2e": "pnpm build && pnpm --filter @tadori/ui e2e"
+    "e2e": "pnpm build && pnpm --filter @tadori/ui e2e",
+    "harness": "pnpm build && vitest run --config harness/vitest.config.ts",
+    "release:check": "pnpm verify && pnpm e2e && pnpm harness"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

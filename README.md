@@ -123,6 +123,8 @@ examples/         the fictional sample project
 ```bash
 pnpm verify       # type check and tests
 pnpm e2e          # screen tests (Playwright; opens the sample project. On Windows it uses the installed Edge)
+pnpm harness      # pre-release checks: runs the built CLI, MCP (a real stdio process) and serve (real HTTP) the way users do
+pnpm release:check  # all of the above. Runs before every push (.githooks/pre-push) and before installers are built
 ```
 
 ## Out of scope
