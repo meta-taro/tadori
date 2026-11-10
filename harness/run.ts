@@ -1,11 +1,12 @@
 // ハーネスの共通の道具：組んだ CLI を本物のプロセスとして起こす
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 
 export const ROOT = resolve(import.meta.dirname, '..')
-export const CLI = resolve(ROOT, 'packages/cli/dist/main.js')
+// 既定はリポジトリで組んだ CLI。TADORI_HARNESS_CLI を渡すと、インストーラーに入れる写し（packages/desktop/src-tauri/tadori）を試す
+export const CLI = process.env.TADORI_HARNESS_CLI ? resolve(process.env.TADORI_HARNESS_CLI) : resolve(ROOT, 'packages/cli/dist/main.js')
 export const EXAMPLE = resolve(ROOT, 'examples/lend-v12')
 
 /** 試験の中では、言語を日本語に固め、新しい版を見に外へ出ない。git の環境変数は外す（commit 前の検査の中で走っても、このリポジトリを触らない） */
@@ -17,7 +18,7 @@ export function harnessEnv(extra: Record<string, string> = {}): NodeJS.ProcessEn
 /** 組んだ CLI が無ければ、ここで止める（組まずに流して、古い dist を試すのを防ぐ） */
 export function requireBuilt(): { commit: string; builtAt: string } {
   if (!existsSync(CLI)) throw new Error(`組んだ CLI がありません：${CLI}。pnpm build してから流してください`)
-  return JSON.parse(readFileSync(resolve(ROOT, 'packages/cli/dist/build-info.json'), 'utf8')) as { commit: string; builtAt: string }
+  return JSON.parse(readFileSync(resolve(dirname(CLI), 'build-info.json'), 'utf8')) as { commit: string; builtAt: string }
 }
 
 /** CLI を 1 回動かして、終了コードと出力を返す */

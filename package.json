@@ -16,7 +16,8 @@
     "check:example": "node packages/cli/dist/main.js check examples/lend-v12",
     "e2e": "pnpm build && pnpm --filter @tadori/ui e2e",
     "harness": "pnpm build && vitest run --config harness/vitest.config.ts",
-    "release:check": "pnpm verify && pnpm e2e && pnpm harness"
+    "release:check": "pnpm verify && pnpm e2e && pnpm harness && node harness/bundle.mjs",
+    "harness:bundle": "pnpm build && node harness/bundle.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

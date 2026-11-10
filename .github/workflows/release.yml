@@ -78,6 +78,9 @@ jobs:
       - name: 依存を入れる
         run: pnpm install --frozen-lockfile
 
+      - name: インストーラーに入れる写しで、出す前の試験を流す（この OS の上で）
+        run: pnpm -r --filter '!@tadori/desktop' build && node harness/bundle.mjs
+
       - name: インストーラーを作り、下書きのリリースに付ける
         uses: tauri-apps/tauri-action@v0
         env:
