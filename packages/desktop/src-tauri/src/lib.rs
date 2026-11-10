@@ -194,10 +194,13 @@ fn start_and_show(handle: &AppHandle, project: &Path) -> Result<(), String> {
     let mut command = Command::new("node");
     command
         .args(sidecar::serve_args(&cli, project, sidecar::choose_port(sidecar::PREFERRED_PORT)))
-        // 画面のヘルプ「バージョンと更新」に、アプリの版を出すため
-        .env("TADORI_APP_VERSION", handle.package_info().version.to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    // 画面のヘルプ「バージョンと更新」に、アプリの版を出すため。debug で組んだ版は渡さない（手元で組んだ版として、配布の版と比べない）
+    match sidecar::app_version_for_screen(&handle.package_info().version.to_string(), cfg!(debug_assertions)) {
+        Some(version) => command.env("TADORI_APP_VERSION", version),
+        None => command.env_remove("TADORI_APP_VERSION"),
+    };
     hide_console(&mut command);
     let mut child = command.spawn().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {

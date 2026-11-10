@@ -110,10 +110,31 @@ pub fn with_recent(list: &[PathBuf], opened: &Path, limit: usize) -> Vec<PathBuf
         .collect()
 }
 
+/// 画面へ渡すアプリの版。debug で組んだもの（手元でソースから組んだ版）は渡さない。
+/// 渡すと画面が「配った版」とみなし、配布の新しい版と比べて「新しい版があります」と出してしまうため
+pub fn app_version_for_screen(version: &str, is_debug_build: bool) -> Option<String> {
+    if is_debug_build || version.trim().is_empty() {
+        None
+    } else {
+        Some(version.trim().to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn debug_で組んだ版はアプリの版を画面へ渡さない() {
+        assert_eq!(app_version_for_screen("0.1.0", true), None);
+    }
+
+    #[test]
+    fn 配る版_release_はアプリの版を画面へ渡す() {
+        assert_eq!(app_version_for_screen("0.2.2", false), Some("0.2.2".to_string()));
+        assert_eq!(app_version_for_screen("", false), None);
+    }
 
     #[test]
     fn 立ち上げの行から手元の_url_を取り出す() {
