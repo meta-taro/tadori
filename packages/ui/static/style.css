@@ -331,8 +331,9 @@
   .wbs-phase summary .tw { color:var(--ink-tertiary); transition:transform .15s; }
   .wbs-phase[open] summary .tw { transform:rotate(90deg); }
   .wbs-phase summary .dates { margin-left:auto; font-family:var(--mono); font-size:11.5px; color:var(--ink-subtle); font-weight:400; }
-  .wbs-task { display:grid; grid-template-columns:56px 1fr 116px 92px; gap:10px; align-items:center; padding:6px 12px 6px 34px; border-top:1px solid var(--hairline); font-size:13px; }
+  .wbs-task { display:grid; grid-template-columns:56px 1fr minmax(0,9em) 116px 92px; gap:10px; align-items:center; padding:6px 12px 6px 34px; border-top:1px solid var(--hairline); font-size:13px; }
   .wbs-task .dates { text-align:right; }
+  .wbs-task .owner { font-size:12px; color:var(--ink-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .wbs-task { box-shadow:inset 3px 0 0 var(--row-color, transparent); background:linear-gradient(90deg, color-mix(in oklch, var(--row-color, transparent) 14%, transparent), transparent 40%); }
   .wbs-task .late { margin-left:8px; font-size:11.5px; font-weight:600; white-space:nowrap; }
   .late-dot { width:8px; height:8px; border-radius:50%; flex:none; }

@@ -201,6 +201,7 @@ export const JA = {
   'By WBS number': 'WBS 番号順',
   'By start date': '開始日順',
   'By end date': '終了日順',
+  'By owner': '担当順',
   'By status': 'ステータス順',
   'No dates': '期間なし',
   'Status of {id}': '{id} のステータス',

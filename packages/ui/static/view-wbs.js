@@ -15,6 +15,8 @@ const SORTS = {
   wbs: { label: 'By WBS number', cmp: () => (a, b) => a.id.localeCompare(b.id) },
   start: { label: 'By start date', cmp: () => (a, b) => (a.start ? day(a.start) : Infinity) - (b.start ? day(b.start) : Infinity) },
   end: { label: 'By end date', cmp: () => (a, b) => (a.end ? day(a.end) : Infinity) - (b.end ? day(b.end) : Infinity) },
+  // 担当の名前順。担当の無いタスクは最後
+  owner: { label: 'By owner', cmp: () => (a, b) => (a.owner ? 0 : 1) - (b.owner ? 0 : 1) || (a.owner ?? '').localeCompare(b.owner ?? '') },
   status: { label: 'By status', cmp: state => (a, b) => state.statuses.findIndex(s => s.id === a.status) - state.statuses.findIndex(s => s.id === b.status) },
 }
 
@@ -43,6 +45,7 @@ function taskRow(state, task) {
   return `<div class="wbs-task" id="task-${esc(task.id)}" style="--row-color:${color}">
     <span class="tid">${esc(task.id)}</span>
     <span>${esc(task.name)}${lateText}</span>
+    <span class="owner" title="${esc(t('Owner'))}">${esc(task.owner ?? '')}</span>
     <select class="status-select tone-${current?.tone ?? 'none'}" data-task="${esc(task.id)}" aria-label="${esc(t('Status of {id}', { id: task.id }))}">${options}</select>
     <span class="dates">${dates}</span>
   </div>`

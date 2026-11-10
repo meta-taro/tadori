@@ -261,3 +261,16 @@ test.describe('1 日の進行の本文の語のリンク（anchor）', () => {
     await expect(row.locator('.daily-link', { hasText: 'MR ↗' })).toHaveCount(1)
   })
 })
+
+test.describe('プロダクトの WBS', () => {
+  test('各タスクの行に担当を出し、担当順に並べ替えられる', async ({ page }) => {
+    await page.goto('/#browse')
+    await expect(page.locator('#task-W-01 .owner')).toHaveText('設計担当')
+    await page.locator('#wbs-sort').selectOption('owner')
+    // 工程ごとに、担当の名前順（担当の無いタスクは最後）
+    const owners = await page.locator('.wbs-task .owner').first().locator('xpath=../..').locator('.wbs-task .owner').allTextContents()
+    const named = owners.filter(Boolean)
+    expect(named).toEqual([...named].sort((a, b) => a.localeCompare(b)))
+    expect(owners.slice(named.length).every(o => o === '')).toBe(true)
+  })
+})
