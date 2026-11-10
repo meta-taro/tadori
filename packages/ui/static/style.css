@@ -185,8 +185,14 @@
   .msg.human .bubble { background:rgba(126,224,195,.12); border-color:rgba(126,224,195,.35); border-radius:12px 4px 12px 12px; }
   /* エージェントが人に伝える強調 */
   .hl-box { position:absolute; z-index:15; pointer-events:none; border:2px solid #ffd166; border-radius:8px; box-shadow:0 0 0 4px rgba(255,209,102,.18); animation:hlin .25s ease-out; }
-  .hl-label { position:absolute; left:-2px; bottom:calc(100% + 6px); background:#ffd166; color:#1a1405; font-size:12px; font-weight:700; padding:2px 10px; border-radius:999px 999px 999px 4px; white-space:nowrap; max-width:min(560px, calc(100vw - 16px)); overflow:hidden; text-overflow:ellipsis; box-shadow:0 4px 12px rgba(0,0,0,.4); }
-  .hl-label:empty { display:none; }
+  /* エージェントの一言の吹き出し。置き場所は agent.js が窓の中に決め、しっぽ（--tail）は指した所を向く */
+  .agent-bubble { position:fixed; z-index:16; pointer-events:none; box-sizing:border-box; max-width:min(280px, calc(100vw - 16px)); background:#ffd166; color:#1a1405; font-size:12px; font-weight:600; line-height:1.55; padding:6px 10px; border-radius:8px; white-space:normal; overflow-wrap:anywhere; box-shadow:0 6px 16px rgba(0,0,0,.35); animation:hlin .25s ease-out; }
+  .agent-bubble[hidden] { display:none; }
+  .agent-bubble::after { content:''; position:absolute; width:10px; height:10px; background:inherit; transform:rotate(45deg); }
+  .agent-bubble[data-side="above"]::after { bottom:-5px; left:calc(var(--tail) - 5px); }
+  .agent-bubble[data-side="below"]::after { top:-5px; left:calc(var(--tail) - 5px); }
+  .agent-bubble[data-side="right"]::after { left:-5px; top:calc(var(--tail) - 5px); }
+  .agent-bubble[data-side="left"]::after { right:-5px; top:calc(var(--tail) - 5px); }
   @keyframes hlin { from { opacity:0; transform:scale(1.06); } to { opacity:1; transform:none; } }
   .hl-pulse { animation:hlpulse 1.4s ease-in-out infinite !important; border-radius:8px; }
   @keyframes hlpulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,209,102,0); } 50% { box-shadow:0 0 0 6px rgba(255,209,102,.55); } }
@@ -549,6 +555,7 @@
   /* エージェントの専用カーソルは、メニューより手前に出す */
   .agent-cursor { z-index:60; }
   .hl-box { z-index:55; }
+  .agent-bubble { z-index:56; }
 
   /* ---- 1 日の進行 ---- */
   .daily-bar { display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin:8px 0 16px; }

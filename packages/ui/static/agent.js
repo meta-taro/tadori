@@ -14,13 +14,15 @@ const TARGETS = 'button, a, input, select, textarea, [role="menuitem"], [role="m
 let cursorEl = null
 /** @type {HTMLDivElement | null} */
 let boxEl = null
+/** @type {HTMLDivElement | null} */
+let bubbleEl = null
 
 /**
  * カーソルと強調の枠（はじめて使うときに作る）
- * @returns {{ cursor: HTMLDivElement, box: HTMLDivElement }}
+ * @returns {{ cursor: HTMLDivElement, box: HTMLDivElement, bubble: HTMLDivElement }}
  */
 function ensureCursor() {
-  if (cursorEl && boxEl) return { cursor: cursorEl, box: boxEl }
+  if (cursorEl && boxEl && bubbleEl) return { cursor: cursorEl, box: boxEl, bubble: bubbleEl }
   const cursor = document.createElement('div')
   cursor.className = 'agent-cursor'
   cursor.hidden = true
@@ -30,11 +32,17 @@ function ensureCursor() {
   const box = document.createElement('div')
   box.className = 'hl-box'
   box.hidden = true
-  box.innerHTML = '<span class="hl-label"></span>'
   document.body.appendChild(box)
+  // 一言の吹き出し。枠の中に入れず画面に対して置く（枠の外側のどの向きにも出せるように）
+  const bubble = document.createElement('div')
+  bubble.className = 'agent-bubble'
+  bubble.hidden = true
+  bubble.setAttribute('role', 'status')
+  document.body.appendChild(bubble)
   cursorEl = cursor
   boxEl = box
-  return { cursor, box }
+  bubbleEl = bubble
+  return { cursor, box, bubble }
 }
 
 /** 札（エージェントの名前・一言）の文字を替える */
@@ -70,34 +78,77 @@ function findTarget(target) {
 
 const wait = (/** @type {number} */ ms) => new Promise(done => setTimeout(done, ms))
 
-/** 一言の札が窓の右や左からはみ出すときは、窓の内側へずらす（指した所が窓の端にあっても全文が読めるように） */
+/** 吹き出しと窓の端・指した所とのすき間 */
 const EDGE_PX = 8
-/** @param {HTMLElement} label */
-function keepInWindow(label) {
-  label.style.left = ''
-  const r = label.getBoundingClientRect()
-  const overRight = r.right - (window.innerWidth - EDGE_PX)
-  const overLeft = EDGE_PX - r.left
-  if (overRight > 0) label.style.left = `${-2 - overRight}px`
-  else if (overLeft > 0) label.style.left = `${-2 + overLeft}px`
+const GAP_PX = 10
+/** しっぽを吹き出しの角から離す量（角の丸みに掛からないように） */
+const TAIL_INSET_PX = 14
+
+const clamp = (/** @type {number} */ v, /** @type {number} */ lo, /** @type {number} */ hi) => Math.min(Math.max(v, lo), Math.max(lo, hi))
+
+/**
+ * 吹き出しの置き場所。地図の吹き出しのように、足りない向きを避ける：上 → 下 → 右 → 左の順に、収まる所に置き、
+ * 横（上下に置くとき）・縦（左右に置くとき）は窓の中へずらす。角では結果として斜めに出る。
+ * しっぽは、指した所（カーソルの位置）の向きを指す
+ * @param {{ left: number, top: number, right: number, bottom: number }} target 指した所の枠
+ * @param {{ x: number, y: number }} anchor カーソルの位置
+ * @param {{ width: number, height: number }} size 吹き出しの大きさ
+ * @param {{ width: number, height: number }} view 窓の大きさ
+ * @returns {{ left: number, top: number, side: 'above' | 'below' | 'right' | 'left', tail: number }}
+ */
+export function bubblePlacement(target, anchor, size, view) {
+  const fitsAbove = target.top - GAP_PX - size.height >= EDGE_PX
+  const fitsBelow = target.bottom + GAP_PX + size.height <= view.height - EDGE_PX
+  if (fitsAbove || fitsBelow) {
+    const left = clamp(anchor.x - TAIL_INSET_PX, EDGE_PX, view.width - EDGE_PX - size.width)
+    const top = fitsAbove ? target.top - GAP_PX - size.height : target.bottom + GAP_PX
+    return { left, top, side: fitsAbove ? 'above' : 'below', tail: clamp(anchor.x - left, TAIL_INSET_PX, size.width - TAIL_INSET_PX) }
+  }
+  // 上下に入らない（指した所が縦に大きい）：右か左に置き、縦は窓の中へずらす
+  const fitsRight = target.right + GAP_PX + size.width <= view.width - EDGE_PX
+  const fitsLeft = target.left - GAP_PX - size.width >= EDGE_PX
+  const top = clamp(anchor.y - size.height / 2, EDGE_PX, view.height - EDGE_PX - size.height)
+  const tail = clamp(anchor.y - top, TAIL_INSET_PX, size.height - TAIL_INSET_PX)
+  if (fitsRight || !fitsLeft) {
+    // どこにも入らなければ、右側を窓の中へ寄せて重ねる（読めることを先にする）
+    const left = clamp(target.right + GAP_PX, EDGE_PX, view.width - EDGE_PX - size.width)
+    return { left, top, side: 'right', tail }
+  }
+  return { left: target.left - GAP_PX - size.width, top, side: 'left', tail }
+}
+
+/**
+ * 吹き出しに文を入れて置く。文が無ければ隠す
+ * @param {HTMLElement} bubble @param {DOMRect} r 指した所 @param {{ x: number, y: number }} anchor @param {string} message
+ */
+function showBubble(bubble, r, anchor, message) {
+  bubble.textContent = message
+  bubble.hidden = !message
+  if (!message) return
+  // 大きさを測ってから置く（折り返したあとの高さで、上下に入るかを決める）
+  Object.assign(bubble.style, { left: '0px', top: '0px' })
+  const size = bubble.getBoundingClientRect()
+  const place = bubblePlacement(r, anchor, { width: size.width, height: size.height }, { width: window.innerWidth, height: window.innerHeight })
+  bubble.dataset.side = place.side
+  Object.assign(bubble.style, { left: `${Math.round(place.left)}px`, top: `${Math.round(place.top)}px` })
+  bubble.style.setProperty('--tail', `${Math.round(place.tail)}px`)
 }
 
 /** @param {HTMLElement} el @param {string} [message] */
 async function moveTo(el, message) {
-  const { cursor, box } = ensureCursor()
+  const { cursor, box, bubble } = ensureCursor()
   // 見えていないものは画面の中ほどへ寄せる（端に寄せると、札やその先の中身が隠れるため）。見えていれば動かさない
   const before = el.getBoundingClientRect()
   const isInView = before.top >= 0 && before.bottom <= window.innerHeight
   el.scrollIntoView({ block: isInView ? 'nearest' : 'center', inline: 'nearest' })
   const r = el.getBoundingClientRect()
   cursor.hidden = false
-  cursor.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 40))}px, ${Math.round(r.top + r.height / 2)}px)`
+  const anchor = { x: Math.round(r.left + Math.min(r.width / 2, 40)), y: Math.round(r.top + r.height / 2) }
+  cursor.style.transform = `translate(${anchor.x}px, ${anchor.y}px)`
   box.hidden = false
   // 中身の列だけが動く作りなので、枠は画面に対して置く（どこが動いても、指した所に重なる）
   Object.assign(box.style, { position: 'fixed', left: `${r.left - 4}px`, top: `${r.top - 4}px`, width: `${r.width + 8}px`, height: `${r.height + 8}px` })
-  const label = /** @type {HTMLElement} */ (box.querySelector('.hl-label'))
-  label.textContent = message ?? ''
-  keepInWindow(label)
+  showBubble(bubble, r, anchor, message ?? '')
   await wait(MOVE_MS)
 }
 
@@ -111,7 +162,10 @@ let idleTimer
 function hideLater() {
   clearTimeout(hideTimer)
   clearTimeout(idleTimer)
-  hideTimer = setTimeout(() => { if (boxEl) boxEl.hidden = true }, HIGHLIGHT_MS)
+  hideTimer = setTimeout(() => {
+    if (boxEl) boxEl.hidden = true
+    if (bubbleEl) bubbleEl.hidden = true
+  }, HIGHLIGHT_MS)
   idleTimer = setTimeout(() => {
     if (!cursorEl) return
     cursorEl.hidden = true

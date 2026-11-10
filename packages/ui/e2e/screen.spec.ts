@@ -100,12 +100,55 @@ test.describe('エージェントの専用カーソル', () => {
   test('窓の右端にあるものを指しても、一言の札は窓の中に収まる', async ({ page }) => {
     await openDaily(page)
     await agent(page, { action: 'point', target: 'W-03', message: '設計担当の次の作業です。W-03 はレビュー中のまま、予定より遅れています' })
-    const label = page.locator('.hl-label')
+    const label = page.locator('.agent-bubble')
     await expect(label).toBeVisible()
     const box = await label.boundingBox()
     const width = page.viewportSize()?.width ?? 0
     expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width)
     expect(box?.x ?? -1).toBeGreaterThanOrEqual(0)
+  })
+
+  test('四隅と四辺の近くのものを指しても、吹き出しは窓の中に収まり、しっぽは指した所の側を向く', async ({ page }) => {
+    await openDaily(page)
+    const view = page.viewportSize() ?? { width: 0, height: 0 }
+    // 窓の四隅と四辺の中ほどに、指す的を置く（画面の作りに左右されないように、試験のときだけ足す）
+    const spots = {
+      '左上': { left: '4px', top: '4px' }, '上': { left: '50%', top: '4px' }, '右上': { right: '4px', top: '4px' },
+      '右': { right: '4px', top: '50%' }, '右下': { right: '4px', bottom: '4px' }, '下': { left: '50%', bottom: '4px' },
+      '左下': { left: '4px', bottom: '4px' }, '左': { left: '4px', top: '50%' },
+    }
+    await page.evaluate(entries => {
+      for (const [name, pos] of entries) {
+        const b = document.createElement('button')
+        b.textContent = `的${name}`
+        Object.assign(b.style, { position: 'fixed', zIndex: '100', ...pos })
+        document.body.appendChild(b)
+      }
+    }, Object.entries(spots))
+    const message = 'この欄を見てください。長い一言でも、窓の端で切れずに折り返して、全文が読めるように置きます。'
+    for (const name of Object.keys(spots)) {
+      // 的ごとに文を変える（同じ文だと、前の的の吹き出しのまま測ってしまう）
+      const text = `${name}：${message}`
+      await agent(page, { action: 'point', target: `的${name}`, message: text })
+      const bubble = page.locator('.agent-bubble')
+      await expect(bubble).toHaveText(text)
+      // 動き終わるまで待つ（置き場所は動き出しで決まるが、出てくる動きの途中を測らない）
+      await page.waitForTimeout(300)
+      const b = await bubble.boundingBox()
+      const t = await page.getByRole('button', { name: `的${name}`, exact: true }).boundingBox()
+      if (!b || !t) throw new Error(`${name}: 吹き出しか的が見えない`)
+      expect(b.x, `${name} の左`).toBeGreaterThanOrEqual(0)
+      expect(b.y, `${name} の上`).toBeGreaterThanOrEqual(0)
+      expect(b.x + b.width, `${name} の右`).toBeLessThanOrEqual(view.width)
+      expect(b.y + b.height, `${name} の下`).toBeLessThanOrEqual(view.height)
+      expect(b.width, `${name} の幅（折り返す）`).toBeLessThanOrEqual(281)
+      // 吹き出しは指した所に重ならず、しっぽの側に的がある
+      const side = await bubble.getAttribute('data-side')
+      if (side === 'above') expect(b.y + b.height, name).toBeLessThanOrEqual(t.y)
+      if (side === 'below') expect(b.y, name).toBeGreaterThanOrEqual(t.y + t.height)
+      if (side === 'right') expect(b.x, name).toBeGreaterThanOrEqual(t.x + t.width)
+      if (side === 'left') expect(b.x + b.width, name).toBeLessThanOrEqual(t.x)
+    }
   })
 
   test('filter で、どの画面もその人の分に絞る', async ({ page }) => {
