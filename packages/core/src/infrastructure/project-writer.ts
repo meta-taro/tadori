@@ -184,11 +184,13 @@ export interface RuleInput {
   readonly only?: string
   /** allowed で使う、列に書いてよい値（「a|b」） */
   readonly values?: string
+  /** 分類の ID（rule-groups.tsv の id）。空で外す */
+  readonly group?: string
   readonly owner?: string
   readonly label?: string
 }
 
-const RULE_HEADER = 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\towner\tlabel\n'
+const RULE_HEADER = 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\tgroup\towner\tlabel\n'
 
 /** ルールが書かれているファイル（無ければ null） */
 async function rulesetOf(dir: string, id: string): Promise<string | null> {
@@ -207,8 +209,12 @@ export async function saveRule(dir: string, input: RuleInput, { create }: { crea
   const exists = project.rules.some(r => r.id === id)
   if (create && exists) throw new WriteRefused([t('Rule {id} already exists', { id })])
   if (!create && !exists) throw new WriteRefused([t('Rule {id} does not exist', { id })])
-  if (input.phase !== undefined && !project.phases.some(p => p.id === input.phase)) throw new WriteRefused([t('The phase "{phase}" is not in the settings', { phase: input.phase })])
-  if (create && (!input.phase || !input.kind || !input.label)) throw new WriteRefused([t('A new rule needs phase, kind and label')])
+  // 判定しない文のルール（note）だけは、工程を空にしてよい
+  const kind = input.kind ?? project.rules.find(r => r.id === id)?.kind
+  const phaseOptional = kind === 'note'
+  if (input.phase && !project.phases.some(p => p.id === input.phase)) throw new WriteRefused([t('The phase "{phase}" is not in the settings', { phase: input.phase })])
+  if (input.phase === '' && !phaseOptional) throw new WriteRefused([t('A rule that checks needs a phase (only "note" rules may leave it empty)')])
+  if (create && ((!input.phase && !phaseOptional) || !input.kind || !input.label)) throw new WriteRefused([t('A new rule needs phase, kind and label (a "note" rule needs only kind and label)')])
 
   const path = create ? `${RULESETS}/${DEFAULT_RULESET}` : ((await rulesetOf(dir, id)) as string)
   const original = await readOr(join(dir, path), RULE_HEADER)

@@ -97,7 +97,8 @@ The whole ledger is TSV on git. People can read it without tadori.
 .tadori/sources.tsv        URLs of the sources of truth (external docs, sheets, issues) and when a synced row counts as stale (optional; see `tadori how-to sources`)
 .tadori/links.tsv          URL templates for opening other tools (optional; placeholders {path}, {repopath}, {abspath}, {line}, {id}, {rowid}; javascript: etc. are rejected)
 .tadori/sheets.tsv         md-business verification sheets read as ledger rows, without copying (optional; tadori how-to ledger)
-.tadori/rulesets/*.tsv     rulesets per phase (checks: covered / refers / filled / allowed / approval; owner = role responsible)
+.tadori/rulesets/*.tsv     rulesets per phase (checks: covered / refers / filled / allowed / approval; note = a written agreement that is read, not checked; owner = role responsible)
+.tadori/rule-groups.tsv    rule categories (optional; id, name, order). A rule's group column points here
 .tadori/checks.tsv         check log (who, what, when, where, why, how)
 .tadori/daily/*.tsv        daily progress, one file per day
 ledger/items.tsv           the ledger (design sections, commits, test viewpoints, test cases, test runs, findings, preventive actions)

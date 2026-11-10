@@ -120,6 +120,26 @@ function buildProjectTools(options: McpOptions): Tool[] {
       }),
     },
     {
+      name: 'list_rules',
+      description: t('Return the rules: the checked rules per phase, and the written agreements (kind note) that are read, not checked. Pass a category ID as group to get only that category (an empty string returns rules without a category). Read the agreements before writing, and follow them.'),
+      inputSchema: { type: 'object', properties: {
+        group: { type: 'string', description: t('Category ID from .tadori/rule-groups.tsv. Omit for all; an empty string for rules without a category') },
+        kind: { type: 'string', description: t('Only this kind (e.g. note). Omit for all') },
+      }, additionalProperties: false },
+      run: async args => withState(({ state }) => {
+        const group = typeof args.group === 'string' ? args.group.trim() : undefined
+        const kind = str(args.kind).trim()
+        const rules = state.rules.filter(r => (group === undefined || (r.group ?? '') === group) && (!kind || r.kind === kind))
+        if (!rules.length) return text(t('No matching rules'))
+        const groupName = (id: string | undefined) => (id ? state.ruleGroups.find(g => g.id === id)?.name ?? id : t('No category'))
+        const phaseName = (id: string) => state.phases.find(p => p.id === id)?.name ?? id
+        const lines = rules.map(r => t('- {id} [{group}] {kind}{phase}: {label}', {
+          id: r.id, group: groupName(r.group), kind: r.kind, phase: r.phase ? ` · ${phaseName(r.phase)}` : '', label: r.label,
+        }))
+        return text(lines.join('\n'))
+      }),
+    },
+    {
       name: 'trace',
       description: t('Follow the upstream and downstream links from one ledger row (a finding, a test case, a design section, etc.) and return where they break (✗). Links are judged only by ledger IDs, never by guessing. '
         + 'Only a person can confirm "yes, that was a gap", so show the result to a person and let them judge.'),

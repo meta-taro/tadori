@@ -80,7 +80,8 @@ export function buildGates(project: Project, leaks: readonly Leak[], today: stri
   const approved = new Set(project.approvals.filter(a => a.status === '承認').map(a => a.rule))
 
   const base = phases.map(phase => {
-    const rules = project.rules.filter(r => r.phase === phase.id)
+    // 判定しない文のルール（note）は、工程の「ルールあり」に数えない（判定のルールが無い工程を、通ったように見せない）
+    const rules = project.rules.filter(r => r.phase === phase.id && r.kind !== 'note')
     const ruleIds = new Set(rules.map(r => r.id))
     const phaseLeaks = leaks.filter(l => ruleIds.has(l.rule))
     const pendingApprovals = rules.filter(r => r.kind === 'approval' && !approved.has(r.id))

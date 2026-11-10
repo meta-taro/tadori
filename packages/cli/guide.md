@@ -56,17 +56,19 @@ Links are decided only by the IDs written in the ledger. Nothing is linked by gu
 
 ## rules Writing rules
 
-TSV files in `.tadori/rulesets/` (you may split them by phase). The columns are `id phase kind from to field only values owner label` (`values` can be left out when no rule uses it).
+TSV files in `.tadori/rulesets/` (you may split them by phase). The columns are `id phase kind from to field only values group owner label` (`values` and `group` can be left out when no rule uses them).
 
-There are 5 values for `kind`:
+There are 5 check kinds for `kind`, and `note`:
 - `covered` every row of the from kind has a row of the to kind based on it (e.g. every viewpoint V has a test case TC)
 - `refers` every row of the from kind is based on a row of the to kind (e.g. every basic design chapter BD is tied to a WBS task W)
 - `filled` every row of the from kind has a value in the field column (e.g. every detailed design section DD has change written)
 - `allowed` every row of the from kind holds one of `values` in the field column (`a|b`, e.g. a test run RUN has `OK|NG` as its result). Empty cells are left to `filled`
 - `approval` needs approval by a person. tadori only reads `ledger/approvals.tsv` and never approves on anyone's behalf
+- `note` a written agreement that is **read, not checked** (how to write a stand-up briefing, how to reply in chat, a promise between people and agents). Write it in `label`. It never makes a gap and does not count as a rule of its phase. `phase` may be empty (only for `note`)
 
 Other columns:
 - `only` narrows the target rows by `column=value` (e.g. require a commit only for sections with `change=変わる` (changes)). `column=a|b` matches any of them, `column!=value` (or `column!=a|b`) matches the other rows
+- `group` the category of the rule. Categories (their names and how many) are set per project in `.tadori/rule-groups.tsv` (columns `id name order`). The screen and `list_rules` show rules by category
 - `owner` who fixes the gap (e.g. design owner, verification owner). Shown on the screen and in `list_leaks`
 - `label` one sentence for people to read (e.g. every viewpoint has a test case)
 
@@ -79,12 +81,14 @@ R2	bd	approval					Review owner	The review owner approved the basic design docum
 ```
 If refs contains an ID that is not in the ledger, the built-in rule `ID` reports it as a gap.
 
+Agents read the rules with `list_rules` (filter with `group` or `kind`). Read the `note` agreements before writing, and follow them.
+
 ## check Checking
 
 - `tadori check <folder>` gaps and pending approvals for each phase. Exit code 1 if there is a gap (works in CI too)
 - `tadori check <folder> --log --who <name> --why <reason>` adds the result to the check log (`.tadori/checks.tsv`, 5W1H) and commits if the project is a git repository. A person pushes
 - `tadori why <ID> <folder>` traces up and down from one row and shows where the line is broken
-- MCP tools: `get_remaining` (remaining work), `list_leaks` (gaps, owners and how to fix), `trace` (trace), `find_items` (find rows)
+- MCP tools: `get_remaining` (remaining work), `list_leaks` (gaps, owners and how to fix), `trace` (trace), `find_items` (find rows), `list_rules` (rules and written agreements)
 
 Each gap comes with an "owner" and "how to fix" (which column of which line in which file to write what, so the gap goes away).
 After fixing, run check again and make sure the gap is gone.

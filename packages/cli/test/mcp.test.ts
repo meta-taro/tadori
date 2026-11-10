@@ -27,6 +27,15 @@ describe('MCP の読む道具（案件を指定して起動したとき）', () 
     expect(text).not.toMatch(/%/)
   })
 
+  test('list_rules：判定しない約束（note）を分類の名前つきで返し、分類と種類で絞れる', async () => {
+    const all = (await tool('list_rules')).content.at(0)?.text ?? ''
+    expect(all).toContain('- N1［見える化（カンペ・報告の書き方）］note：朝会のカンペは')
+    expect(all).toMatch(/- R8［プロダクト向け（工程ごとの判定）］covered · 結合テスト：/)
+    const agreements = (await tool('list_rules', { group: 'agreement' })).content.at(0)?.text ?? ''
+    expect(agreements.split('\n').map(l => l.slice(2, 4))).toEqual(['N3', 'N4'])
+    expect((await tool('list_rules', { kind: 'note' })).content.at(0)?.text).not.toContain('R8')
+  })
+
   test('list_leaks：工程で絞れる', async () => {
     const text = (await tool('list_leaks', { phase: 'dd' })).content.at(0)?.text ?? ''
     expect(text).toContain('R4')

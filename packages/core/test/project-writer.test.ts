@@ -69,6 +69,15 @@ describe('WBS の作業（saveTask）', () => {
 })
 
 describe('ルール（saveRule・removeRule）', () => {
+  test('判定しない文のルール（note）は工程なしで足せ、分類（group）も書ける。判定のルールは工程が要る', async () => {
+    await saveRule(dir, { id: 'N91', kind: 'note', group: 'visible', label: '朝会のカンペは結論を先に書く' }, { create: true })
+    expect((await loadProject(dir)).rules.find(r => r.id === 'N91')).toMatchObject({ kind: 'note', phase: '', group: 'visible' })
+    await saveRule(dir, { id: 'N91', group: '' }, { create: false })
+    expect((await loadProject(dir)).rules.find(r => r.id === 'N91')).not.toHaveProperty('group')
+    await expect(saveRule(dir, { id: 'N92', kind: 'covered', from: 'TC', to: 'RUN', label: 'x' }, { create: true })).rejects.toThrow(WriteRefused)
+    await removeRule(dir, 'N91')
+  })
+
   test('値で判定するルール（allowed と values、only の「!=」「a|b」）を足して読み戻せる。values の無い allowed は断る', async () => {
     await saveRule(dir, { id: 'R30', phase: 'it', kind: 'allowed', from: 'RUN', field: 'result', values: 'OK|NG', only: 'env!=local|dev', label: '結果は OK か NG' }, { create: true })
     expect((await loadProject(dir)).rules.find(r => r.id === 'R30')).toMatchObject({ kind: 'allowed', values: ['OK', 'NG'], only: { field: 'env', value: 'local|dev', values: ['local', 'dev'], negate: true } })

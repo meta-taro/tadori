@@ -1,0 +1,5 @@
+# Rule categories. Each project decides the names and how many (sorted by order)
+id	name	order
+visible	Visibility (briefings and reports)	1
+product	Product (checks per phase)	2
+agreement	Agreements between people and agents	3

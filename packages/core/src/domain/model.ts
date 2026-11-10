@@ -48,14 +48,23 @@ export interface Task {
 }
 
 /**
- * ルール。判定の種類は 5 つ。
+ * ルール。判定の種類は 5 つと、判定しない文のルール（note）。
  * - covered : from の種類のどの行にも、それを refs に持つ to の種類の行が 1 つ以上ある（下流が出ている）
  * - refers  : from の種類のどの行も、to の種類の行を 1 つ以上 refs に持つ（上流を元にしている）
  * - filled  : from の種類のどの行にも、field 列の値が入っている
  * - allowed : from の種類のどの行も、field 列の値が values のどれか（空の行はここでは見ない。filled で見る）
  * - approval: 人の承認が要る（判定は承認の記録を見るだけ。tadori は代わりに承認しない）
+ * - note    : 判定しない。書くときの約束（カンペの書き方・人とエージェントの間の約束など）を label に書いて、読むだけ。
+ *             漏れにも、工程の「ルールあり」の数にも入れない。工程は書かなくてよい
  */
-export type RuleKind = 'covered' | 'refers' | 'filled' | 'allowed' | 'approval'
+export type RuleKind = 'covered' | 'refers' | 'filled' | 'allowed' | 'approval' | 'note'
+
+/** ルールの分類（.tadori/rule-groups.tsv。名前と数は案件ごとに決める。書かなくてもよい） */
+export interface RuleGroup {
+  readonly id: string
+  readonly name: string
+  readonly order: number
+}
 
 /**
  * ルールの対象を絞る条件（rulesets の only 列）。
@@ -83,6 +92,8 @@ export interface Rule {
   readonly only?: RuleOnly
   /** allowed で使う、列に書いてよい値（rulesets の values 列を「|」で分けたもの） */
   readonly values?: readonly string[]
+  /** 分類の ID（rulesets の group 列。rule-groups.tsv の id。書かなくてもよい） */
+  readonly group?: string
   /** 担当の役割（例：設計担当・検証担当・PM）。漏れを直す人・承認する人。案件ごとに自由に書く */
   readonly owner?: string
 }
@@ -162,6 +173,8 @@ export interface Project {
   readonly links?: readonly import('./links.js').LinkTemplate[]
   /** 正本の表（.tadori/sources.tsv。書かなくてもよい） */
   readonly sources?: readonly import('./sources.js').SourceDef[]
+  /** ルールの分類（.tadori/rule-groups.tsv の並び順。書かなければ空） */
+  readonly ruleGroups?: readonly RuleGroup[]
   readonly name: string
   readonly phases: readonly Phase[]
   readonly rules: readonly Rule[]

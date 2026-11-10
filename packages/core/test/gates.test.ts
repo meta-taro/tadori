@@ -57,3 +57,13 @@ describe('buildGates', () => {
     expect(gate('bd').maxLateDays).toBe(26) // W-2 の終了予定 10/10 から 11/5 まで
   })
 })
+
+describe('判定しない文のルール（note）', () => {
+  test('工程の「ルールあり」の数にも漏れにも入れない', () => {
+    const note = { id: 'N1', phase: 'bd', kind: 'note' as const, from: '', to: '', field: '', label: '朝会のカンペは結論を先に書く' }
+    const project = { ...sampleProject, rules: [...sampleProject.rules, note] }
+    const bd = buildGates(project, runChecks(project), TODAY).find(g => g.phase.id === 'bd')
+    expect(bd?.rules.map(r => r.id)).not.toContain('N1')
+    expect(runChecks(project).some(l => l.rule === 'N1')).toBe(false)
+  })
+})

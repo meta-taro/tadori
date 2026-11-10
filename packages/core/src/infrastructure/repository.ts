@@ -1,6 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { isAbsolute, join, normalize } from 'node:path'
-import type { Approval, ApprovalStatus, Item, Phase, Project, Rule, RuleKind, StatusDef, Task } from '../domain/model.js'
+import type { Approval, ApprovalStatus, Item, Phase, Project, Rule, RuleGroup, RuleKind, StatusDef, Task } from '../domain/model.js'
 import { validateLinkTemplate, type LinkTemplate } from '../domain/links.js'
 import type { SourceDef } from '../domain/sources.js'
 import { t } from '../i18n.js'
@@ -35,6 +35,7 @@ export const PATHS = {
   sources: '.tadori/sources.tsv',
   columns: '.tadori/columns.tsv',
   sheets: '.tadori/sheets.tsv',
+  ruleGroups: '.tadori/rule-groups.tsv',
 } as const
 
 /** 読み込みで見つかった問題をまとめて返す（1 つずつ直させない） */
@@ -45,7 +46,7 @@ export class ProjectLoadError extends Error {
   }
 }
 
-const RULE_KINDS: readonly RuleKind[] = ['covered', 'refers', 'filled', 'allowed', 'approval']
+const RULE_KINDS: readonly RuleKind[] = ['covered', 'refers', 'filled', 'allowed', 'approval', 'note']
 const APPROVAL_STATUSES: readonly ApprovalStatus[] = ['承認', '差し戻し', '待ち']
 const TONES: readonly StatusDef['tone'][] = ['none', 'wait', 'hole', 'ok']
 const ITEM_BASE_COLUMNS = new Set(['id', 'kind', 'title', 'source', 'refs'])
@@ -218,16 +219,24 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
       const only = parseOnly(row.only ?? '')
       const owner = (row.owner ?? '').trim()
       const values = splitValues(row.values ?? '')
+      const group = (row.group ?? '').trim()
+      const phase = (row.phase ?? '').trim()
+      // 判定するルールは、どの工程のものかが無いと、工程の完了判定に入らず黙って抜ける
+      if (kind !== 'note' && !phase) {
+        problems.push(t('{file}, rule {id}: write the phase (only "note" rules may leave it empty)', { file: `${PATHS.rulesets}/${file}`, id: String(row.id) }))
+        return []
+      }
       // allowed は、書いてよい値（values 列）と見る列（field 列）が無いと判定できない
       if (kind === 'allowed' && (!values.length || !(row.field ?? '').trim())) {
         problems.push(t('{file}, rule {id}: an "allowed" rule needs a field and its allowed values in the values column (e.g. OK|NG)', { file: `${PATHS.rulesets}/${file}`, id: String(row.id) }))
         return []
       }
       return [{
-        id: row.id ?? '', phase: row.phase ?? '', kind, from: row.from ?? '', to: row.to ?? '', field: row.field ?? '', label: row.label ?? '',
+        id: row.id ?? '', phase, kind, from: row.from ?? '', to: row.to ?? '', field: row.field ?? '', label: row.label ?? '',
         ...(only ? { only } : {}),
         ...(values.length ? { values } : {}),
         ...(owner ? { owner } : {}),
+        ...(group ? { group } : {}),
       }]
     })
   }))
@@ -295,6 +304,14 @@ function toLinks(rows: readonly Record<string, string>[], problems: string[]): L
   })
 }
 
+/** ルールの分類（id・name・order）。order の小さい順。order が無ければ書いた順のうしろ */
+function toRuleGroups(rows: readonly Record<string, string>[]): RuleGroup[] {
+  return rows.filter(r => r.id?.trim()).map((r, i) => {
+    const order = Number(r.order)
+    return { id: (r.id as string).trim(), name: (r.name ?? '').trim() || (r.id as string).trim(), order: Number.isFinite(order) && r.order?.trim() ? order : 1000 + i }
+  }).sort((a, b) => a.order - b.order)
+}
+
 /** id と name の 2 列から、読み方の表を作る */
 const toNameMap = (rows: readonly Record<string, string>[]): Record<string, string> =>
   Object.fromEntries(rows.filter(r => r.id && r.name).map(r => [r.id as string, r.name as string]))
@@ -316,7 +333,7 @@ export async function loadProject(dir: string): Promise<Project> {
     throw new ProjectLoadError([t('{dir} has no .tadori folder. Specify a tadori project folder', { dir })])
   }
   const problems: string[] = []
-  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows, sourceRows, sheetRows] = await Promise.all([
+  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows, sourceRows, sheetRows, ruleGroupRows] = await Promise.all([
     readRows(dir, PATHS.project),
     readRequiredRows(dir, PATHS.phases, problems),
     readRequiredRows(dir, PATHS.statuses, problems),
@@ -329,6 +346,7 @@ export async function loadProject(dir: string): Promise<Project> {
     readRows(dir, PATHS.links),
     readRows(dir, PATHS.sources),
     readRows(dir, PATHS.sheets),
+    readRows(dir, PATHS.ruleGroups),
   ])
   const phases: Phase[] = phaseRows.map(row => {
     const order = Number(row.order)
@@ -356,6 +374,7 @@ export async function loadProject(dir: string): Promise<Project> {
     },
     links: toLinks(linkRows, problems),
     sources: toSources(sourceRows, problems),
+    ruleGroups: toRuleGroups(ruleGroupRows),
   }
   if (problems.length) throw new ProjectLoadError(problems)
   return project

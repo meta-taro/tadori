@@ -18,6 +18,8 @@ export interface ProjectState {
   readonly phases: Project['phases']
   readonly statuses: Project['statuses']
   readonly rules: Project['rules']
+  /** ルールの分類（.tadori/rule-groups.tsv の並び順。書いていなければ空） */
+  readonly ruleGroups: NonNullable<Project['ruleGroups']>
   readonly tasks: Project['tasks']
   readonly items: Project['items']
   readonly approvals: Project['approvals']
@@ -45,6 +47,7 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     phases: [...project.phases].sort((a, b) => a.order - b.order),
     statuses: project.statuses,
     rules: project.rules,
+    ruleGroups: project.ruleGroups ?? [],
     tasks: project.tasks,
     items: project.items,
     approvals: project.approvals,

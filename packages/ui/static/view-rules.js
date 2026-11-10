@@ -4,16 +4,16 @@ import { api, ApiError, esc, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, 
 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').Rule} Rule */
-/** @typedef {'leak' | 'wait' | 'ok'} RuleStatusKey */
-/** @typedef {{ query: string, phase: string, judge: string, status: string, sort: string }} RuleFilters */
+/** @typedef {'leak' | 'wait' | 'ok' | 'note'} RuleStatusKey */
+/** @typedef {{ query: string, phase: string, group: string, judge: string, status: string, sort: string }} RuleFilters */
 
 const PAGE = 50
 /** @type {Readonly<Record<string, string>>} */
-const KIND_NAMES = { covered: 'Has downstream', refers: 'Based on upstream', filled: 'Column is filled', allowed: 'Allowed values', approval: 'Human approval' }
+const KIND_NAMES = { covered: 'Has downstream', refers: 'Based on upstream', filled: 'Column is filled', allowed: 'Allowed values', approval: 'Human approval', note: 'Written agreement (not checked)' }
 
 // 画面を移っても、絞り込みと開け閉めは覚えておく
 /** @type {RuleFilters} */
-const filters = { query: '', phase: 'all', judge: 'all', status: 'all', sort: 'id' }
+const filters = { query: '', phase: 'all', group: 'all', judge: 'all', status: 'all', sort: 'id' }
 /** @type {Set<string>} */
 const closedPhases = new Set()
 /** @type {Map<string, number>} 工程 → いま出している件数 */
@@ -30,6 +30,8 @@ const ARMED_MS = 5000
  * @returns {{ key: RuleStatusKey, count: number }}
  */
 function statusOf(state, rule) {
+  // 判定しない文のルールは、満たす・漏れのどちらでもない
+  if (rule.kind === 'note') return { key: 'note', count: 0 }
   if (rule.kind === 'approval') {
     const approved = state.approvals.some(a => a.rule === rule.id && a.status === '承認')
     return approved ? { key: 'ok', count: 0 } : { key: 'wait', count: 0 }
@@ -43,7 +45,14 @@ const STATUS_HTML = {
   leak: n => `<span class="chip hole"><span class="dot"></span>${esc(t('Gaps: {n}', { n }))}</span>`,
   wait: () => `<span class="chip wait"><span class="dot"></span>${esc(t('Pending approval'))}</span>`,
   ok: () => `<span class="chip ok"><span class="dot"></span>${esc(t('Met'))}</span>`,
+  note: () => `<span class="chip none">${esc(t('Not checked'))}</span>`,
 }
+
+/** 分類の名前（rule-groups.tsv に無い ID はそのまま） @param {ProjectState} state @param {string | undefined} id */
+const groupName = (state, id) => (id ? state.ruleGroups.find(g => g.id === id)?.name ?? id : '')
+
+/** 判定の別（機械・人・判定しない） @param {Rule} rule */
+const judgeOf = rule => (rule.kind === 'note' ? 'note' : rule.kind === 'approval' ? 'human' : 'machine')
 
 /** @param {Rule} rule */
 function whatText(rule) {
@@ -78,7 +87,8 @@ function filtered(state) {
   const list = state.rules.filter(r =>
     matches(r, words)
     && (filters.phase === 'all' || r.phase === filters.phase)
-    && (filters.judge === 'all' || (filters.judge === 'human') === (r.kind === 'approval'))
+    && (filters.group === 'all' || (r.group ?? '') === filters.group)
+    && (filters.judge === 'all' || filters.judge === judgeOf(r))
     && (filters.status === 'all' || statusOf(state, r).key === filters.status)
     // 上の帯の担当で絞る（ルールの担当は役割。人の表の役割でも見分ける）
     && isMine(state, r.owner))
@@ -94,7 +104,7 @@ function ruleRow(state, r) {
   return `<tr>
     <td class="rule-id">${esc(r.id)}</td>
     <td><div class="pair">${esc(whatText(r))}</div>${r.only ? `<div class="cond">${esc(onlyText(r.only))}</div>` : ''}</td>
-    <td class="cond">${esc(r.label)}</td>
+    <td class="cond">${esc(r.label)}${r.group ? ` <span class="chip rule-group">${esc(groupName(state, r.group))}</span>` : ''}</td>
     <td class="kind">${KIND_NAMES[r.kind]}</td>
     <td class="kind">${esc(r.owner ?? '')}</td>
     <td>${STATUS_HTML[s.key](s.count)}</td>
@@ -106,7 +116,9 @@ function ruleRow(state, r) {
 function listHtml(state) {
   const rules = filtered(state)
   if (!rules.length) return `<div class="note">${ICON_INFO}<span>${esc(t('No matching rules'))}</span></div>`
-  return state.phases.map(phase => {
+  // 工程ごとの帯と、工程の無いルール（判定しない文のルール）の帯
+  const bands = [...state.phases.map(p => ({ id: p.id, name: p.name })), { id: '', name: t('No phase (written agreements)') }]
+  return bands.map(phase => {
     const inPhase = rules.filter(r => r.phase === phase.id)
     if (!inPhase.length) return ''
     const leaks = inPhase.reduce((n, r) => n + statusOf(state, r).count, 0)
@@ -153,8 +165,9 @@ function ruleFormHtml(state, rule) {
   return `<form class="add rule-form" id="rule-form" data-mode="${rule ? 'edit' : 'add'}">
     <h2>${esc(rule ? t('Edit rule {id}', { id: rule.id }) : t('Add a rule'))}</h2>
     <label>ID<input name="id" value="${esc(r.id)}" ${rule ? 'readonly' : ''} required maxlength="64"></label>
-    <label>${esc(t('Phase'))}<select name="phase">${state.phases.map(p => `<option value="${esc(p.id)}" ${p.id === r.phase ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <label>${esc(t('Phase'))}<select name="phase"><option value="" ${r.phase ? '' : 'selected'}>${esc(t('No phase (written agreement only)'))}</option>${state.phases.map(p => `<option value="${esc(p.id)}" ${p.id === r.phase ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
     <label>${esc(t('Check'))}<select name="kind">${Object.entries(KIND_NAMES).map(([k, n]) => `<option value="${k}" ${k === r.kind ? 'selected' : ''}>${esc(t(n))}</option>`).join('')}</select></label>
+    <label>${esc(t('Category'))}<select name="group"><option value="">${esc(t('No category'))}</option>${state.ruleGroups.map(g => `<option value="${esc(g.id)}" ${g.id === r.group ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label>
     <label>${esc(t('From kind'))}<input name="from" value="${esc(r.from)}" list="rule-kinds" placeholder="${esc(t('e.g. TC'))}"></label>
     <label>${esc(t('To kind'))}<input name="to" value="${esc(r.to)}" list="rule-kinds" placeholder="${esc(t('e.g. RUN (for downstream / upstream)'))}"></label>
     <label>${esc(t('Column'))}<input name="field" value="${esc(r.field)}" list="rule-columns" placeholder="${esc(t('for "Column is filled"'))}"></label>
@@ -176,7 +189,7 @@ function ruleBody(form, isEdit) {
   const data = Object.fromEntries(new FormData(form).entries())
   /** @type {Record<string, string>} */
   const body = {}
-  for (const key of ['phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'owner', 'label']) {
+  for (const key of ['phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'group', 'owner', 'label']) {
     const value = String(data[key] ?? '').trim()
     if (value || isEdit) body[key] = value
   }
@@ -191,6 +204,9 @@ function ruleBody(form, isEdit) {
 export function renderRules(view, state, reload) {
   /** @type {Array<[string, string]>} */
   const phaseOptions = [['all', 'All phases'], ...state.phases.map(p => /** @type {[string, string]} */ ([p.id, p.name]))]
+  // 分類は案件の rule-groups.tsv の並び。分類を書いていないルールは「分類なし」
+  /** @type {Array<[string, string]>} */
+  const groupOptions = [['all', 'Category: all'], ...state.ruleGroups.map(g => /** @type {[string, string]} */ ([g.id, g.name])), ['', 'No category']]
   view.innerHTML = `
     <h1>${esc(t('Rulesets'))}</h1>
     <p class="lede">${esc(t('Rulesets per phase. Agents read and follow them before working, and record what they checked. Rules that need a human approval are checked by people. Rules live in .tadori/rulesets/*.tsv; adding, editing or removing them here saves and commits (people push).'))}</p>
@@ -199,8 +215,9 @@ export function renderRules(view, state, reload) {
     <div class="rules-tools">
       <input id="rules-query" class="glossary-query" type="search" placeholder="${esc(t('Search rules (e.g. R9, test case, owner)'))}" value="${esc(filters.query)}" aria-label="${esc(t('Search rules'))}">
       ${segHtml('phase', phaseOptions)}
+      ${groupOptions.length > 2 ? segHtml('group', groupOptions) : ''}
       <div class="rules-tools-row">
-        ${segHtml('judge', [['all', 'Check: all'], ['machine', 'Machine'], ['human', 'Human']])}
+        ${segHtml('judge', [['all', 'Check: all'], ['machine', 'Machine'], ['human', 'Human'], ['note', 'Not checked']])}
         ${segHtml('status', [['all', 'Status: all'], ['leak', 'Has gaps'], ['wait', 'Pending approval'], ['ok', 'Met']])}
         ${segHtml('sort', [['id', 'By ID'], ['leaks', 'Most gaps first']])}
       </div>

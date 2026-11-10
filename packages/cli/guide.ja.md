@@ -56,17 +56,19 @@ WBS のタスクは台帳の行（種類 `W`）としても辿れます。台帳
 
 ## rules ルールの書き方
 
-`.tadori/rulesets/` の中の TSV（工程ごとに分けてよい）。列は `id phase kind from to field only values owner label`（`values` は使うルールが無ければ無くてよい）。
+`.tadori/rulesets/` の中の TSV（工程ごとに分けてよい）。列は `id phase kind from to field only values group owner label`（`values`・`group` は使うルールが無ければ無くてよい）。
 
-`kind` は 5 種類：
+`kind` は判定 5 種類と `note`：
 - `covered` from の種類のどの行にも、それを元にした to の種類の行がある（例：観点 V ごとに試験ケース TC がある）
 - `refers` from の種類のどの行も、to の種類の行を元にしている（例：どの基本設計の章 BD にも WBS のタスク W が紐づいている）
 - `filled` from の種類のどの行にも、field の列の値が入っている（例：詳細設計の節 DD に change が書いてある）
 - `allowed` from の種類のどの行も、field の列の値が `values`（`a|b`）のどれか（例：試験の記録 RUN の結果が `OK|NG`）。空の行は `filled` で見る
 - `approval` 人の承認が要る。tadori は `ledger/approvals.tsv` を見るだけで、代わりに承認しない
+- `note` **判定しない、読むための約束**（朝会のカンペの書き方・チャットの返事の書き方・人とエージェントの間の約束など）。`label` に書く。漏れにならず、工程の「ルールあり」にも数えない。`phase` は空でよい（空にしてよいのは `note` だけ）
 
 ほかの列：
 - `only` 対象の行を `列名=値` で絞る（例：`change=変わる` の節だけ commit を求める）。`列名=a|b` はどれかに合う行、`列名!=値`（`列名!=a|b` も可）はそれ以外の行
+- `group` ルールの分類。分類の名前と数は、案件ごとに `.tadori/rule-groups.tsv`（列 `id name order`）で決める。画面と `list_rules` は分類ごとに見せる
 - `owner` 漏れを直す担当（例：設計担当・検証担当）。画面と `list_leaks` に出ます
 - `label` 人が読む一文（例：観点ごとに試験ケースがある）
 
@@ -79,12 +81,14 @@ R2	bd	approval					レビュー担当	基本設計書をレビュー担当が承
 ```
 台帳に無い ID を refs に書くと、組み込みのルール `ID` が漏れとして出します。
 
+エージェントは `list_rules` でルールを読みます（`group`・`kind` で絞れる）。書く前に `note` の約束を読んで、それに従ってください。
+
 ## check 確かめ方
 
 - `tadori check <フォルダ>` 工程ごとの漏れと承認待ち。漏れがあれば終了コード 1（CI でも使える）
 - `tadori check <フォルダ> --log --who <名前> --why <理由>` 結果をチェックの記録（`.tadori/checks.tsv`・5W1H）に足し、案件が git リポジトリなら commit します。push は人
 - `tadori why <ID> <フォルダ>` 1 行から上下に辿り、線が切れている所を出す
-- MCP の道具：`get_remaining`（残課題）・`list_leaks`（漏れと担当と直し方）・`trace`（辿る）・`find_items`（行を探す）
+- MCP の道具：`get_remaining`（残課題）・`list_leaks`（漏れと担当と直し方）・`trace`（辿る）・`find_items`（行を探す）・`list_rules`（ルールと書くときの約束）
 
 漏れごとに「担当」と「直し方（どのファイルの何行目の、どの列に何を書けば消えるか）」が出ます。
 直したら、もう一度 check して、漏れが消えたことを確かめてください。

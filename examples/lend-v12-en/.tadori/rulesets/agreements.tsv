@@ -1,0 +1,6 @@
+# Written agreements (kind note) that are read, not checked. Write the agreement in label. No phase needed
+id	phase	kind	from	to	field	only	group	owner	label
+N1		note					visible		A stand-up briefing starts with the conclusion (done, late, or a question)
+N2		note					visible		Write delays in days, with one line for the reason and one for the next step
+N3		note					agreement		Agents never write "the gap is filled". They list the gaps; a person confirms them
+N4		note					agreement		A chat reply states its point in the first line, and says plainly what is not done

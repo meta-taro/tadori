@@ -101,7 +101,8 @@ claude mcp add tadori -- node /path/to/tadori/packages/cli/dist/main.js mcp /pat
 .tadori/links.tsv          ほかの道具を開く URL の雛形（無くてもよい。差し込み：{path}・{repopath}・{abspath}・{line}・{id}・{rowid}。例は examples/lend-v12/.tadori/links.tsv）
                            差し込み：{path} 案件の中の場所 / {abspath} 手元の絶対パス / {line} 行番号 / {id} 行の ID / {rowid} 検証シートの行の md-business の行 ID。javascript: などは使えない
 .tadori/sheets.tsv         台帳の行として読む md-business の検証シート（無くてもよい。書き写さない。tadori how-to ledger）
-.tadori/rulesets/*.tsv     工程ごとのルールセット（判定は covered / refers / filled / allowed / approval。owner 列に担当の役割）
+.tadori/rulesets/*.tsv     工程ごとのルールセット（判定は covered / refers / filled / allowed / approval。note は判定しない、読むための約束。owner 列に担当の役割）
+.tadori/rule-groups.tsv    ルールの分類（無くてもよい。id・name・order）。ルールの group 列がここを指す
 .tadori/checks.tsv         チェックの記録（5W1H）
 ledger/items.tsv           台帳（設計書の章・節、commit、観点、試験ケース、試験の記録、指摘、再発防止）
 ledger/wbs.tsv             WBS のタスク

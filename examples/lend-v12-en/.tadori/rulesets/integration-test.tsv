@@ -1,4 +1,4 @@
-id	phase	kind	from	to	field	only	owner	label
-R8	it	covered	V	TC			Tester	Every test viewpoint has test cases
-R9	it	covered	TC	RUN			Tester	Every test case has a test run
-R11	it	approval					Tester	A person who saw the real system recorded the test results
+id	phase	kind	from	to	field	only	group	owner	label
+R8	it	covered	V	TC			product	Tester	Every test viewpoint has test cases
+R9	it	covered	TC	RUN			product	Tester	Every test case has a test run
+R11	it	approval					product	Tester	A person who saw the real system recorded the test results

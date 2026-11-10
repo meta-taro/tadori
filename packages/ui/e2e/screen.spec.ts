@@ -274,3 +274,29 @@ test.describe('プロダクトの WBS', () => {
     expect(owners.slice(named.length).every(o => o === '')).toBe(true)
   })
 })
+
+test.describe('判定しない文のルールと分類', () => {
+  test('分類で絞ると、その分類のルールだけになり、文のルールは「判定しない」と出る', async ({ page }) => {
+    await page.goto('/#rules')
+    await page.locator('[data-filter="group"][data-value="agreement"]').click()
+    const rows = page.locator('.rules-list tbody tr')
+    await expect(rows).toHaveCount(2)
+    await expect(rows.first()).toContainText('N3')
+    await expect(rows.first()).toContainText('判定しない')
+    await expect(rows.first()).toContainText('人とエージェントの間の約束')
+    await page.locator('[data-filter="group"][data-value="all"]').click()
+  })
+
+  test('工程なしで文のルールを足せる', async ({ page }) => {
+    await page.goto('/#rules')
+    await page.getByRole('button', { name: 'ルールを足す' }).click()
+    const form = page.locator('#rule-form')
+    await form.locator('[name="id"]').fill('N9')
+    await form.locator('[name="phase"]').selectOption('')
+    await form.locator('[name="kind"]').selectOption('note')
+    await form.locator('[name="group"]').selectOption('visible')
+    await form.locator('[name="label"]').fill('報告は結論を先に書く')
+    await form.getByRole('button', { name: '保存' }).click()
+    await expect(page.locator('tr', { hasText: 'N9' })).toContainText('報告は結論を先に書く')
+  })
+})

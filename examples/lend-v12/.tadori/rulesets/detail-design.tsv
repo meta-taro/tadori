@@ -1,4 +1,4 @@
-id	phase	kind	from	to	field	only	owner	label
-R3	dd	covered	BD	DD			設計担当	基本設計の章から詳細設計の節が出ている
-R4	dd	filled	DD		change		設計担当	詳細設計の節に改修後の対応（変わる／変わらない／未決）が書いてある
-R5	dd	filled	Q		verifier		設計担当	未確認の項目に確かめる人が書いてある
+id	phase	kind	from	to	field	only	group	owner	label
+R3	dd	covered	BD	DD			product	設計担当	基本設計の章から詳細設計の節が出ている
+R4	dd	filled	DD		change		product	設計担当	詳細設計の節に改修後の対応（変わる／変わらない／未決）が書いてある
+R5	dd	filled	Q		verifier		product	設計担当	未確認の項目に確かめる人が書いてある

@@ -261,3 +261,21 @@ describe('md-business の検証シートを台帳の行として読む（.tadori
     await expect(loadProject(dir)).rejects.toThrow(/outside/)
   })
 })
+
+describe('判定しない文のルール（note）と、ルールの分類（group・rule-groups.tsv）', () => {
+  test('note は工程が空でも読み、group 列と分類の表（並び順）を読む', async () => {
+    await writeMinimalProject()
+    await put('.tadori/rulesets/agreements.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tgroup\tlabel\nN1\t\tnote\t\t\t\tvisible\t朝会のカンペは結論を先に書く\nN2\t\tnote\t\t\t\t\tチャットの返事は 1 行目で用件を言う\n')
+    await put('.tadori/rule-groups.tsv', 'id\tname\torder\nagreement\t人とエージェントの約束\t3\nvisible\t見える化\t1\nproduct\tプロダクト向け\t2\n')
+    const project = await loadProject(dir)
+    expect(project.rules.find(r => r.id === 'N1')).toMatchObject({ kind: 'note', phase: '', group: 'visible' })
+    expect(project.rules.find(r => r.id === 'N2')).not.toHaveProperty('group')
+    expect(project.ruleGroups?.map(g => g.id)).toEqual(['visible', 'product', 'agreement'])
+  })
+
+  test('判定のルールに工程が無ければ問題にする（note だけは工程なしでよい）', async () => {
+    await writeMinimalProject()
+    await put('.tadori/rulesets/broken.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tlabel\nX1\t\tcovered\tBD\tDD\t\t工程なし\n')
+    await expect(loadProject(dir)).rejects.toThrow(/X1/)
+  })
+})
