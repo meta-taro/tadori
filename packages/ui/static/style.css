@@ -186,8 +186,10 @@
   /* エージェントが人に伝える強調 */
   .hl-box { position:absolute; z-index:15; pointer-events:none; border:2px solid #ffd166; border-radius:8px; box-shadow:0 0 0 4px rgba(255,209,102,.18); animation:hlin .25s ease-out; }
   /* エージェントの一言の吹き出し。置き場所は agent.js が窓の中に決め、しっぽ（--tail）は指した所を向く */
-  .agent-bubble { position:fixed; z-index:16; pointer-events:none; box-sizing:border-box; max-width:min(280px, calc(100vw - 16px)); background:#ffd166; color:#1a1405; font-size:12px; font-weight:600; line-height:1.55; padding:6px 10px; border-radius:8px; white-space:normal; overflow-wrap:anywhere; box-shadow:0 6px 16px rgba(0,0,0,.35); animation:hlin .25s ease-out; }
+  .agent-bubble { position:fixed; z-index:16; cursor:pointer; box-sizing:border-box; max-width:min(280px, calc(100vw - 16px)); background:#ffd166; color:#1a1405; font-size:12px; font-weight:600; line-height:1.55; padding:6px 26px 6px 10px; border-radius:8px; white-space:normal; overflow-wrap:anywhere; box-shadow:0 6px 16px rgba(0,0,0,.35); animation:hlin .25s ease-out; }
   .agent-bubble[hidden] { display:none; }
+  .agent-bubble-close { position:absolute; top:3px; right:3px; width:18px; height:18px; display:grid; place-items:center; padding:0; font:inherit; font-size:13px; line-height:1; color:#1a1405; background:transparent; border:none; border-radius:4px; cursor:pointer; opacity:.6; }
+  .agent-bubble-close:hover { opacity:1; background:rgba(0,0,0,.08); }
   .agent-bubble::after { content:''; position:absolute; width:10px; height:10px; background:inherit; transform:rotate(45deg); }
   .agent-bubble[data-side="above"]::after { bottom:-5px; left:calc(var(--tail) - 5px); }
   .agent-bubble[data-side="below"]::after { top:-5px; left:calc(var(--tail) - 5px); }

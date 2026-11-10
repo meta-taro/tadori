@@ -26,6 +26,19 @@ describe('parseAgentAction（エージェントが画面の中の専用カーソ
   })
 })
 
+describe('parseAgentAction の seconds（吹き出しを出しておく秒数）', () => {
+  test('秒数を渡せば、その秒数を指示に付ける。渡さなければ付けない（画面が文の長さで決める）', () => {
+    expect(parseAgentAction({ action: 'point', target: 'ファイル', message: '見てください', seconds: 12 })).toEqual({ action: 'point', target: 'ファイル', message: '見てください', seconds: 12 })
+    expect(parseAgentAction({ action: 'say', message: 'こんにちは' })).not.toHaveProperty('seconds')
+  })
+
+  test('秒数は 1〜60 の数だけ受ける', () => {
+    expect(() => parseAgentAction({ action: 'say', message: 'x', seconds: 0 })).toThrow(/seconds/)
+    expect(() => parseAgentAction({ action: 'say', message: 'x', seconds: 61 })).toThrow(/seconds/)
+    expect(() => parseAgentAction({ action: 'say', message: 'x', seconds: '5' })).toThrow(/seconds/)
+  })
+})
+
 describe('parseAgentAction の filter（画面の人の絞り込みを切り替える）', () => {
   test('人の名前で絞る。空なら全員に戻す', () => {
     expect(parseAgentAction({ action: 'filter', value: '設計担当A' })).toEqual({ action: 'filter', value: '設計担当A' })

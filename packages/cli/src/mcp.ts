@@ -374,6 +374,7 @@ function buildTools(options: McpOptions): Tool[] {
         value: { type: 'string', description: t('Text to type for type. For filter, a person\'s name (empty for everyone)') },
         hash: { type: 'string', description: t('Where go moves to (e.g. #rules, #trace-F-02)') },
         message: { type: 'string', description: t('A short remark to show the person (shown on a yellow note)') },
+        seconds: { type: 'number', minimum: 1, maximum: 60, description: t('How many seconds to keep the remark on the screen (1–60). Leave it out and the screen decides from the length (at least 5 seconds, longer for long remarks)') },
       },
       required: ['action'],
       additionalProperties: false,

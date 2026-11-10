@@ -5,7 +5,24 @@ import { t } from './i18n.js'
 import { esc, messageOf, setWho } from './util.js'
 
 const MOVE_MS = 650 // カーソルが動く時間（style.css の .agent-cursor の transition と合わせる）
+/** 一言を出しておく時間：最低 5 秒＋1 文字 0.1 秒、上限 20 秒（読み切れる長さにする） */
+const SHOW_MIN_MS = 5000
+const SHOW_PER_CHAR_MS = 100
+const SHOW_MAX_MS = 20000
+/** 一言の無い強調の枠を出しておく時間 */
 const HIGHLIGHT_MS = 2600
+/** マウスを離したあと、消すまでの猶予 */
+const AFTER_HOVER_MS = 1500
+
+/**
+ * 一言を出しておく時間。エージェントが秒数を渡せばそれを、渡さなければ文の長さで決める
+ * @param {string} message @param {number} [seconds]
+ */
+export function showMs(message, seconds) {
+  if (seconds) return seconds * 1000
+  if (!message) return HIGHLIGHT_MS
+  return Math.min(SHOW_MAX_MS, SHOW_MIN_MS + [...message].length * SHOW_PER_CHAR_MS)
+}
 
 /** 押せる・打てる所（ここから target の言葉で探す） */
 const TARGETS = 'button, a, input, select, textarea, [role="menuitem"], [role="menuitemradio"], [role="tab"], [data-trace], tr, h1, h2, .chip, .leak-id, .rule-id'
@@ -38,6 +55,11 @@ function ensureCursor() {
   bubble.className = 'agent-bubble'
   bubble.hidden = true
   bubble.setAttribute('role', 'status')
+  bubble.innerHTML = `<span class="agent-bubble-text"></span><button type="button" class="agent-bubble-close" aria-label="${esc(t('Close'))}" title="${esc(t('Close'))}">×</button>`
+  // 押すと消える。マウスを乗せている間は消さない（読み終わるまで待つ）
+  bubble.addEventListener('click', () => hideNow())
+  bubble.addEventListener('mouseenter', () => { isHovering = true; clearTimeout(hideTimer) })
+  bubble.addEventListener('mouseleave', () => { isHovering = false; hideLater(AFTER_HOVER_MS) })
   document.body.appendChild(bubble)
   cursorEl = cursor
   boxEl = box
@@ -122,7 +144,8 @@ export function bubblePlacement(target, anchor, size, view) {
  * @param {HTMLElement} bubble @param {DOMRect} r 指した所 @param {{ x: number, y: number }} anchor @param {string} message
  */
 function showBubble(bubble, r, anchor, message) {
-  bubble.textContent = message
+  const textEl = bubble.querySelector('.agent-bubble-text')
+  if (textEl) textEl.textContent = message
   bubble.hidden = !message
   if (!message) return
   // 大きさを測ってから置く（折り返したあとの高さで、上下に入るかを決める）
@@ -159,26 +182,35 @@ const CURSOR_IDLE_MS = 6000
 let hideTimer
 /** @type {ReturnType<typeof setTimeout> | undefined} */
 let idleTimer
-function hideLater() {
+/** 人がマウスを吹き出しに乗せているか（乗せている間は消さない） */
+let isHovering = false
+
+/** 枠と吹き出しをすぐ消す */
+function hideNow() {
   clearTimeout(hideTimer)
-  clearTimeout(idleTimer)
-  hideTimer = setTimeout(() => {
-    if (boxEl) boxEl.hidden = true
-    if (bubbleEl) bubbleEl.hidden = true
-  }, HIGHLIGHT_MS)
-  idleTimer = setTimeout(() => {
-    if (!cursorEl) return
-    cursorEl.hidden = true
-    setTag(cursorEl, t('Agent'))
-  }, CURSOR_IDLE_MS)
+  isHovering = false
+  if (boxEl) boxEl.hidden = true
+  if (bubbleEl) bubbleEl.hidden = true
 }
 
-/** @param {string} message @param {HTMLElement} [el] */
-async function say(message, el) {
+/** @param {number} [ms] 枠と吹き出しを出しておく時間 */
+function hideLater(ms = HIGHLIGHT_MS) {
+  clearTimeout(hideTimer)
+  clearTimeout(idleTimer)
+  hideTimer = setTimeout(() => { if (!isHovering) hideNow() }, ms)
+  idleTimer = setTimeout(() => {
+    if (!cursorEl || isHovering) return
+    cursorEl.hidden = true
+    setTag(cursorEl, t('Agent'))
+  }, Math.max(CURSOR_IDLE_MS, ms + 1000))
+}
+
+/** @param {string} message @param {number} [seconds] */
+async function say(message, seconds) {
   const { cursor } = ensureCursor()
-  if (el) await moveTo(el, message)
-  else { cursor.hidden = false; setTag(cursor, message) }
-  hideLater()
+  cursor.hidden = false
+  setTag(cursor, message)
+  hideLater(showMs(message, seconds))
 }
 
 /**
@@ -187,7 +219,7 @@ async function say(message, el) {
  * @param {(message: string) => void} toast
  */
 async function run(command, toast) {
-  if (command.action === 'say') return say(command.message)
+  if (command.action === 'say') return say(command.message, command.seconds)
   if (command.action === 'filter') {
     // 画面の担当の絞り込みを切り替え、上の帯の欄を指して見せる
     setWho(command.value)
@@ -199,7 +231,7 @@ async function run(command, toast) {
   }
   if (command.action === 'go') {
     location.hash = command.hash
-    return command.message ? say(command.message) : undefined
+    return command.message ? say(command.message, command.seconds) : undefined
   }
   const el = findTarget(command.target)
   if (!el) {
@@ -220,7 +252,7 @@ async function run(command, toast) {
     el.dispatchEvent(new Event('input', { bubbles: true }))
     el.dispatchEvent(new Event('change', { bubbles: true }))
   }
-  hideLater()
+  hideLater(showMs(command.message ?? '', command.seconds))
   return undefined
 }
 

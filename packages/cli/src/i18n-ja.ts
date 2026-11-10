@@ -359,4 +359,6 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'The commit it was built from is not known (no build-info.json)': '組んだ commit は分かりません（build-info.json がありません）',
   'The source changed after this was built. Run pnpm build, then reconnect the MCP (/mcp) to use the new code': '組んだあとに元のコードが変わっています。新しいコードを使うには pnpm build してから MCP をつなぎ直してください（/mcp）',
   'Return the version of this tadori MCP, the commit it was built from and when, and whether it needs rebuilding. Use it to tell whether a fix is in the MCP you are talking to.': 'この tadori の MCP の版・組んだ commit と日時・組み直しが要るかを返す。いま話している MCP に直しが入っているかを見分けるのに使う。',
+  'seconds must be a number from {min} to {max}': 'seconds は {min}〜{max} の数にしてください',
+  'How many seconds to keep the remark on the screen (1–60). Leave it out and the screen decides from the length (at least 5 seconds, longer for long remarks)': '一言を画面に出しておく秒数（1〜60）。省くと画面が文の長さで決める（最低 5 秒・長い文ほど長く）',
 }

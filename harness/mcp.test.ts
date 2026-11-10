@@ -41,6 +41,12 @@ describe('MCP のプロセス', () => {
     expect(res.result?.content?.[0]?.text, name).not.toBe('')
   })
 
+  test('screen は吹き出しを出しておく秒数（seconds）を受ける', async () => {
+    const res = await mcp.request('tools/list')
+    const screen = (res.result?.tools as Array<{ name: string; inputSchema: { properties: Record<string, unknown> } }>).find(t => t.name === 'screen')
+    expect(screen?.inputSchema.properties).toHaveProperty('seconds')
+  })
+
   test('話題なしの how_to の 1 行目と version は、組んだ commit を出す', async () => {
     const howTo = await mcp.request('tools/call', { name: 'how_to', arguments: {} })
     expect(howTo.result.content[0].text.split('\n')[0]).toContain(build.commit)

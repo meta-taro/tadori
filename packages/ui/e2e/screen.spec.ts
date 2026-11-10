@@ -131,7 +131,7 @@ test.describe('エージェントの専用カーソル', () => {
       const text = `${name}：${message}`
       await agent(page, { action: 'point', target: `的${name}`, message: text })
       const bubble = page.locator('.agent-bubble')
-      await expect(bubble).toHaveText(text)
+      await expect(bubble).toContainText(text)
       // 動き終わるまで待つ（置き場所は動き出しで決まるが、出てくる動きの途中を測らない）
       await page.waitForTimeout(300)
       const b = await bubble.boundingBox()
@@ -149,6 +149,36 @@ test.describe('エージェントの専用カーソル', () => {
       if (side === 'right') expect(b.x, name).toBeGreaterThanOrEqual(t.x + t.width)
       if (side === 'left') expect(b.x + b.width, name).toBeLessThanOrEqual(t.x)
     }
+  })
+
+  test('吹き出しは文の長さに応じて残る（短い既定で消えない）。押すと消える', async ({ page }) => {
+    await openDaily(page)
+    const message = '設計担当の次の作業です。W-03 はレビュー中のまま、予定より遅れています。理由と次の手を確かめてください。'
+    await agent(page, { action: 'point', target: 'W-03', message })
+    const bubble = page.locator('.agent-bubble')
+    await expect(bubble).toContainText(message)
+    // 前の既定（2.6 秒）を過ぎても残る（最低 5 秒＋文の長さ）
+    await page.waitForTimeout(3500)
+    await expect(bubble).toBeVisible()
+    await bubble.click()
+    await expect(bubble).toBeHidden()
+  })
+
+  test('seconds を渡すとその秒数で消え、マウスを乗せている間は消えない。× でも消える', async ({ page }) => {
+    await openDaily(page)
+    const bubble = page.locator('.agent-bubble')
+    await agent(page, { action: 'point', target: 'W-03', message: '一秒だけ出す一言', seconds: 1 })
+    await expect(bubble).toContainText('一秒だけ出す一言')
+    await bubble.hover()
+    await page.waitForTimeout(1800)
+    await expect(bubble).toBeVisible()
+    await page.mouse.move(2, 2)
+    await expect(bubble).toBeHidden({ timeout: 4000 })
+
+    await agent(page, { action: 'point', target: 'W-03', message: '× で閉じる一言', seconds: 30 })
+    await expect(bubble).toContainText('× で閉じる一言')
+    await bubble.getByRole('button', { name: '閉じる' }).click()
+    await expect(bubble).toBeHidden()
   })
 
   test('filter で、どの画面もその人の分に絞る', async ({ page }) => {

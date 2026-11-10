@@ -6,18 +6,23 @@ import { t } from '@tadori/core'
  * 人のマウスは使わない（奪わない）。画面は自分のカーソルをその場所へ動かし、ページの中でボタンを押す。
  * 判定や保存の近道ではない：押せるのは、人が画面で押せるものと同じものだけ。
  */
+/** 吹き出しを出しておく秒数（省けば画面が文の長さで決める） */
+type Shown = { readonly seconds?: number }
 export type AgentAction =
-  | { readonly action: 'point'; readonly target: string; readonly message?: string }
-  | { readonly action: 'click'; readonly target: string; readonly message?: string }
-  | { readonly action: 'type'; readonly target: string; readonly value: string; readonly message?: string }
-  | { readonly action: 'go'; readonly hash: string; readonly message?: string }
-  | { readonly action: 'say'; readonly message: string }
+  | ({ readonly action: 'point'; readonly target: string; readonly message?: string } & Shown)
+  | ({ readonly action: 'click'; readonly target: string; readonly message?: string } & Shown)
+  | ({ readonly action: 'type'; readonly target: string; readonly value: string; readonly message?: string } & Shown)
+  | ({ readonly action: 'go'; readonly hash: string; readonly message?: string } & Shown)
+  | ({ readonly action: 'say'; readonly message: string } & Shown)
   /** 画面の人の絞り込みを切り替える（空なら全員） */
   | { readonly action: 'filter'; readonly value: string }
 
 const ACTIONS = ['point', 'click', 'type', 'go', 'say', 'filter'] as const
 /** 画面に出す文字の上限（吹き出し・打つ文字） */
 const MAX_TEXT = 500
+/** 吹き出しを出しておく秒数の範囲 */
+const MIN_SECONDS = 1
+const MAX_SECONDS = 60
 
 export class AgentActionError extends Error {}
 
@@ -39,7 +44,11 @@ export function parseAgentAction(body: unknown): AgentAction {
     throw new AgentActionError(t('Unknown action: {action} (available: {list})', { action: String(action), list: ACTIONS.join(' / ') }))
   }
   const message = text(body, 'message', action === 'say')
-  const withMessage = message === undefined ? {} : { message }
+  const seconds = body.seconds
+  if (seconds !== undefined && (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < MIN_SECONDS || seconds > MAX_SECONDS)) {
+    throw new AgentActionError(t('seconds must be a number from {min} to {max}', { min: MIN_SECONDS, max: MAX_SECONDS }))
+  }
+  const withMessage = { ...(message === undefined ? {} : { message }), ...(seconds === undefined ? {} : { seconds }) }
   switch (action) {
     case 'filter': {
       // 人の名前（空なら全員）。絞るだけで、何も書き換えない
@@ -48,7 +57,7 @@ export function parseAgentAction(body: unknown): AgentAction {
       return { action, value: value.trim() }
     }
     case 'say':
-      return { action, message: message as string }
+      return { action, ...withMessage, message: message as string }
     case 'go': {
       const hash = text(body, 'hash', true) as string
       // 画面の中の移動だけ。外のページへは移らせない
