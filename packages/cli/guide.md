@@ -174,6 +174,7 @@ Do not edit the ledger or setting TSVs directly; write with the tools below. Eac
 - Check: `run_check` (with `log`, adds to the check log in 5W1H)
 - Project: `list_projects`, `open_project` (switch the project this MCP connection handles)
 - Exceptions in the server behind the screen: `server_errors` (when the screen says "Something went wrong inside the server", read where and what failed, newest first. The record is kept locally on the PC, not in the project folder)
+- Which tadori this MCP is: `version` (the version, the commit it was built from and when, and whether it needs `pnpm build` and reconnecting with /mcp). Use it when a fix does not seem to show
 - Owner filter on the screen: `filter` of `screen`
 
 **There is no tool that writes approvals by people.** Approvals (`ledger/approvals.tsv`) are written by the person who approved.

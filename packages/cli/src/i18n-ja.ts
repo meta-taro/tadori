@@ -355,4 +355,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   '■ WBS statuses not in .tadori/statuses.tsv (counted as started and not done)': '■ .tadori/statuses.tsv に無い WBS の状態（「始まっていて、終わっていない」として数えています）',
   '"{status}": {ids}': '「{status}」：{ids}',
   'How to fix: add the status to .tadori/statuses.tsv (the 1st row means not started yet, tone ok means done), or write a status that is there in ledger/wbs.tsv': '直し方：.tadori/statuses.tsv にその状態を足す（1 行目は「まだ始めていない」、tone が ok は「終わった」）か、ledger/wbs.tsv にその表にある状態を書く',
+  'Built from commit {commit} at {builtAt}': '組んだ commit：{commit}（{builtAt}）',
+  'The commit it was built from is not known (no build-info.json)': '組んだ commit は分かりません（build-info.json がありません）',
+  'The source changed after this was built. Run pnpm build, then reconnect the MCP (/mcp) to use the new code': '組んだあとに元のコードが変わっています。新しいコードを使うには pnpm build してから MCP をつなぎ直してください（/mcp）',
+  'Return the version of this tadori MCP, the commit it was built from and when, and whether it needs rebuilding. Use it to tell whether a fix is in the MCP you are talking to.': 'この tadori の MCP の版・組んだ commit と日時・組み直しが要るかを返す。いま話している MCP に直しが入っているかを見分けるのに使う。',
 }

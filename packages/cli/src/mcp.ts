@@ -8,6 +8,9 @@ import { committed, writeTools, type WriteContext } from './mcp-write.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 import { loadState, localToday } from './state.js'
 import { defaultLogDir, readServerErrors } from './error-log.js'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { readBuildInfo } from './build-info.js'
 
 /**
  * tadori の MCP の口（標準入出力・1 行 1 つの JSON-RPC）。
@@ -54,6 +57,27 @@ export interface McpOptions {
   readonly screenUrl?: string
   /** server の例外の記録の場所（server_errors が読む）。無ければ OS ごとの手元のログの場所 */
   readonly logDir?: string
+  /** 組んだ記録（build-info.json）の場所。既定はこのファイルのある所（dist） */
+  readonly buildDir?: string
+  /** 元のコードの場所（組んだあとに変わったかを見る）。既定は cli と core の src */
+  readonly sourceDirs?: readonly string[]
+}
+
+/**
+ * いま動いている MCP の版・組んだ commit・組んだ日時。元のコードが組んだあとに変わっていれば、組み直してつなぎ直す手順を添える。
+ * 古い MCP のプロセスが残っていると、新しい直しが効いていないのか、そろっているのかを見分けられないため
+ */
+async function versionText(options: McpOptions): Promise<ToolResult> {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const buildDir = options.buildDir ?? here
+  const sourceDirs = options.sourceDirs ?? [resolve(here, '../src'), resolve(here, '../../core/src')]
+  const build = await readBuildInfo(buildDir, sourceDirs)
+  const lines = [`tadori ${options.version}`]
+  lines.push(build.commit
+    ? t('Built from commit {commit} at {builtAt}', { commit: build.commit, builtAt: build.builtAt })
+    : t('The commit it was built from is not known (no build-info.json)'))
+  if (build.isStale) lines.push(t('The source changed after this was built. Run pnpm build, then reconnect the MCP (/mcp) to use the new code'))
+  return text(lines.join('\n'))
 }
 
 /** デスクトップアプリが開く番号（packages/desktop の PREFERRED_PORT と同じ） */
@@ -319,6 +343,11 @@ function buildTools(options: McpOptions): Tool[] {
       additionalProperties: false,
     },
     run: async args => howToText(options.guidePath, str(args.topic).trim()),
+  }, {
+    name: 'version',
+    description: t('Return the version of this tadori MCP, the commit it was built from and when, and whether it needs rebuilding. Use it to tell whether a fix is in the MCP you are talking to.'),
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    run: async () => versionText(options),
   }, {
     name: 'screen',
     description: t('Show things to a person by operating the tadori screen they have open with a dedicated on-screen cursor (the person\'s mouse is not used). '

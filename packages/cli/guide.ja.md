@@ -174,6 +174,7 @@ WBS（`ledger/wbs.tsv`）と台帳に、書かなくてもよい列がありま�
 - 確かめる：`run_check`（`log` を付けるとチェックの記録に 5W1H で足す）
 - 案件：`list_projects`・`open_project`（この MCP の口で扱う案件を替える）
 - 画面の裏の server の例外：`server_errors`（画面に「サーバーの中で問題が起きました」と出たとき、どこで何が落ちたかを新しい順に読む。記録は PC の手元にあり、案件のフォルダには置かない）
+- いま話している MCP の版：`version`（版・組んだ commit と日時・`pnpm build` して /mcp でつなぎ直す必要があるか）。直したはずのものが出ないときに見る
 - 画面の担当の絞り込み：`screen` の `filter`
 
 **人の承認を書く道具はありません。**承認（`ledger/approvals.tsv`）は、承認した人が書きます。

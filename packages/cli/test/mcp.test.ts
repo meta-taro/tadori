@@ -144,3 +144,45 @@ describe('server_errors（画面の裏の server で起きた例外を読む）'
     await rm(logDir, { recursive: true, force: true })
   })
 })
+
+describe('MCP の version', () => {
+  test('版・組んだ commit・組んだ日時を返す（いま動いている MCP がどの版か見分けるため）', async () => {
+    const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const dir = await mkdtemp(join(tmpdir(), 'tadori-build-'))
+    try {
+      await writeFile(join(dir, 'build-info.json'), JSON.stringify({ builtAt: '2026-11-10T07:30:00.000Z', commit: 'e8acd15' }), 'utf8')
+      const h = createMcpHandler({ glossaryPath: GLOSSARY, version: '0.2.2', buildDir: dir, sourceDirs: [] })
+      const res = await h({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'version', arguments: {} } }) as { result: ToolResult }
+      const text = res.result.content.at(0)?.text ?? ''
+      expect(text).toContain('tadori 0.2.2')
+      expect(text).toContain('e8acd15')
+      expect(text).toContain('2026-11-10T07:30:00.000Z')
+      expect(text).not.toContain('組み直')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('元のコードが組んだあとに変わっていれば、組み直してつなぎ直す手順を添える', async () => {
+    const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const dir = await mkdtemp(join(tmpdir(), 'tadori-build-'))
+    try {
+      await writeFile(join(dir, 'build-info.json'), JSON.stringify({ builtAt: '2000-01-01T00:00:00.000Z', commit: 'old0000' }), 'utf8')
+      const h = createMcpHandler({ glossaryPath: GLOSSARY, version: '0.0.1', buildDir: dir, sourceDirs: [resolve(import.meta.dirname, '../src')] })
+      const res = await h({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'version', arguments: {} } }) as { result: ToolResult }
+      expect(res.result.content.at(0)?.text ?? '').toContain('pnpm build')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('組んだ記録が無ければ、commit は分からないと言う', async () => {
+    const h = createMcpHandler({ glossaryPath: GLOSSARY, version: '0.0.1', buildDir: resolve(import.meta.dirname, 'no-such-dir'), sourceDirs: [] })
+    const res = await h({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'version', arguments: {} } }) as { result: ToolResult }
+    expect(res.result.content.at(0)?.text ?? '').toContain('組んだ commit は分かりません')
+  })
+})
