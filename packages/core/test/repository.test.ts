@@ -26,6 +26,15 @@ async function writeMinimalProject() {
 beforeEach(async () => { dir = await mkdtemp(join(tmpdir(), 'tadori-')) })
 afterEach(async () => { await rm(dir, { recursive: true, force: true }) })
 
+describe('loadProject の WBS の状態', () => {
+  test('WBS の状態に statuses.tsv の名前が書いてあれば、その ID として読む（名前で書いても同じ扱いにする）', async () => {
+    await writeMinimalProject()
+    await put('ledger/wbs.tsv', 'id\tphase\tname\tstart\tend\tstatus\nW-1\tbd\t作成\t\t\t完了\nW-2\tbd\t見直し\t\t\t未確認\n')
+    const project = await loadProject(dir)
+    expect(project.tasks.map(t => t.status)).toEqual(['done', '未確認'])
+  })
+})
+
 describe('loadProject', () => {
   test('案件のフォルダから工程・ルール・台帳・WBS を読む', async () => {
     await writeMinimalProject()

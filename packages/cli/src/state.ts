@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
+import { unknownTaskStatuses, type UnknownTaskStatus, approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 漏れに「md-business で開く」の URL を付けたもの（雛形が .tadori/links.tsv にあるとき） */
 export type LeakWithLink = Leak & {
@@ -34,6 +34,8 @@ export interface ProjectState {
   readonly members: readonly Member[]
   /** 行 ID → 正本へのリンクと、正本から手元へ反映した記録（.tadori/sources.tsv にある正本の行だけ） */
   readonly origins: Readonly<Record<string, Origin>>
+  /** WBS の状態のうち、statuses.tsv に無いもの（状態ごとのタスク）。読み込みは止めずに知らせる */
+  readonly unknownStatuses: readonly UnknownTaskStatus[]
 }
 
 export async function loadState(dir: string, today: string): Promise<{ project: Project; state: ProjectState }> {
@@ -59,6 +61,7 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     resolved: resolvedItems(checks, leaks),
     members,
     origins: originsOf(project, today),
+    unknownStatuses: unknownTaskStatuses(project),
   }
   return { project, state }
 }

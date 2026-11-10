@@ -40,7 +40,9 @@ TSV（タブ区切り）です。`#` で始まる行はコメントとして読�
 
 予定の表は `ledger/wbs.tsv` です。画面での呼び名を変えるには（例：スケジュール・工程表）、`.tadori/project.tsv` に `schedule_label` を書きます。予定の表が無い案件では、プロダクトの画面に工程ごとのルール・台帳の行・漏れ・承認待ちが出ます。
 
-`ledger/wbs.tsv` の列：`id`（W で始める）・`phase`（工程の ID）・`name`・`start`・`end`（YYYY-MM-DD）・`status`（`.tadori/statuses.tsv` の ID）。
+`ledger/wbs.tsv` の列：`id`（W で始める）・`phase`（工程の ID）・`name`・`start`・`end`（YYYY-MM-DD）・`status`（`.tadori/statuses.tsv` の ID。名前で書いてもよい）。
+
+`.tadori/statuses.tsv` は行の順番に意味があります。1 行目は「まだ始めていない」、tone が `ok` の状態は「終わった」です。ほかの状態は「始まっていて、終わっていない」として数えます（遅れの日数が出ることがあります）。表に無い状態も同じに数えるので、`tadori check` とプロダクトの画面が一覧で知らせます。
 書いても書かなくてもよい列：`owner`（担当）・`issue`（この作業の課題の ID）。人単位の 1 日の進行に使います（topic: daily）。
 WBS のタスクは台帳の行（種類 `W`）としても辿れます。台帳へ書き写さないでください。
 

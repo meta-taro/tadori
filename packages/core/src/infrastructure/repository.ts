@@ -365,7 +365,11 @@ export async function loadProject(dir: string): Promise<Project> {
     if (!Number.isFinite(order)) problems.push(t('{file}, {id}: order "{order}" must be a number', { file: PATHS.phases, id: String(row.id), order: String(row.order) }))
     return { id: row.id ?? '', name: row.name ?? '', order }
   })
-  const tasks = wbsRows.map(row => toTask(row, problems))
+  const statuses = toStatuses(statusRows, problems)
+  // WBS の状態は ID で書く約束だが、名前（例「完了」）で書かれていたら、その ID として読む（名前で書いても同じ扱いにする）
+  const idByName = new Map(statuses.map(s => [s.name, s.id]))
+  const knownIds = new Set(statuses.map(s => s.id))
+  const tasks = wbsRows.map(row => toTask(row, problems)).map(task => (!knownIds.has(task.status) && idByName.has(task.status) ? { ...task, status: idByName.get(task.status) as string } : task))
   // WBS のタスクは台帳の行（種類 W）としても辿れるようにする。台帳へ書き写すと正本が 2 つになるため
   const taskItems: Item[] = tasks.map(t => ({ id: t.id, kind: 'W', title: t.name, source: PATHS.wbs, refs: [], fields: {}, file: PATHS.wbs, ...(t.line ? { line: t.line } : {}) }))
   const items = [...taskItems, ...itemRows.map(toItem), ...(await loadSheetItems(dir, sheetRows, problems))]
@@ -378,7 +382,7 @@ export async function loadProject(dir: string): Promise<Project> {
     items,
     tasks,
     approvals: toApprovals(approvalRows, problems),
-    statuses: toStatuses(statusRows, problems),
+    statuses,
     labels: {
       kinds: toNameMap(kindRows),
       columns: toNameMap(columnRows),

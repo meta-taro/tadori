@@ -40,7 +40,9 @@ Columns of `ledger/items.tsv`:
 
 The plan table is `ledger/wbs.tsv`. To call it something else on the screen (e.g. schedule, milestones), write `schedule_label` in `.tadori/project.tsv`. Without it, the Product screen shows each phase with its rules, ledger rows, gaps and pending approvals.
 
-Columns of `ledger/wbs.tsv`: `id` (starts with W), `phase` (phase ID), `name`, `start`, `end` (YYYY-MM-DD), `status` (an ID from `.tadori/statuses.tsv`).
+Columns of `ledger/wbs.tsv`: `id` (starts with W), `phase` (phase ID), `name`, `start`, `end` (YYYY-MM-DD), `status` (an ID from `.tadori/statuses.tsv`; a name from there also works).
+
+The order of `.tadori/statuses.tsv` matters: the 1st row means "not started yet", and a status with tone `ok` means "done". Every other status counts as started and not done (so it can show days late). A status that is not in the table counts the same way, and `tadori check` and the Product screen list it.
 Optional columns: `owner` and `issue` (the ID of the issue this work is for). They are used for each person's daily progress (topic: daily).
 WBS tasks can also be traced as ledger rows (kind `W`). Do not copy them into the ledger.
 

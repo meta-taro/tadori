@@ -46,6 +46,12 @@ export function formatCheck(state: ProjectState): string {
     lines.push(t('■ Gaps not in any phase'))
     for (const leak of dangling) lines.push(`    ${leak.rule} ${leak.message}`)
   }
+  // statuses.tsv に無い WBS の状態は「始まっていて、終わっていない」と数えられる。漏れではないので終了コードは変えず、知らせるだけ
+  if (state.unknownStatuses.length) {
+    lines.push(t('■ WBS statuses not in .tadori/statuses.tsv (counted as started and not done)'))
+    for (const u of state.unknownStatuses) lines.push(`    ${t('"{status}": {ids}', { status: u.status, ids: listJoin(u.taskIds) })}`)
+    lines.push(`    ${t('How to fix: add the status to .tadori/statuses.tsv (the 1st row means not started yet, tone ok means done), or write a status that is there in ledger/wbs.tsv')}`)
+  }
   const waits = state.gates.reduce((n, g) => n + g.pendingApprovals.length, 0)
   lines.push('', t('Gaps: {leaks} / Pending approval: {waits}', { leaks: state.leaks.length, waits }))
   return lines.join('\n')

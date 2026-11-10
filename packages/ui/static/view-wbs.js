@@ -99,7 +99,10 @@ function wbsHtml(state) {
       ${visible.length ? visible.map(t => taskRow(state, t)).join('') : `<div class="wbs-task muted"><span></span><span>${esc(t('No matching tasks'))}</span></div>`}
     </details>`
   }).join('')
-  return `<div class="toolbar">
+  // statuses.tsv に無い状態は「始まっていて、終わっていない」と数えられるので、上で知らせる
+  const unknown = (state.unknownStatuses ?? []).map(u => `<span class="status-unknown">${chip('hole', esc(u.status || t('(empty)')))} ${u.taskIds.map(id => `<code>${esc(id)}</code>`).join(' ')}</span>`).join('')
+  const unknownNote = unknown ? `<div class="note warn">${ICON_INFO}<span>${esc(t('These statuses are not in .tadori/statuses.tsv, so they count as started and not done. Add them there (the 1st row means not started yet, tone ok means done).'))}<span class="status-unknown-list">${unknown}</span></span></div>` : ''
+  return `${unknownNote}<div class="toolbar">
       <label>${esc(t('Status'))}<select id="wbs-filter"><option value="all">${esc(t('All'))}</option>${statusOptions}</select></label>
       <label>${esc(t('Sort'))}<select id="wbs-sort">${sortOptions}</select></label>
       <span class="spacer"></span>

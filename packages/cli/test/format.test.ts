@@ -122,3 +122,27 @@ describe('formatCheck の「承認のあとに変わった」', () => {
     }
   })
 })
+
+describe('formatCheck の statuses.tsv に無い WBS の状態', () => {
+  test('一覧に無い状態のタスクを状態ごとに出し、直し方を添える。名前で書いた状態は知らせない', async () => {
+    const { cp, mkdtemp, readFile, rm, writeFile } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const dir = await mkdtemp(join(tmpdir(), 'tadori-status-'))
+    try {
+      await cp(EXAMPLE, dir, { recursive: true })
+      const wbsPath = join(dir, 'ledger/wbs.tsv')
+      const wbs = await readFile(wbsPath, 'utf8')
+      // W-01 は名前（完了）で、W-02 は一覧に無い「未確認」で書く
+      await writeFile(wbsPath, wbs.replace(/^(W-01\t.*\t)done(\t)/m, '$1完了$2').replace(/^(W-02\t.*\t)done(\t)/m, '$1未確認$2'), 'utf8')
+      const { state } = await loadState(dir, '2026-11-05')
+      expect(state.unknownStatuses).toEqual([{ status: '未確認', taskIds: ['W-02'] }])
+      const text = formatCheck(state)
+      expect(text).toContain('■ .tadori/statuses.tsv に無い WBS の状態')
+      expect(text).toContain('「未確認」：W-02')
+      expect(text).toContain('直し方：.tadori/statuses.tsv にその状態を足す')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+})

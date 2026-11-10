@@ -111,6 +111,8 @@ export const JA = {
   'This is a build made from the source code on this PC.': 'この PC でソースから組んだ版です。',
   'It is not compared with the released versions. To update, pull the repository and build again.': '配った版の番号とは比べません。新しくするには、リポジトリを pull して組み直してください。',
   'Team': 'チーム',
+  '(empty)': '（空）',
+  'These statuses are not in .tadori/statuses.tsv, so they count as started and not done. Add them there (the 1st row means not started yet, tone ok means done).': '次の状態は .tadori/statuses.tsv に無いので、「始まっていて、終わっていない」として数えています。その表に足してください（1 行目は「まだ始めていない」、tone が ok は「終わった」）。',
   'Changed after approval': '承認のあとに変わった',
   'Local': 'ローカル',
   'Shared with the team (kept in git)': 'チームで共有するルール（git に入る）',

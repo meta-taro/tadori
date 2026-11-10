@@ -352,4 +352,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'No matching rules': '合うルールがありません',
   '- {id} [{group}] {kind}{phase}: {label}': '- {id}［{group}］{kind}{phase}：{label}',
   '{file} changed after approval: {commit} {date}': '承認のあとに {file} が変わった：{commit} {date}',
+  '■ WBS statuses not in .tadori/statuses.tsv (counted as started and not done)': '■ .tadori/statuses.tsv に無い WBS の状態（「始まっていて、終わっていない」として数えています）',
+  '"{status}": {ids}': '「{status}」：{ids}',
+  'How to fix: add the status to .tadori/statuses.tsv (the 1st row means not started yet, tone ok means done), or write a status that is there in ledger/wbs.tsv': '直し方：.tadori/statuses.tsv にその状態を足す（1 行目は「まだ始めていない」、tone が ok は「終わった」）か、ledger/wbs.tsv にその表にある状態を書く',
 }

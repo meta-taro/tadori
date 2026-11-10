@@ -24,6 +24,8 @@ function templates(name: string): ReadonlyArray<readonly [string, string]> {
     ].join('\n') + '\n'],
     [PATHS.statuses, [
       `# ${t('Statuses of WBS tasks. tone: none (no color), wait (waiting), hole (stuck), ok (done)')}`,
+      `# ${t('The order of the rows matters: the 1st row means "not started yet", and a status with tone ok means "done". Every other status counts as started and not done')}`,
+      `# ${t('Write the status column of ledger/wbs.tsv with an id (or a name) from this table. tadori check shows statuses that are not here')}`,
       'id\tname\ttone',
       `todo\t${t('Not started')}\tnone`,
       `doing\t${t('In progress')}\twait`,

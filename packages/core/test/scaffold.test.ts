@@ -35,6 +35,19 @@ describe('initProject', () => {
     expect(await readFile(join(dir, files[0] as string), 'utf8')).toMatch(/# .*covered/)
   })
 
+  test('ステータスの表の先頭に、行の順番の意味（1 行目＝まだ始めていない・tone ok＝終わった）を書く', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tadori-init-'))
+    try {
+      await initProject(dir, '見本')
+      const text = await readFile(join(dir, PATHS.statuses), 'utf8')
+      expect(text).toContain('1 行目')
+      expect(text).toMatch(/まだ始めていない/)
+      expect(text).toMatch(/ok.*終わった/)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   test('すでにあるファイルは書き換えない', async () => {
     const dir = await emptyDir()
     await mkdir(join(dir, 'ledger'), { recursive: true })

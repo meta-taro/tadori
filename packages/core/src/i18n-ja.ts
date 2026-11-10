@@ -158,4 +158,6 @@ export const JA: Readonly<Record<string, string>> = {
   'Not committed: local rules stay on this PC': 'commit しませんでした：ローカルのルールはこの PC にだけ置きます',
   '{who} looks at the change to {changed} ({commit}) and rewrites the date of the {rule} row in {file} to the day they looked': '{who}が {changed} の変更（{commit}）を見て、{file} の {rule} の行の日付を、見た日に書き直す',
   'The approver looks at the change to {changed} ({commit}) and rewrites the date of the {rule} row in {file} to the day they looked': '承認する人が {changed} の変更（{commit}）を見て、{file} の {rule} の行の日付を、見た日に書き直す',
+  'The order of the rows matters: the 1st row means "not started yet", and a status with tone ok means "done". Every other status counts as started and not done': '行の順番に意味があります：1 行目は「まだ始めていない」、tone が ok の状態は「終わった」。ほかの状態は「始まっていて、終わっていない」として数えます',
+  'Write the status column of ledger/wbs.tsv with an id (or a name) from this table. tadori check shows statuses that are not here': 'ledger/wbs.tsv の status 列には、この表の id（か name）を書きます。この表に無い状態は tadori check が知らせます',
 }
