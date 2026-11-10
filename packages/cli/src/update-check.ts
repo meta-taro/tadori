@@ -8,6 +8,7 @@ import { t } from '@tadori/core'
 
 const LATEST_RELEASE = 'https://api.github.com/repos/meta-taro/tadori/releases/latest'
 export const DOWNLOAD_PAGE = 'https://meta-taro.github.io/tadori/download.html'
+const LATEST_RELEASE_PAGE = 'https://github.com/meta-taro/tadori/releases/latest'
 const TIMEOUT_MS = 8000
 
 export interface UpdateInfo {
@@ -18,6 +19,13 @@ export interface UpdateInfo {
   readonly releaseUrl: string
   /** OS と CPU に合うインストーラーを選べるページ */
   readonly downloadUrl: string
+  /** 手元でソースから組んだ版（配った版の番号と比べない） */
+  readonly isSourceBuild?: boolean
+}
+
+/** 手元でソースから組んだ版の答え。新しい版があるとは言わない（git pull で新しくするもの） */
+export function sourceBuildInfo(current: string): UpdateInfo {
+  return { current, latest: '', isNewer: false, isSourceBuild: true, releaseUrl: LATEST_RELEASE_PAGE, downloadUrl: DOWNLOAD_PAGE }
 }
 
 export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>

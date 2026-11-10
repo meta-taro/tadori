@@ -108,6 +108,8 @@ export const JA = {
   'Category: all': '分類：すべて',
   'No category': '分類なし',
   'Show all': '全部見る',
+  'This is a build made from the source code on this PC.': 'この PC でソースから組んだ版です。',
+  'It is not compared with the released versions. To update, pull the repository and build again.': '配った版の番号とは比べません。新しくするには、リポジトリを pull して組み直してください。',
   'Team': 'チーム',
   'Local': 'ローカル',
   'Shared with the team (kept in git)': 'チームで共有するルール（git に入る）',

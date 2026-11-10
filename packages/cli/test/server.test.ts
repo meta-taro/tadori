@@ -347,6 +347,15 @@ describe('1 日の進行の行の印', () => {
 })
 
 describe('GET /api/version・/api/update（ヘルプのバージョンと更新）', () => {
+  test('手元で組んだ版（アプリの版が渡されていない）は、配った版と比べず、新しい版とも言わない', async () => {
+    let asked = false
+    const app = await startServer({ dir, port: 0, uiDir: null, checkUpdate: async current => { asked = true; return { current, latest: '9.9.9', isNewer: true, releaseUrl: '', downloadUrl: '' } } })
+    const url = `http://127.0.0.1:${(app.address as { port: number }).port}`
+    expect(await (await fetch(`${url}/api/update`)).json()).toMatchObject({ isNewer: false, isSourceBuild: true })
+    expect(asked).toBe(false)
+    await app.close()
+  })
+
   test('いまの版と、新しい版があるかを返す。確かめられなければ 502 で理由を返す', async () => {
     const app = await startServer({
       dir, port: 0, uiDir: null, appVersion: '0.1.0',

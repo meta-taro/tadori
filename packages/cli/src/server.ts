@@ -1,6 +1,6 @@
 import './i18n.js'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { checkUpdate, type UpdateInfo } from './update-check.js'
+import { checkUpdate, sourceBuildInfo, type UpdateInfo } from './update-check.js'
 import { CLI_VERSION } from './version.js'
 import { appendServerError, defaultLogDir } from './error-log.js'
 import { readBuildInfo } from './build-info.js'
@@ -248,7 +248,9 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
   }
   if (req.method === 'GET' && url.pathname === '/api/update') {
     try {
-      return sendJson(res, 200, await (options.checkUpdate ?? checkUpdate)(options.appVersion ?? CLI_VERSION))
+      // アプリの版が渡されていない＝手元でソースから組んだ版。配った版の番号とは比べられないので、見に行かない
+      if (!options.appVersion) return sendJson(res, 200, sourceBuildInfo(CLI_VERSION))
+      return sendJson(res, 200, await (options.checkUpdate ?? checkUpdate)(options.appVersion))
     } catch (error: unknown) {
       throw new HttpError(502, error instanceof Error ? error.message : String(error))
     }

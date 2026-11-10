@@ -56,7 +56,7 @@ export const JA: Readonly<Record<string, string>> = {
   '{path} is missing': '{path} がありません',
   '{file}, {id}: the {label} date "{value}" must be written as YYYY-MM-DD': '{file} の {id}：{label} の日付「{value}」は YYYY-MM-DD で書いてください',
   '{path} is missing (without rules, there would appear to be 0 gaps)': '{path} がありません（ルールが無いと、漏れが 0 件に見えてしまいます）',
-  '{file}, rule {id}: the check kind "{kind}" is not allowed ({allowed})': '{file} のルール {id}：判定の種類「{kind}」は使えません（{allowed}）',
+  '{file}, rule {id}: the check kind "{kind}" is not allowed ({allowed}). If this project was written with a newer tadori, update tadori and reconnect it (for MCP, run /mcp)': '{file} のルール {id}：判定の種類「{kind}」は使えません（{allowed}）。案件を新しい tadori で書いたのなら、tadori を新しくしてつなぎ直してください（MCP なら /mcp）',
   '{file}, rule {rule}: the status "{status}" is not allowed ({allowed})': '{file} のルール {rule}：状態「{status}」は使えません（{allowed}）',
   '{file}, {id}: the tone "{tone}" is not allowed ({allowed})': '{file} の {id}：色の意味「{tone}」は使えません（{allowed}）',
   '{file}, {name}: {problem}': '{file} の {name}：{problem}',

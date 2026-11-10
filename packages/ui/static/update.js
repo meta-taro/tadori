@@ -51,7 +51,10 @@ export async function showUpdatePanel() {
     const status = info.isNewer
       ? `<p><b>${esc(t('Version {v} is available.', { v: info.latest }))}</b>${esc(t('You have {v}.', { v: info.current }))}</p>
          <p class="cond">${esc(t('Reinstall the build for the OS and CPU of this PC from the download page. Your project folders and settings keep working as they are.'))}</p>`
-      : `<p>${esc(t('tadori {v} is up to date.', { v: info.current }))}</p>`
+      : info.isSourceBuild
+        // 手元でソースから組んだ版は、配った版の番号と比べられない（新しくするのは git pull と組み直し）
+        ? `<p>${esc(t('This is a build made from the source code on this PC.'))}</p><p class="cond">${esc(t('It is not compared with the released versions. To update, pull the repository and build again.'))}</p>`
+        : `<p>${esc(t('tadori {v} is up to date.', { v: info.current }))}</p>`
     fill(panel, status + builtNote)
     const actions = panel.querySelector('[data-actions]')
     if (actions) actions.innerHTML = info.isNewer ? `${outLink(info.downloadUrl, t('Open the download page'))}${outLink(info.releaseUrl, t('What changed'))}` : outLink(info.releaseUrl, t('Release page'))

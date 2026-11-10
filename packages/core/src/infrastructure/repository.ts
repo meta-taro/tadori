@@ -213,7 +213,7 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
     return rows.flatMap(row => {
       const kind = row.kind as RuleKind
       if (!RULE_KINDS.includes(kind)) {
-        problems.push(t('{file}, rule {id}: the check kind "{kind}" is not allowed ({allowed})', { file: `${PATHS.rulesets}/${file}`, id: String(row.id), kind: String(row.kind), allowed: RULE_KINDS.join(' / ') }))
+        problems.push(t('{file}, rule {id}: the check kind "{kind}" is not allowed ({allowed}). If this project was written with a newer tadori, update tadori and reconnect it (for MCP, run /mcp)', { file: `${PATHS.rulesets}/${file}`, id: String(row.id), kind: String(row.kind), allowed: RULE_KINDS.join(' / ') }))
         return []
       }
       const only = parseOnly(row.only ?? '')

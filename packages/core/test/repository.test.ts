@@ -312,3 +312,11 @@ describe('予定の表の呼び名（project.tsv の schedule_label）', () => {
     expect((await loadProject(dir)).scheduleLabel).toBe('工程表')
   })
 })
+
+describe('知らない判定の種類', () => {
+  test('案件が新しい tadori で書かれている可能性と、つなぎ直す手順を添える（古い MCP のプロセスが残っているとき）', async () => {
+    await writeMinimalProject()
+    await put('.tadori/rulesets/new.tsv', 'id\tphase\tkind\tlabel\nZ1\tbd\tfuture\t先の版の判定\n')
+    await expect(loadProject(dir)).rejects.toThrow(/future[\s\S]*tadori を新しくしてつなぎ直して/)
+  })
+})
