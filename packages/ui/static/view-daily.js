@@ -61,11 +61,14 @@ function entryRow(entry, no, origins = {}, isAll = true) {
   const issue = entry.issue ? `<a class="cond mono" href="#trace-${encodeURIComponent(entry.issue)}" title="${esc(t('Trace from {id}', { id: entry.issue }))}">${esc(entry.issue)}</a>` : ''
   const wbs = entry.wbs.map(id => `<a class="cond mono" href="#browse-${encodeURIComponent(id)}" title="${esc(t('Open {id} in the WBS', { id }))}">${esc(id)}</a>`).join('')
   const origin = originLink(entry.issue ? origins[entry.issue] : undefined)
+  // 行のバッジ（人かエージェントが書いた札）。本文とは別に、tone の色で出す
+  const badges = (entry.badges ?? []).map(b => `<span class="chip ${esc(b.tone)}"><span class="dot"></span>${esc(b.text)}</span>`).join('')
   return `<li class="daily-entry">
     <span class="daily-no">${no}.</span>
     ${tagSelect(entry)}
     ${isAll ? `<span class="daily-who" title="${esc(t('Owner of this row'))}">${esc(entry.who || t('No owner'))}</span>` : ''}
     <input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${esc(t('Text of row {n}', { n: no }))}" maxlength="500">
+    <span class="daily-badges">${badges}</span>
     <span class="daily-links">${origin}${entryLinks(entry)}</span>
     <span class="daily-meta">${badge}${issue}${wbs}</span>
     <button type="button" class="btn-ghost" data-remove="${esc(entry.id)}" aria-label="${esc(t('Remove row {n}', { n: no }))}">${esc(t('Remove'))}</button>

@@ -37,6 +37,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Checked': '確認',
   '[{tag}] ': '［{tag}］',
   '{who}: ': '{who}：',
+  ' <{badge}>': '〈{badge}〉',
   'Sun': '日',
   'Mon': '月',
   'Tue': '火',
@@ -62,6 +63,13 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'tag must be one of {list} (empty for no tag)': 'tag は {list} のどれか（空なら印なし）にしてください',
   'links must be [{ "label": display name, "url": URL }]': 'links は [{ "label": 表示名, "url": URL }] の形で渡してください',
   'links can have up to {max} items': 'links は {max} 件までです',
+  'badges must be [{ "text": text, "tone": none / wait / hole / ok }]': 'badges は [{ "text": 文字, "tone": none / wait / hole / ok }] の形で渡してください',
+  'badges can have up to {max} items': 'badges は {max} 件までです',
+  'badges item {no}: the text must be 1–{max} characters and must not contain "|"': 'badges の {no} 件目：文字は 1〜{max} 字で、「|」は使えません',
+  'badges item {no}: tone must be one of {list}': 'badges の {no} 件目：tone は {list} のどれかです',
+  'Badge text, up to 40 characters (e.g. late, waiting for review, due 11/12). You decide the value; tadori does not judge it': 'バッジの文字。40 字まで（例：遅延・確認待ち・期限 11/12）。中身はエージェントか人が決めます。tadori は値を判定しません',
+  'Color meaning: none = plain / wait = waiting / hole = needs attention / ok = good (default none)': '色の意味：none＝ふつう / wait＝待ち / hole＝要注意 / ok＝よい（省くと none）',
+  'Small badges for the line, shown apart from the text on the screen and after the text in the written daily progress. When editing, pass all of them again (an empty array clears them)': '行の小さな札。画面では本文とは別に色で出し、文では本文のうしろに出します。直すときは全部を渡し直します（空の配列で消えます）',
   'links item {no}: the display name must be 1–{max} characters and must not contain "|"': 'links の {no} 件目：表示名は 1〜{max} 文字で、「|」を含めないでください',
   'links item {no}: not a valid URL': 'links の {no} 件目：URL として読めません',
   'links item {no}: the URL must be http or https and must not contain spaces': 'links の {no} 件目：URL は http か https で、空白を含めないでください',
@@ -247,8 +255,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Add a line to daily progress (a question, or work that does not show up in the inputs). Added lines stay when the draft is rebuilt.':
     '1 日の進行に行を足す（相談や、材料に出ない作業）。足した行は作り直しても残る。',
   'Added [{id}]. {commit}': '[{id}] を足しました。{commit}',
-  'Edit a daily progress line (id is the [ID] from daily). Only the fields you pass change. Passing an empty string (an empty array for links and wbs) clears that field (the text cannot be cleared; use daily_remove to delete the line). An automatic line becomes an "edited line" and is not overwritten when the draft is rebuilt.':
-    '1 日の進行の行を直す（id は daily の [ID]）。渡した項目だけ変わる。空文字（links・wbs は空の配列）を渡すと、その欄を空にする（本文は空にできない。行ごと消すなら daily_remove）。自動の行は「直した行」になり、作り直しても上書きされない。',
+  'Edit a daily progress line (id is the [ID] from daily). Only the fields you pass change. Passing an empty string (an empty array for links, badges and wbs) clears that field (the text cannot be cleared; use daily_remove to delete the line). An automatic line becomes an "edited line" and is not overwritten when the draft is rebuilt.':
+    '1 日の進行の行を直す（id は daily の [ID]）。渡した項目だけ変わる。空文字（links・badges・wbs は空の配列）を渡すと、その欄を空にする（本文は空にできない。行ごと消すなら daily_remove）。自動の行は「直した行」になり、作り直しても上書きされない。',
   'Edited [{id}]. {commit}': '[{id}] を直しました。{commit}',
   'Remove a daily progress line (id is the [ID] from daily). An automatic line does not come back when the draft is rebuilt.':
     '1 日の進行の行を消す（id は daily の [ID]）。自動の行は、作り直しても戻ってこない。',

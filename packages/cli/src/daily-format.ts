@@ -46,6 +46,8 @@ export interface DailyFormat {
   readonly tag_format: string
   /** 担当で絞っていないときに、読み上げる行の頭に付ける担当名の書き方（{who}＝担当）。空なら付けない */
   readonly who_format: string
+  /** 行のバッジの書き方（{badge}＝バッジの文字）。本文のうしろに、バッジの数だけ並べる。空なら文に出さない */
+  readonly badge_format: string
 }
 
 /**
@@ -74,6 +76,7 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   get tag_checked() { return t('Checked') },
   get tag_format() { return t('[{tag}] ') },
   get who_format() { return t('{who}: ') },
+  get badge_format() { return t(' <{badge}>') },
 }
 
 /** 行の頭に付ける印（言葉が空なら付けない） */
@@ -102,6 +105,10 @@ export const wbsLabel = (id: string, format: DailyFormat): string => fill(format
 function statusName(project: Project, id: string): string {
   return project.statuses.find(s => s.id === id)?.name ?? id
 }
+
+/** 本文のうしろのバッジ（書き方が空なら出さない） */
+const badgeText = (entry: DailyEntry, format: DailyFormat): string =>
+  format.badge_format ? (entry.badges ?? []).map(b => fill(format.badge_format, { badge: b.text })).join('') : ''
 
 /** 末尾の（WBS の番号 状態 期限・…）。WBS に行が無い作業は何も付けない */
 function wbsTail(project: Project, ids: readonly string[], format: DailyFormat): string {
@@ -163,7 +170,7 @@ export function formatEntries(entries: readonly DailyEntry[], project: Project, 
   const perSection = format.numbering === 'per-section'
   let running = 0
   const numbered = sections.map(s => ({ ...s, items: s.list.map((entry, i) => ({ entry, no: perSection ? i + 1 : ++running })) }))
-  const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${tagText(entry.tag, format)}${whoText(entry.who)}${entry.text}${wbsTail(project, entry.wbs, format)}`)
+  const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${tagText(entry.tag, format)}${whoText(entry.who)}${entry.text}${badgeText(entry, format)}${wbsTail(project, entry.wbs, format)}`)
   const notes = numbered.flatMap(s => {
     const rows = s.items.flatMap(({ entry, no }) => noteLine(project, entry, no, format, date) ?? [])
     // 見出しごとに番号を振り直すときは、どの見出しの番号か分かるよう、補足を見出しの名前で分ける

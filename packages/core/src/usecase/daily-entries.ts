@@ -12,6 +12,19 @@ export type { Member }
 /** 行の印の種類（言葉は案件ごとに決める） */
 export const DAILY_TAGS = ['done', 'doing', 'plan', 'upkeep', 'checked'] as const
 
+/** バッジの色の意味（WBS のステータスの tone と同じ並び）。none＝ふつう / wait＝待ち / hole＝要注意 / ok＝よい */
+export const BADGE_TONES = ['none', 'wait', 'hole', 'ok'] as const
+export type BadgeTone = (typeof BADGE_TONES)[number]
+
+/**
+ * 行に付ける小さな札（例：遅延・確認待ち・期限 11/12）。中身は人かエージェントが決めて書く。
+ * tadori は値を決めない（WBS を読んで遅れを判定する、などはしない）。WBS の無い案件でも使える
+ */
+export interface DailyBadge {
+  readonly text: string
+  readonly tone: BadgeTone
+}
+
 /** upkeep＝台帳の整備（台帳の行を足した・直した。成果物の作業とは分けて出す） */
 export type DailySection = 'today' | 'next' | 'consult' | 'upkeep'
 export const DAILY_SECTIONS: readonly DailySection[] = ['today', 'next', 'consult', 'upkeep']
@@ -46,6 +59,8 @@ export interface DailyEntry {
   readonly key?: string
   /** その作業でさわった正本の場所（表示名と URL）。画面では行の末尾に「表示名 ↗」で出し、読み上げる文には入れない */
   readonly links?: readonly DailyLink[]
+  /** 行の札（文字と tone）。画面では本文とは別に色で出し、文では本文のうしろに出す */
+  readonly badges?: readonly DailyBadge[]
 }
 
 /** 行のリンク。表示名は人が読む名前（例：QA表・設計書 3.2.5）。URL は http・https だけ */

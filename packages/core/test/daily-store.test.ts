@@ -26,10 +26,21 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     ]
     const commit = await writeDaily(dir, '2026-11-09', entries, '1 日の進行を直した')
     expect(commit.committed).toBe(false) // git の外なので commit しない
-    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\n/)
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\n/)
     const back = await readDaily(dir, '2026-11-09')
     expect(back[0]).toEqual({ ...entries[0], text: '画面の設計 を直した' })
     expect(back[1]).toEqual(entries[1])
+  })
+
+  test('行のバッジは「tone 文字 | tone 文字」の 1 セルに書き、読むと同じ組に戻る。tone の無い手書きは none で読む', async () => {
+    const dir = await dirOf()
+    const badges = [{ text: '遅延', tone: 'hole' as const }, { text: '期限 11/12', tone: 'none' as const }]
+    await writeDaily(dir, '2026-11-09', [{ id: 'm1', who: '', section: 'today', text: 'x', wbs: [], origin: 'manual', badges }], 'x')
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toContain('hole 遅延 | none 期限 11/12')
+    expect((await readDaily(dir, '2026-11-09'))[0]?.badges).toEqual(badges)
+    await mkdir(join(dir, '.tadori/daily'), { recursive: true })
+    await writeFile(join(dir, '.tadori/daily/2026-11-08.tsv'), 'id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\nm1\t\ttoday\tx\t\t\t\tmanual\t\t\t\t確認中\n', 'utf8')
+    expect((await readDaily(dir, '2026-11-08'))[0]?.badges).toEqual([{ text: '確認中', tone: 'none' }])
   })
 
   test('行のリンク（表示名と URL）は「表示名 URL | 表示名 URL」の 1 セルに書き、読むと同じ組に戻る', async () => {

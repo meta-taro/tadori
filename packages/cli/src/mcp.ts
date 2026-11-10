@@ -171,6 +171,18 @@ function dailySchemas() {
       },
       description: t('The places in the source of truth touched by this work. The screen shows "display name ↗" at the end of the line and opens it on click. Not included in the text read aloud; shown in the notes. When editing, pass all of them again'),
     },
+    badges: {
+      type: 'array', maxItems: 8,
+      items: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: t('Badge text, up to 40 characters (e.g. late, waiting for review, due 11/12). You decide the value; tadori does not judge it') },
+          tone: { type: 'string', enum: ['none', 'wait', 'hole', 'ok'], description: t('Color meaning: none = plain / wait = waiting / hole = needs attention / ok = good (default none)') },
+        },
+        required: ['text'], additionalProperties: false,
+      },
+      description: t('Small badges for the line, shown apart from the text on the screen and after the text in the written daily progress. When editing, pass all of them again (an empty array clears them)'),
+    },
     issue: { type: 'string', description: t('Issue ID (a ledger row)') },
     note: { type: 'string', description: t('A short remark to add to the notes (read when asked)') },
     tag: { type: 'string', enum: ['', 'done', 'doing', 'plan', 'upkeep', 'checked'], description: t('Line tag: done = finished / doing = in progress / plan = planned / upkeep = ledger upkeep / checked = checked (empty for no tag)') },
@@ -226,7 +238,7 @@ function dailyTools(options: McpOptions): Tool[] {
     },
     {
       name: 'daily_update',
-      description: t('Edit a daily progress line (id is the [ID] from daily). Only the fields you pass change. Passing an empty string (an empty array for links and wbs) clears that field (the text cannot be cleared; use daily_remove to delete the line). An automatic line becomes an "edited line" and is not overwritten when the draft is rebuilt.'),
+      description: t('Edit a daily progress line (id is the [ID] from daily). Only the fields you pass change. Passing an empty string (an empty array for links, badges and wbs) clears that field (the text cannot be cleared; use daily_remove to delete the line). An automatic line becomes an "edited line" and is not overwritten when the draft is rebuilt.'),
       inputSchema: { type: 'object', properties: { date: DATE, id: { type: 'string' }, section: SECTION, ...ENTRY_FIELDS }, required: ['id'], additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
         const { entry, commit, warnings } = await updateDaily(dir, date, str(args.id), args)

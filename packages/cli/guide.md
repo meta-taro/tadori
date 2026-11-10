@@ -97,6 +97,7 @@ Apart from the remaining work per product, tadori shows "daily progress" **per p
 - Command: `tadori daily <folder> --who <owner> --date <YYYY-MM-DD>` (read only)
 - MCP: `daily` (read; also shows each line's [ID]), `daily_generate` (make a draft and save it), `daily_add`, `daily_update`, `daily_remove`
 - Attach the location of the source of truth you touched in that work with `links` on `daily_add` / `daily_update` (`[{ "label": "QA sheet", "url": "https://…" }]`, http and https only, up to 8). On the screen it shows as "QA sheet ↗" at the end of the line and opens when pressed. It is not part of the text read out, and appears in the notes as "QA sheet: URL". To change them, pass all of them again
+- Put small badges on a line with `badges` on `daily_add` / `daily_update` (`[{ "text": "late", "tone": "hole" }]`, up to 8; tone is none, wait, hole or ok). **You decide what they say** (late, waiting for review, due 11/12 …); tadori does not judge them, and they work without a WBS. The screen shows them apart from the text in the tone color; the text shows them after the line. To change them, pass all of them again (an empty array clears them)
 - To turn a word in the text itself into a link, add `anchor` (the word in the text) to the links element, and `nth` (which occurrence) if the same word appears more than once. In the "text form" on the screen that word becomes a link and nothing is added at the end of the line. If the word is not found in the text, it shows as "label ↗" at the end of the line and the tool's reply tells you. It still appears in the notes as "label: URL"
 - For a ledger row whose source location is written as a plain URL (e.g. `Issue tracker https://…`), that URL becomes the link to the source of truth without going through the locator in sources.tsv
 - A line given an `issue`, whether added or edited, starts with "issue number short title" just like the automatic lines
@@ -140,6 +141,7 @@ The day a status changed is read from the WBS git history (the content of each c
 | `tag_done`, `tag_doing`, `tag_plan`, `tag_upkeep`, `tag_checked` | `Done`, `In progress`, `Planned`, `Upkeep`, `Checked` | words for the mark at the start of a line (empty means that mark is not shown). The mark follows where the line came from: changed to done today = done, changed to an in-between status = doing, next working day = plan, ledger upkeep = upkeep, check log = checked. People and agents can change it per line |
 | `tag_format` | `[{tag}] ` | how the mark is written |
 | `who_format` | `{who}: ` | how the owner name is written at the start of a line in text not filtered by owner (everyone's). Empty means it is not added |
+| `badge_format` | ` <{badge}>` | how a line badge is written after the text (once per badge). Empty means badges are left out of the text (the screen still shows them) |
 | `intro` | (empty) | explanation shown at the top of the "Daily progress" screen (empty means tadori's default explanation) |
 | `group_after` | `3` | on a day when more ledger rows of the same kind than this were added or edited, they are merged per kind into one line, "added N rows of …" (the IDs go to the notes) |
 

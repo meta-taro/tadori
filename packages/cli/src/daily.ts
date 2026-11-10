@@ -1,7 +1,7 @@
 import './i18n.js'
 import {
-  buildDaily, carriedOver, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
-  readStatusChanges, t, writeDaily, type CommitResult, type DailyEntry, type DailyLink, type DailySection,
+  BADGE_TONES, buildDaily, carriedOver, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
+  readStatusChanges, t, writeDaily, type BadgeTone, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
 import { dailyFormatOf, formatEntries, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
@@ -149,6 +149,29 @@ function linkList(body: Record<string, unknown>): DailyLink[] | undefined {
   }).filter((l, i, all) => all.findIndex(o => linkKey(o) === linkKey(l)) === i) // 同じリンクは 1 つにまとめる
 }
 
+const MAX_BADGES = 8
+const MAX_BADGE_TEXT = 40
+
+/**
+ * 行のバッジ。[{ text, tone }] で受ける（tone は none・wait・hole・ok。省けば none）。
+ * 中身は人かエージェントが決める。tadori は値を判定しない。直すときは全部を渡し直す（空の配列で消す）
+ */
+function badgeList(body: Record<string, unknown>): DailyBadge[] | undefined {
+  const value = body.badges
+  if (value === undefined) return undefined
+  if (!Array.isArray(value)) throw new DailyInputError(t('badges must be [{ "text": text, "tone": none / wait / hole / ok }]'))
+  if (value.length > MAX_BADGES) throw new DailyInputError(t('badges can have up to {max} items', { max: MAX_BADGES }))
+  return value.map((raw, i) => {
+    const badge = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
+    const label = typeof badge.text === 'string' ? badge.text.replace(/[\t\r\n]+/g, ' ').trim() : ''
+    const tone = badge.tone === undefined || badge.tone === '' ? 'none' : String(badge.tone)
+    const no = i + 1
+    if (!label || label.length > MAX_BADGE_TEXT || label.includes('|')) throw new DailyInputError(t('badges item {no}: the text must be 1–{max} characters and must not contain "|"', { no, max: MAX_BADGE_TEXT }))
+    if (!(BADGE_TONES as readonly string[]).includes(tone)) throw new DailyInputError(t('badges item {no}: tone must be one of {list}', { no, list: BADGE_TONES.join(' / ') }))
+    return { text: label, tone: tone as BadgeTone }
+  })
+}
+
 const MAX_NTH = 20
 const linkKey = (l: DailyLink) => `${l.label}\t${l.url}\t${l.anchor ?? ''}\t${l.nth ?? 1}`
 
@@ -196,6 +219,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
   const note = text(body, 'note', false)
   const chosenTag = tag(body)
   const links = linkList(body)
+  const badges = badgeList(body)
   const entry: DailyEntry = await withIssueHead(dir, {
     id: `m${n}`,
     who: text(body, 'who', false) ?? '',
@@ -206,6 +230,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     ...(note ? { note } : {}),
     ...(chosenTag ? { tag: chosenTag } : {}),
     ...(links?.length ? { links } : {}),
+    ...(badges?.length ? { badges } : {}),
     origin: 'manual',
   })
   const commit = await writeDaily(dir, date, [...entries, entry], t('Add a line to daily progress ({date})', { date }))
@@ -242,18 +267,20 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     note: isCleared('note') ? '' : text(body, 'note', false),
     tag: isCleared('tag') ? '' : tag(body),
     links: isCleared('links') ? [] : linkList(body),
+    badges: isCleared('badges') ? [] : badgeList(body),
   }
   const changed = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
   // 本文か課題を変えたときだけ、課題番号と短い件名を頭に付け直す
   const filled: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited' }
   // 空にした欄は、行から外す（日ごとのファイルにも空で書く）
-  const { issue, note, tag: entryTag, links, ...rest } = filled
+  const { issue, note, tag: entryTag, links, badges, ...rest } = filled
   const merged: DailyEntry = {
     ...rest,
     ...(issue ? { issue } : {}),
     ...(note ? { note } : {}),
     ...(entryTag ? { tag: entryTag } : {}),
     ...(links?.length ? { links } : {}),
+    ...(badges?.length ? { badges } : {}),
   }
   const entry = patch.text !== undefined || patch.issue !== undefined ? await withIssueHead(dir, merged) : merged
   const commit = await writeDaily(dir, date, entries.map(e => (e.id === id ? entry : e)), t('Edit daily progress line {id} ({date})', { id, date }))
