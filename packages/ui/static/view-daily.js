@@ -2,7 +2,7 @@
 // 材料（WBS の状態の変化・台帳の差分・チェックの記録）から作った下書きを、日ごとのファイルに置き、行を足す・直す・消す。
 // 直した行・足した行・消した行は、下書きを作り直しても上書きしない。
 import { t } from './i18n.js'
-import { api, esc, getWho, ICON_INFO, messageOf, nthIndexOf, toast, toastCommit, webUrl, within } from './util.js'
+import { api, esc, getWho, ICON_INFO, messageOf, nthIndexOf, toast, toastCommit, webUrl, within, idPill } from './util.js'
 import { previewHtml } from './daily-preview.js'
 
 /** @typedef {import('./types').DailyEntry} DailyEntry */
@@ -59,7 +59,7 @@ function entryRow(entry, no, origins = {}, isAll = true) {
   const badge = ORIGIN_LABEL[entry.origin] ? `<span class="chip mono">${esc(t(ORIGIN_LABEL[entry.origin] ?? ''))}</span>` : ''
   // 課題は「つながりを辿る」へ、WBS は「プロダクト」のその行へ（会議の場で、その場から開けるように）
   const issue = entry.issue ? `<a class="cond mono" href="#trace-${encodeURIComponent(entry.issue)}" title="${esc(t('Trace from {id}', { id: entry.issue }))}">${esc(entry.issue)}</a>` : ''
-  const wbs = entry.wbs.map(id => `<a class="cond mono" href="#browse-${encodeURIComponent(id)}" title="${esc(t('Open {id} in the WBS', { id }))}">${esc(id)}</a>`).join('')
+  const wbs = entry.wbs.map(id => idPill(id, `#browse-${encodeURIComponent(id)}`, t('Open {id} in the WBS', { id }))).join('')
   const origin = originLink(entry.issue ? origins[entry.issue] : undefined)
   // 行のバッジ（人かエージェントが書いた札）。本文とは別に、tone の色で出す
   const badges = (entry.badges ?? []).map(b => `<span class="chip ${esc(b.tone)}"><span class="dot"></span>${esc(b.text)}</span>`).join('')

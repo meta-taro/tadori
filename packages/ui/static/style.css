@@ -262,7 +262,6 @@
   .kind { font-size:12px; color:var(--ink-subtle); white-space:nowrap; }
   .hole-row { display:flex; align-items:baseline; gap:10px; padding:4px 0; }
   .hole-row + .hole-row { border-top:1px dashed var(--hairline); }
-  .btn-trace { margin-left:auto; flex:none; display:inline-flex; align-items:center; gap:4px; background:none; border:1px solid var(--hairline-strong); color:var(--ink-muted); border-radius:var(--r-sm); padding:2px 8px; font:inherit; font-size:12px; cursor:pointer; transition:border-color .12s, color .12s; }
   .btn-trace:hover { border-color:var(--accent); color:var(--ink); }
   .btn-trace:focus-visible, .stage:focus-visible, nav a:focus-visible, select:focus-visible, input:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 
@@ -628,7 +627,7 @@
   td > .btn-ghost + .btn-ghost, td > .btn-ghost + .btn-primary, td > .btn-primary + .btn-ghost { margin-left:var(--btn-gap); }
   .daily-bar { gap:12px; }
   /* ルールの分類の札（押せるものに見えないよう、枠を付けない） */
-  .rule-group { display:inline-block; margin-top:4px; padding:1px 8px; border-radius:999px; font-size:11px; color:var(--ink-subtle); background:var(--surface-2); }
+  .rule-group { display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; margin-top:4px; padding:1px 8px; border-radius:999px; font-size:11px; color:var(--ink-subtle); background:var(--surface-2); }
 
   /* ---- チェックの記録（1 回 1 まとまり。新しいものが上） ---- */
   .log-list { display:flex; flex-direction:column; gap:10px; }
@@ -646,3 +645,46 @@
   .log-meta .log-clamp { -webkit-line-clamp:1; flex:1 1 0; min-width:0; }
   .log-clamp[aria-expanded="true"] { display:block; -webkit-line-clamp:unset; }
   .log-clamp:hover { color:var(--ink-muted); }
+
+  /* ---- デスクトップアプリの上の帯 ----
+     幅が足りないときは 2 行に折り返す（メニューの文字が縦に割れたり、探す欄が丸くつぶれたりしない）。
+     窓のボタン（最小化・最大化・閉じる）は右上に固定し、折り返した中身がその下に入り込まないよう右を空ける */
+  .desktop .topbar { flex-wrap:wrap; row-gap:6px; padding:6px 150px 6px 28px; position:sticky; }
+  .desktop .win-controls { position:absolute; top:0; right:0; height:46px; }
+  .desktop .win-menu, .desktop .win-menu > button, .desktop .who-filter { flex:none; white-space:nowrap; }
+  .desktop .topbar .crumb { flex:1 1 160px; }
+  .desktop .topbar .jump { flex:1 1 200px; min-width:180px; max-width:320px; }
+  .desktop .topbar .jump input { width:100%; min-width:0; }
+
+  /* ---- 絞り込みの札（× で解除） ---- */
+  .filter-chip { display:inline-flex; align-items:center; gap:6px; height:var(--btn-h-sm); padding:0 4px 0 10px; border-radius:999px; font-size:12px; font-weight:500; color:var(--accent); background:var(--accent-soft); border:1px solid color-mix(in oklch, var(--accent) 35%, transparent); white-space:nowrap; }
+  .filter-chip svg { width:13px; height:13px; flex:none; }
+  .filter-chip button { display:grid; place-items:center; width:20px; height:20px; border-radius:50%; border:none; background:none; color:inherit; font:inherit; font-size:14px; line-height:1; cursor:pointer; }
+  .filter-chip button:hover { background:color-mix(in oklch, var(--accent) 18%, transparent); }
+  /* 行の中の「辿る」ボタン（印と文字。ほかの小さなボタンと同じ大きさ） */
+  .btn-trace { margin-left:auto; flex:none; text-decoration:none; height:var(--btn-h-sm); padding:0 10px; font-size:12px; }
+  .btn-trace svg { width:13px; height:13px; }
+
+  /* ---- 文字だけで出していたものを札にする（担当・判定・ID・件数・切り替え） ---- */
+  .person { display:inline-flex; align-items:center; gap:4px; height:22px; padding:0 8px 0 6px; margin:1px 4px 1px 0; border-radius:999px; font-size:12px; color:var(--ink-muted); background:var(--surface-2); border:1px solid var(--hairline); white-space:nowrap; vertical-align:middle; }
+  .person svg { width:12px; height:12px; color:var(--ink-tertiary); flex:none; }
+  .log-meta .person { height:20px; font-size:11.5px; }
+  .judge { display:inline-flex; align-items:center; gap:5px; height:22px; padding:0 8px 0 6px; border-radius:var(--r-sm); font-size:12px; white-space:nowrap; vertical-align:middle; }
+  .judge svg { width:13px; height:13px; flex:none; }
+  .judge.judge-auto { color:var(--ink-muted); background:var(--surface-2); }
+  .judge.judge-human { color:var(--wait); background:var(--wait-soft); }
+  .judge.judge-note { color:var(--ink-subtle); background:none; border:1px dashed var(--hairline-strong); }
+  .id-pill { display:inline-flex; align-items:center; height:20px; padding:0 7px; margin:1px 4px 1px 0; border-radius:var(--r-sm); font-family:var(--mono); font-size:11.5px; font-weight:600; color:var(--ink-muted); background:var(--surface-2); border:1px solid var(--hairline); text-decoration:none; white-space:nowrap; vertical-align:middle; }
+  a.id-pill:hover { border-color:var(--accent); color:var(--accent); }
+  .count-badge { display:inline-flex; align-items:center; height:22px; padding:0 9px; margin-left:6px; border-radius:999px; font-size:12px; font-weight:500; color:var(--ink-muted); background:var(--surface-2); border:1px solid var(--hairline); vertical-align:middle; white-space:nowrap; }
+  td .count-badge { margin-left:0; margin-right:6px; }
+  #copy-link svg { width:14px; height:14px; }
+  /* 切り替え（チェックの代わりのスイッチ） */
+  .switch { display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-muted); cursor:pointer; user-select:none; }
+  .switch input { position:absolute; opacity:0; width:1px; height:1px; }
+  .switch-track { position:relative; width:30px; height:18px; border-radius:999px; background:var(--surface-3); border:1px solid var(--hairline-strong); transition:background .15s, border-color .15s; flex:none; }
+  .switch-track::after { content:''; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:var(--ink-subtle); transition:transform .15s, background .15s; }
+  .switch input:checked + .switch-track { background:var(--accent); border-color:var(--accent); }
+  .switch input:checked + .switch-track::after { transform:translateX(12px); background:#fff; }
+  .switch input:focus-visible + .switch-track { outline:2px solid var(--accent); outline-offset:2px; }
+  .log-ids { -webkit-line-clamp:1; }

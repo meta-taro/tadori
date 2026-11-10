@@ -1,6 +1,6 @@
 // プロダクト → プロジェクト → WBS（Finder の列表示）。MVP では開いている案件 1 つを出す
 import { t } from './i18n.js'
-import { api, chip, day, esc, fullDate, ICON_INFO, isDoneStatus, isMine, lateColor, lateDays, messageOf, shortDate, toast, toastCommit, within } from './util.js'
+import { api, chip, day, esc, fullDate, ICON_INFO, isDoneStatus, isMine, lateColor, lateDays, messageOf, shortDate, toast, toastCommit, within, personChips } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').Task} Task */
@@ -45,7 +45,7 @@ function taskRow(state, task) {
   return `<div class="wbs-task" id="task-${esc(task.id)}" style="--row-color:${color}">
     <span class="tid">${esc(task.id)}</span>
     <span>${esc(task.name)}${lateText}</span>
-    <span class="owner" title="${esc(t('Owner'))}">${esc(task.owner ?? '')}</span>
+    <span class="owner">${personChips(task.owner)}</span>
     <select class="status-select tone-${current?.tone ?? 'none'}" data-task="${esc(task.id)}" aria-label="${esc(t('Status of {id}', { id: task.id }))}">${options}</select>
     <span class="dates">${dates}</span>
   </div>`

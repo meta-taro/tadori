@@ -1,6 +1,9 @@
 // リリースまでの残課題：タイムラインとカードの切り替え。割合や点数は出さない
 import { t } from './i18n.js'
-import { chip, day, esc, fullDate, getWho, isMine, kindLabel, lateColor, shortDate, isDoneStatus } from './util.js'
+import { chip, day, esc, fullDate, getWho, isMine, kindLabel, lateColor, shortDate, isDoneStatus, whoFilterChip, judgeBadge, personChips } from './util.js'
+
+// つながりを辿るボタンの印（「つながりを辿る」の画面と同じ形）
+const ICON_TRACE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="5" cy="3.5" r="1.6"/><circle cx="5" cy="12.5" r="1.6"/><path d="M5 5.1v5.8M5 8h4.5"/><circle cx="11" cy="8" r="1.6"/></svg>'
 
 /** 承認の状態（中では承認・差し戻し・待ちで持つ）を画面の言葉にする */
 /** @type {Readonly<Record<string, string>>} */
@@ -160,7 +163,7 @@ function ruleStatus(state, rule) {
   if (!leaks.length) return chip('ok', esc(t('No gaps')))
   // 1 つのルールに漏れが数百あっても読めるよう、最初は 3 件だけ。残りはその場で開く
   const limit = expandedRules.has(rule.id) ? leaks.length : LEAKS_PER_RULE
-  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="${esc(t('Gap name (rule·row)'))}">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}${fixHtml(l.fix, l)}</span><a class="btn-trace" href="#trace" data-trace="${esc(l.itemId)}">${esc(t('Trace →'))}</a></div>`).join('')
+  const rows = leaks.slice(0, limit).map(l => `<div class="hole-row"><span class="leak-id" title="${esc(t('Gap name (rule·row)'))}">${esc(l.rule)}·${esc(l.itemId)}</span><span>${esc(l.message)}${fixHtml(l.fix, l)}</span><a class="btn-ghost btn-trace" href="#trace" data-trace="${esc(l.itemId)}">${ICON_TRACE}<span>${esc(t('Trace it'))}</span></a></div>`).join('')
   const more = leaks.length > limit ? `<button type="button" class="btn-ghost leaks-more" data-expand="${esc(rule.id)}">${esc(t('Show {n} more', { n: leaks.length - limit }))}</button>` : ''
   return rows + more
 }
@@ -183,8 +186,6 @@ function isRemaining(state, rule) {
   return state.leaks.some(l => l.rule === rule.id)
 }
 
-/** @type {Readonly<Record<string, string>>} 判定の種類 → 誰が判定するか */
-const KIND_NAMES = { covered: 'Auto', refers: 'Auto', filled: 'Auto', approval: 'Human' }
 
 /**
  * @param {HTMLElement} view
@@ -211,8 +212,8 @@ export function renderGates(view, state, onTrace, phaseId) {
     <tr>
       <td class="rule-id">${esc(r.id)}</td>
       <td><div class="pair">${esc(kindLabel(r.from) || r.label)}${r.to ? `<span class="arrow">→</span>${esc(kindLabel(r.to))}` : ''}</div><div class="cond">${esc(r.label)}</div></td>
-      <td class="kind">${esc(t(KIND_NAMES[r.kind] ?? ''))}</td>
-      <td class="kind">${esc(r.owner ?? '')}</td>
+      <td>${judgeBadge(r.kind)}</td>
+      <td>${personChips(r.owner)}</td>
       <td>${ruleStatus(state, r)}</td>
     </tr>`).join('')
   view.innerHTML = `
@@ -224,14 +225,14 @@ export function renderGates(view, state, onTrace, phaseId) {
     </div>
     ${shown === 'timeline' ? timelineHtml(state) : cardsHtml(state)}
     ${gate ? `<div class="gate-table-head">
-      <h2>${esc(gate.phase.name)} · ${esc(t('Remaining rules: {n} of {total}', { n: remaining.length, total: allRules.length }))}</h2>
+      <h2>${esc(gate.phase.name)} <span class="count-badge" title="${esc(t('Remaining rules: {n} of {total}', { n: remaining.length, total: allRules.length }))}">${esc(t('{n} left of {total}', { n: remaining.length, total: allRules.length }))}</span></h2>
       <span class="gate-filters">
-        ${getWho() ? `<span class="cond">${esc(t('Only {who}', { who: getWho() }))}</span>` : ''}
-        <label class="cond"><input type="checkbox" id="show-satisfied" ${showSatisfied ? 'checked' : ''}> ${esc(t('Also show rules that are met'))}</label>
+        ${whoFilterChip()}
+        <label class="switch"><input type="checkbox" id="show-satisfied" ${showSatisfied ? 'checked' : ''}><span class="switch-track" aria-hidden="true"></span><span>${esc(t('Also show rules that are met'))}</span></label>
       </span>
     </div>
     <div class="panel"><table>
-      <thead><tr><th style="width:72px">${esc(t('Rule'))}</th><th>${esc(t('Between'))}</th><th style="width:64px">${esc(t('Judged by'))}</th><th style="width:96px">${esc(t('Owner'))}</th><th>${esc(t('Status (how to fix)'))}</th></tr></thead>
+      <thead><tr><th style="width:72px">${esc(t('Rule'))}</th><th>${esc(t('Between'))}</th><th style="width:84px">${esc(t('Judged by'))}</th><th style="width:130px">${esc(t('Owner'))}</th><th>${esc(t('Status (how to fix)'))}</th></tr></thead>
       <tbody>${rows || `<tr><td colspan="5" class="cond">${esc(allRules.length ? t('No rules remain in this phase') : t('This phase has no rules'))}</td></tr>`}</tbody>
     </table>
     ${listed.length > rulesShown ? `<button type="button" class="btn-ghost rules-more" id="gate-more">${esc(t('{n} more ({rest} left)', { n: Math.min(RULES_PAGE, listed.length - rulesShown), rest: listed.length - rulesShown }))}</button>` : ''}

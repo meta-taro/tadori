@@ -1,6 +1,6 @@
 // チェックの記録・つながりを辿る
 import { t } from './i18n.js'
-import { api, chip, esc, ICON_INFO, kindLabel, messageOf, originHtml, toast, within } from './util.js'
+import { api, chip, esc, ICON_INFO, idPill, kindLabel, messageOf, originHtml, toast, within, ICON_LINK, personChips } from './util.js'
 import { renderPicker } from './trace-picker.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
@@ -29,6 +29,17 @@ const clamp = (text, label) => (text
   : '')
 
 /**
+ * 結果の中身。行の ID の並び（「A・B」「A, B」）なら ID の札にし、多ければ切って押すと全部出す。それ以外の文はそのまま切る
+ * @param {string} detail
+ */
+function detailHtml(detail) {
+  const ids = detail.split(/[・,、]s*/).map(v => v.trim()).filter(Boolean)
+  const isIdList = ids.length > 0 && ids.every(id => /^[A-Za-z][w.-]*$/.test(id))
+  if (!isIdList) return clamp(detail, t('Rows: {rows}', { rows: detail }))
+  return `<button type="button" class="log-clamp log-ids" aria-expanded="false" aria-label="${esc(t('Rows: {rows}', { rows: detail }))}">${ids.map(id => idPill(id)).join('')}</button>`
+}
+
+/**
  * チェックの記録 1 回分：見出し（結果の要約と、何を）・中身（どこで・どうやって・漏れの行）・下に小さく いつ・だれが・なぜ
  * @param {ProjectState['checks'][number]} r
  */
@@ -37,13 +48,13 @@ function logEntry(r) {
   const { head, detail } = splitResult(r.result)
   const where = [r.where, r.how].filter(Boolean).map(v => `<span class="mono">${esc(v)}</span>`).join('<span class="log-sep">·</span>')
   const body = where || detail
-    ? `<div class="log-body">${where ? `<div class="log-where">${where}</div>` : ''}${clamp(detail, t('Rows: {rows}', { rows: detail }))}</div>`
+    ? `<div class="log-body">${where ? `<div class="log-where">${where}</div>` : ''}${detailHtml(detail)}</div>`
     : ''
   const why = r.why ? `<span class="log-sep">·</span>${clamp(r.why, t('Why: {why}', { why: r.why }))}` : ''
   return `<article class="log-entry ${tone || 'none'}">
     <header class="log-head">${chip(tone, esc(head))}<span class="log-what">${esc(r.what)}</span></header>
     ${body}
-    <footer class="log-meta"><span class="mono">${esc(r.when)}</span><span class="log-sep">·</span><span>${esc(r.who)}</span>${why}</footer>
+    <footer class="log-meta"><span class="mono">${esc(r.when)}</span>${personChips(r.who)}${why}</footer>
   </article>`
 }
 
@@ -141,7 +152,7 @@ export async function renderTrace(view, state, startId) {
     <div class="trace-layout">
       <section aria-label="${esc(t('Where to start'))}"><h2>${esc(t('Where to start'))}</h2><div id="picker"></div></section>
       <section aria-label="${esc(t('Trace result'))}">
-        <div class="trace-head"><h2>${start ? esc(t('Traced from {id} “{title}”', { title: start.title })).replace('{id}', () => `<span class="big-id">${esc(start.id)}</span>`) : esc(t('Trace result'))}</h2>${start ? `<button type="button" class="btn-ghost" id="copy-link" title="${esc(t('A link that opens this result (to share in a meeting)'))}">${esc(t('Copy link'))}</button>` : ''}</div>
+        <div class="trace-head"><h2>${start ? esc(t('Traced from {id} “{title}”', { title: start.title })).replace('{id}', () => `<span class="big-id">${esc(start.id)}</span>`) : esc(t('Trace result'))}</h2>${start ? `<button type="button" class="btn-ghost" id="copy-link" title="${esc(t('A link that opens this result (to share in a meeting)'))}">${ICON_LINK}<span>${esc(t('Copy link'))}</span></button>` : ''}</div>
         <div id="trace-summary"></div>
         <div class="story-path" id="story" role="list"><div class="cond">${esc(startId ? t('Loading…') : t('Choose the row to start from on the left'))}</div></div>
         <div class="verdict"><span>${esc(t('A person decides where on this line the gap was. Once you have checked, record it in the check log as a human row.'))}</span></div>

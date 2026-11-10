@@ -50,6 +50,52 @@ export function setWho(value) {
   try { localStorage.setItem(WHO_KEY, currentWho) } catch { /* 覚えられなくても、いまの画面には効かせる */ }
 }
 
+const ICON_FILTER = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2.5 3.5h11l-4.2 5v4l-2.6 1.2V8.5z"/></svg>'
+
+/**
+ * 上の帯の担当で絞っていることを示す札。× を押すと全員に戻る（どの画面も同じ形）。
+ * 絞っていなければ空
+ */
+export function whoFilterChip() {
+  const who = getWho()
+  if (!who) return ''
+  return `<span class="filter-chip" title="${esc(t('Every screen shows only this person\'s items. Change it with Owner in the top bar'))}">${ICON_FILTER}<span>${esc(t('Owner: {who}', { who }))}</span><button type="button" data-clear-who aria-label="${esc(t('Show everyone'))}">×</button></span>`
+}
+
+const ICON_PERSON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="5.5" r="2.4"/><path d="M3.4 13.5c.6-2.4 2.4-3.7 4.6-3.7s4 1.3 4.6 3.7"/></svg>'
+const ICON_AUTO = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2"/><path d="M6 1.5v1.5M10 1.5v1.5M6 13v1.5M10 13v1.5M1.5 6h1.5M1.5 10h1.5M13 6h1.5M13 10h1.5"/></svg>'
+const ICON_NOTE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 2.5h6l2.5 2.5v8.5h-8.5z"/><path d="M6 7h4.5M6 9.5h4.5"/></svg>'
+export const ICON_LINK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1-1a2.5 2.5 0 0 1 3.5 3.5l-1 1M9 11.5l-1 1a2.5 2.5 0 0 1-3.5-3.5l1-1"/></svg>'
+
+/**
+ * 担当の札（人の印と名前）。「A・B」は人ごとに分けて並べる。担当が無ければ空
+ * @param {string | null | undefined} owner
+ */
+export function personChips(owner) {
+  return ownersOf(owner).map(name => `<span class="person">${ICON_PERSON}<span>${esc(name)}</span></span>`).join('')
+}
+
+/**
+ * 判定の別の札：人の承認・機械の判定・判定しない約束。name を渡すと、札の文字にする（例：判定の種類の名前）
+ * @param {string} kind ルールの判定の種類
+ * @param {string} [name]
+ */
+export function judgeBadge(kind, name) {
+  const [icon, tone, word] = kind === 'approval' ? [ICON_PERSON, 'judge-human', 'Human'] : kind === 'note' ? [ICON_NOTE, 'judge-note', 'Not checked'] : [ICON_AUTO, 'judge-auto', 'Machine']
+  return `<span class="judge ${tone}">${icon}<span>${esc(name ?? t(word))}</span></span>`
+}
+
+/**
+ * ID の札（等幅・小さな角丸）。href を渡すとリンクにする
+ * @param {string} id
+ * @param {string} [href]
+ * @param {string} [title]
+ */
+export function idPill(id, href, title) {
+  const attrs = title ? ` title="${esc(title)}"` : ''
+  return href ? `<a class="id-pill" href="${esc(href)}"${attrs}>${esc(id)}</a>` : `<span class="id-pill"${attrs}>${esc(id)}</span>`
+}
+
 /** 担当の欄を人ごとに分ける（「A・B」「A、B」「A,B」「A/B」） */
 export const ownersOf = (/** @type {string | null | undefined} */ owner) => String(owner ?? '').split(/[・、,，/／]/).map(s => s.trim()).filter(Boolean)
 

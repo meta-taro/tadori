@@ -76,6 +76,13 @@ function renderWhoFilter() {
   if (who && !people.includes(who)) setWho('')
 }
 byId('who-filter').addEventListener('change', e => { setWho(/** @type {HTMLSelectElement} */ (e.target).value); route() })
+// 絞り込みの札の × で、全員に戻す（どの画面の札も同じ）
+document.addEventListener('click', e => {
+  if (!(e.target instanceof Element) || !e.target.closest('[data-clear-who]')) return
+  setWho('')
+  ;/** @type {HTMLSelectElement} */ (byId('who-filter')).value = ''
+  route()
+})
 // エージェントが専用カーソルで人を切り替えたとき（agent.js の filter）
 window.addEventListener('tadori-who', () => route())
 

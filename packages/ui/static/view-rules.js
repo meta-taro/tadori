@@ -1,6 +1,6 @@
 // ルールセット：1,000 行を超えても探せるように、探す欄・絞り込み・工程ごとの帯・少しずつ出す
 import { t } from './i18n.js'
-import { api, ApiError, esc, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, toastCommit, within } from './util.js'
+import { api, ApiError, esc, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, toastCommit, within, judgeBadge, personChips } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').Rule} Rule */
@@ -105,8 +105,8 @@ function ruleRow(state, r) {
     <td class="rule-id">${esc(r.id)}</td>
     <td><div class="pair">${esc(whatText(r))}</div>${r.only ? `<div class="cond">${esc(onlyText(r.only))}</div>` : ''}</td>
     <td class="cond">${esc(r.label)}${r.group ? `<div><span class="rule-group">${esc(groupName(state, r.group))}</span></div>` : ''}</td>
-    <td class="kind">${esc(t(KIND_NAMES[r.kind] ?? r.kind))}</td>
-    <td class="kind">${esc(r.owner ?? '')}</td>
+    <td>${judgeBadge(r.kind, t(KIND_NAMES[r.kind] ?? r.kind))}</td>
+    <td>${personChips(r.owner)}</td>
     <td>${STATUS_HTML[s.key](s.count)}</td>
     <td class="rule-actions"><button type="button" class="btn-ghost" data-edit="${esc(r.id)}">${esc(t('Edit'))}</button><button type="button" class="btn-ghost" data-remove="${esc(r.id)}">${esc(r.id === armedRuleId ? t('Press again to remove') : t('Remove'))}</button></td>
   </tr>`
@@ -128,7 +128,7 @@ function listHtml(state) {
     return `<details class="rules-group" data-group="${esc(phase.id)}" ${closedPhases.has(phase.id) ? '' : 'open'}>
       <summary class="rules-band"><span class="tw">›</span><span>${esc(phase.name)}</span>
         <span class="rules-band-counts">${leaks ? `<span class="nav-badge hole" title="${esc(t('Gaps: {n}', { n: leaks }))}">${leaks}</span>` : ''}<span class="pick-count">${esc(t('{n} items', { n: inPhase.length }))}</span></span></summary>
-      <table><thead><tr><th style="width:72px">ID</th><th style="width:28%">${esc(t('What links to what'))}</th><th>${esc(t('Condition'))}</th><th style="width:130px">${esc(t('Check'))}</th><th style="width:96px">${esc(t('Owner'))}</th><th style="width:120px">${esc(t('Status now'))}</th><th style="width:120px"><span class="sr-only">${esc(t('Actions'))}</span></th></tr></thead>
+      <table><thead><tr><th style="width:72px">ID</th><th style="width:22%">${esc(t('What links to what'))}</th><th>${esc(t('Condition'))}</th><th style="width:170px">${esc(t('Check'))}</th><th style="width:130px">${esc(t('Owner'))}</th><th style="width:110px">${esc(t('Status now'))}</th><th style="width:130px"><span class="sr-only">${esc(t('Actions'))}</span></th></tr></thead>
       <tbody>${inPhase.slice(0, limit).map(r => ruleRow(state, r)).join('')}</tbody></table>${more}
     </details>`
   }).join('')

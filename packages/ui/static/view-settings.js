@@ -1,6 +1,6 @@
 // 設定：工程とステータス。保存すると TSV に書き戻し、案件が git リポジトリなら commit する
 import { t, lang } from './i18n.js'
-import { api, ApiError, chip, esc, ICON_INFO, messageOf, toast, toastCommit, within } from './util.js'
+import { api, ApiError, chip, esc, ICON_INFO, messageOf, toast, toastCommit, within, idPill } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').Phase} Phase */
@@ -69,8 +69,8 @@ function phaseRows(state) {
   return state.phases.map((p, i) => `<tr>
     <td class="rule-id">${i + 1}</td>
     <td><input class="inline-input" data-phase-name="${esc(p.id)}" value="${esc(p.name)}" aria-label="${esc(t('Name of phase {id}', { id: p.id }))}"></td>
-    <td class="mono src">${esc(p.id)}</td>
-    <td class="cond">${esc(used(p.id).length ? t('{n} ({ids})', { n: used(p.id).length, ids: `${used(p.id).slice(0, 4).join(lang === 'ja' ? '・' : ', ')}${used(p.id).length > 4 ? '…' : ''}` }) : t('Not used'))}</td>
+    <td>${idPill(p.id)}</td>
+    <td class="cond">${used(p.id).length ? `<span class="count-badge">${esc(t('{n} items', { n: used(p.id).length }))}</span> ${used(p.id).slice(0, 4).map(id => idPill(id)).join('')}${used(p.id).length > 4 ? '<span class="cond">…</span>' : ''}` : esc(t('Not used'))}</td>
     <td class="row-actions">
       <button type="button" class="btn-ghost" data-phase-move="${i}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="${esc(t('Move up'))}">↑</button>
       <button type="button" class="btn-ghost" data-phase-move="${i}" data-dir="1" ${i === state.phases.length - 1 ? 'disabled' : ''} aria-label="${esc(t('Move down'))}">↓</button>
