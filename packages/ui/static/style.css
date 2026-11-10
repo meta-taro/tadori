@@ -688,3 +688,11 @@
   .switch input:checked + .switch-track::after { transform:translateX(12px); background:#fff; }
   .switch input:focus-visible + .switch-track { outline:2px solid var(--accent); outline-offset:2px; }
   .log-ids { -webkit-line-clamp:1; }
+  .log-rule { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; border-top:1px solid var(--hairline); }
+  .log-rule:first-child { border-top:none; }
+  .log-rule-what { color:var(--ink-muted); }
+  .log-rule .log-clamp { flex-basis:100%; padding-left:2px; }
+  .log-met { margin-top:2px; }
+  .log-met summary { cursor:pointer; font-size:12.5px; color:var(--ink-subtle); padding:4px 0; list-style:none; }
+  .log-met summary::before { content:'›'; display:inline-block; margin-right:6px; transition:transform .15s; }
+  .log-met[open] summary::before { transform:rotate(90deg); }

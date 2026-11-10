@@ -1,4 +1,3 @@
-import { relative } from 'node:path'
 import './i18n.js'
 import { appendChecks, currentLang, t, type CheckRecord, type CommitResult } from '@tadori/core'
 import { formatCheck } from './format.js'
@@ -26,20 +25,21 @@ export function leakResult(ids: readonly string[], isEnglish: boolean): string {
 }
 
 /**
- * check の結果をチェックの記録の行にする（ルールごとに 1 行。人の承認のルールは人が記録するので入れない）。
+ * check の結果をチェックの記録の行にする（ルールごとに 1 行。人の承認のルールは人が記録するので入れない。判定しない約束（note）も入れない）。
  * 行の値は案件の TSV に残るデータ。書いたときの言語で書き、あとで画面の言語を替えても書き直さない
  */
 function toRecords(state: Awaited<ReturnType<typeof loadState>>['state'], dir: string, options: CheckOptions): CheckRecord[] {
   const now = new Date()
   const when = `${options.today} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   const isEnglish = currentLang() === 'en'
-  return state.rules.filter(r => r.kind !== 'approval').map(rule => {
+  return state.rules.filter(r => r.kind !== 'approval' && r.kind !== 'note').map(rule => {
     const leaks = state.leaks.filter(l => l.rule === rule.id)
     return {
       when,
       who: options.who ?? (isEnglish ? 'agent' : 'エージェント'),
       what: `${rule.id} · ${rule.label}`,
-      where: relative(process.cwd(), dir) || '.',
+      // tadori check は案件全体を見る。場所は案件の中で決まるので空にする（立ち上げた場所からの相対は、読む人には意味が無い）
+      where: '',
       why: options.why ?? 'tadori check',
       how: 'tadori check',
       // 結果はあとで「対応済み」を見分けるのに読み戻すデータ。書く形は言語ごとに決めておき、core の history.ts がどちらも読む

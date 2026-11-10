@@ -63,7 +63,13 @@ describe('MCP の書く道具', () => {
   test('run_check：log を付けるとチェックの記録に足す', async () => {
     const result = await tool('run_check', { log: true, who: 'テストのエージェント', why: '確かめるため' })
     expect(result.content[0]?.text).toContain('チェックの記録を足しました')
-    expect(await readFile(join(dir, '.tadori/checks.tsv'), 'utf8')).toContain('テストのエージェント')
+    const log = await readFile(join(dir, '.tadori/checks.tsv'), 'utf8')
+    expect(log).toContain('テストのエージェント')
+    // 場所は案件の中（案件そのものを見たので空）。立ち上げた場所からの相対（..\..）は書かない。判定しない約束（note）は記録しない
+    const added = log.trim().split('\n').filter(l => l.includes('テストのエージェント'))
+    expect(added.length).toBeGreaterThan(0)
+    expect(added.every(l => l.split('\t')[3] === '')).toBe(true)
+    expect(added.some(l => /\tN\d+ · /.test(l))).toBe(false)
   })
 
   test('open_project で開く案件を替えると、以後の道具はその案件を読み書きする', async () => {

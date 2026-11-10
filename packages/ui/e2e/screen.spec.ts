@@ -302,15 +302,19 @@ test.describe('判定しない文のルールと分類', () => {
 })
 
 test.describe('チェックの記録', () => {
-  test('1 回を 1 まとまりにし、見出しは結果の要約。新しいものが上で、切った文は押すと全部出る', async ({ page }) => {
+  test('1 回の実行（時刻・だれ・なぜが同じ）を 1 枚にまとめ、見出しは漏れの合計。満たすルールは畳み、新しいものが上', async ({ page }) => {
     await page.goto('/#log')
     const entries = page.locator('.log-entry')
-    await expect(entries.first().locator('.log-head')).toContainText('漏れ 2 件')
-    await expect(entries.first().locator('.log-meta')).toContainText('2026-10-30')
+    await expect(entries).toHaveCount(2)
+    const run = entries.first()
+    await expect(run.locator('.log-head')).toContainText('漏れ 4 件')
+    await expect(run.locator('.log-head')).toContainText('満たす 2 件')
+    await expect(run.locator('.log-rule')).toHaveCount(4)
+    await expect(run.locator('.log-met')).not.toHaveAttribute('open', '')
+    await expect(run.locator('.log-meta')).toContainText('2026-10-30')
     await expect(entries.last().locator('.log-meta')).toContainText('2026-10-20')
-    const rows = entries.first().locator('.log-body .log-clamp')
-    await expect(rows).toHaveAttribute('aria-expanded', 'false')
-    await rows.click()
-    await expect(rows).toHaveAttribute('aria-expanded', 'true')
+    const ids = run.locator('.log-ids').first()
+    await ids.click()
+    await expect(ids).toHaveAttribute('aria-expanded', 'true')
   })
 })

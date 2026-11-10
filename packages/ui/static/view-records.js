@@ -33,28 +33,78 @@ const clamp = (text, label) => (text
  * @param {string} detail
  */
 function detailHtml(detail) {
-  const ids = detail.split(/[・,、]s*/).map(v => v.trim()).filter(Boolean)
-  const isIdList = ids.length > 0 && ids.every(id => /^[A-Za-z][w.-]*$/.test(id))
+  const ids = detail.split(/[・,、]\s*/).map(v => v.trim()).filter(Boolean)
+  const isIdList = ids.length > 0 && ids.every(id => /^[A-Za-z][\w.-]*$/.test(id))
   if (!isIdList) return clamp(detail, t('Rows: {rows}', { rows: detail }))
   return `<button type="button" class="log-clamp log-ids" aria-expanded="false" aria-label="${esc(t('Rows: {rows}', { rows: detail }))}">${ids.map(id => idPill(id)).join('')}</button>`
 }
 
+/** @typedef {ProjectState['checks'][number]} CheckRecord */
+
 /**
- * チェックの記録 1 回分：見出し（結果の要約と、何を）・中身（どこで・どうやって・漏れの行）・下に小さく いつ・だれが・なぜ
- * @param {ProjectState['checks'][number]} r
+ * 記録の「どこで」を、読む人に意味のある形にする。
+ * 前の版は、立ち上げた場所から案件までの相対（..\..\案件）や「.」を書いていた。案件そのものを指すものは出さない
+ * @param {string} where
  */
-function logEntry(r) {
-  const tone = RESULT_TONE(r.result)
+function placeOf(where) {
+  const value = (where ?? '').trim()
+  if (!value || value === '.' || /^\.\.([\\/]|$)/.test(value) || /^([A-Za-z]:)?[\\/]/.test(value)) return ''
+  return value
+}
+
+/** 結果の文から漏れの件数を読む（「漏れ 2 件（…）」「Gaps: 2 (…)」）。漏れの記録でなければ 0 @param {string} result */
+const gapCount = result => Number(/^(?:漏れ|Gaps:)\s*(\d+)/i.exec(result)?.[1] ?? 0)
+
+/**
+ * 1 回のチェック：時刻・だれ・なぜが同じ記録をまとめたもの（tadori check はルールごとに 1 行を書く）
+ * @param {readonly CheckRecord[]} records 新しいものが上の並び
+ * @returns {CheckRecord[][]}
+ */
+function runsOf(records) {
+  /** @type {CheckRecord[][]} */
+  const runs = []
+  for (const r of records) {
+    const last = runs.at(-1)?.[0]
+    if (last && last.when === r.when && last.who === r.who && last.why === r.why) runs.at(-1)?.push(r)
+    else runs.push([r])
+  }
+  return runs
+}
+
+/** 1 つのルールの記録の行（結果の札・ルール・漏れの行の札） @param {CheckRecord} r */
+function ruleLine(r) {
   const { head, detail } = splitResult(r.result)
-  const where = [r.where, r.how].filter(Boolean).map(v => `<span class="mono">${esc(v)}</span>`).join('<span class="log-sep">·</span>')
-  const body = where || detail
-    ? `<div class="log-body">${where ? `<div class="log-where">${where}</div>` : ''}${detailHtml(detail)}</div>`
-    : ''
-  const why = r.why ? `<span class="log-sep">·</span>${clamp(r.why, t('Why: {why}', { why: r.why }))}` : ''
-  return `<article class="log-entry ${tone || 'none'}">
-    <header class="log-head">${chip(tone, esc(head))}<span class="log-what">${esc(r.what)}</span></header>
-    ${body}
-    <footer class="log-meta"><span class="mono">${esc(r.when)}</span>${personChips(r.who)}${why}</footer>
+  return `<div class="log-rule">${chip(RESULT_TONE(r.result), esc(head))}<span class="log-rule-what">${esc(r.what)}</span>${detail ? detailHtml(detail) : ''}</div>`
+}
+
+/**
+ * チェックの記録 1 回分：見出し（全体の要約）・中身（ルールごとの行。満たすルールは畳む）・下に小さく いつ・だれが・なぜ
+ * @param {readonly CheckRecord[]} run
+ */
+function logEntry(run) {
+  const first = /** @type {CheckRecord} */ (run[0])
+  const gaps = run.reduce((n, r) => n + gapCount(r.result), 0)
+  // 1 回の中のルールは ID の順（新しいものが上の並びを、ここでは戻す）
+  const byRule = [...run].sort((a, b) => a.what.localeCompare(b.what, 'ja', { numeric: true }))
+  const met = byRule.filter(r => RESULT_TONE(r.result) === 'ok')
+  const open = byRule.filter(r => RESULT_TONE(r.result) !== 'ok')
+  // 見出し：漏れの合計と、満たすルールの数（人の承認の記録など 1 件だけのときは、その結果）
+  const heads = run.length === 1
+    ? [chip(RESULT_TONE(first.result), esc(splitResult(first.result).head))]
+    : [gaps ? chip('hole', esc(t('Gaps: {n}', { n: gaps }))) : '', met.length ? chip('ok', esc(t('Met: {n} rules', { n: met.length }))) : '']
+  const title = run.length === 1 ? first.what : t('{n} rules checked', { n: run.length })
+  const tone = gaps || open.some(r => RESULT_TONE(r.result) === 'hole') ? 'hole' : met.length === run.length ? 'ok' : 'none'
+  const place = [...new Set(run.map(r => placeOf(r.where)).filter(Boolean))]
+  const how = [...new Set(run.map(r => r.how).filter(Boolean))]
+  const where = [...place, ...how].map(v => `<span class="mono">${esc(v)}</span>`).join('<span class="log-sep">·</span>')
+  const rules = run.length === 1
+    ? (splitResult(first.result).detail ? detailHtml(splitResult(first.result).detail) : '')
+    : `${open.map(ruleLine).join('')}${met.length ? `<details class="log-met"><summary>${esc(t('Met: {n} rules', { n: met.length }))}</summary>${met.map(ruleLine).join('')}</details>` : ''}`
+  const why = first.why ? `<span class="log-sep">·</span>${clamp(first.why, t('Why: {why}', { why: first.why }))}` : ''
+  return `<article class="log-entry ${tone}">
+    <header class="log-head">${heads.join('')}<span class="log-what">${esc(title)}</span></header>
+    ${where || rules ? `<div class="log-body">${where ? `<div class="log-where">${where}</div>` : ''}${rules}</div>` : ''}
+    <footer class="log-meta"><span class="mono">${esc(first.when)}</span>${personChips(first.who)}${why}</footer>
   </article>`
 }
 
@@ -64,7 +114,7 @@ function logEntry(r) {
  */
 export function renderLog(view, state) {
   // 新しいものが上
-  const entries = [...state.checks].reverse().map(logEntry).join('')
+  const entries = runsOf([...state.checks].reverse()).map(logEntry).join('')
   view.innerHTML = `
     <h1>${esc(t('Check log'))}</h1>
     <p class="lede">${esc(t('Each time the rules are checked, one row is added in 5W1H form ({file}, managed in git). People write the rows for their own approvals.')).replace('{file}', () => '<span class="mono">.tadori/checks.tsv</span>')}</p>

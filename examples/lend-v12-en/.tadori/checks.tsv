@@ -1,4 +1,6 @@
 when	who	what	where	why	how	result
 2026-10-20 15:30	Reviewer	R2 · basic design document	docs/basic-design.md	Basic design phase gate	Visual review	sent back
-2026-10-30 09:00	agent	R4 · Every detailed design section states its post-change impact (changes / unchanged / undecided)	examples/lend-v12-en	Before the detailed design phase gate	tadori check	Gaps: 2 (DD-2.3, DD-3.2)
-2026-10-30 09:00	agent	R9 · Every test case has a test run	examples/lend-v12-en	Preparing the integration test	tadori check	Gaps: 2 (TC-04, TC-07)
+2026-10-30 09:00	agent	R3 · Every basic design section has detailed design sections		Before the detailed design phase gate	tadori check	Met
+2026-10-30 09:00	agent	R4 · Every detailed design section states its post-change impact (changes / unchanged / undecided)		Before the detailed design phase gate	tadori check	Gaps: 2 (DD-2.3, DD-3.2)
+2026-10-30 09:00	agent	R8 · Every test viewpoint has test cases		Before the detailed design phase gate	tadori check	Met
+2026-10-30 09:00	agent	R9 · Every test case has a test run		Before the detailed design phase gate	tadori check	Gaps: 2 (TC-04, TC-07)

@@ -108,6 +108,8 @@ export const JA = {
   'Category: all': '分類：すべて',
   'No category': '分類なし',
   'Show all': '全部見る',
+  'Met: {n} rules': '満たす {n} 件',
+  '{n} rules checked': 'ルール {n} 件をチェック',
   '{n} left of {total}': '残り {n} / {total}',
   'Owner: {who}': '担当：{who} で絞り込み中',
   'Show everyone': '絞り込みを外して全員を出す',
