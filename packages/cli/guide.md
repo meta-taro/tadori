@@ -38,6 +38,8 @@ Columns of `ledger/items.tsv`:
 - `refs` IDs of the rows this row is based on. Separate several with `、` or `,`
 - Other columns can be used by a rule's `field` (filled) or `only` (e.g. `change` with changes / no change). Write how to read them in `.tadori/columns.tsv`
 
+The plan table is `ledger/wbs.tsv`. To call it something else on the screen (e.g. schedule, milestones), write `schedule_label` in `.tadori/project.tsv`. Without it, the Product screen shows each phase with its rules, ledger rows, gaps and pending approvals.
+
 Columns of `ledger/wbs.tsv`: `id` (starts with W), `phase` (phase ID), `name`, `start`, `end` (YYYY-MM-DD), `status` (an ID from `.tadori/statuses.tsv`).
 Optional columns: `owner` and `issue` (the ID of the issue this work is for). They are used for each person's daily progress (topic: daily).
 WBS tasks can also be traced as ledger rows (kind `W`). Do not copy them into the ledger.
@@ -68,7 +70,9 @@ There are 5 check kinds for `kind`, and `note`:
 
 Other columns:
 - `only` narrows the target rows by `column=value` (e.g. require a commit only for sections with `change=変わる` (changes)). `column=a|b` matches any of them, `column!=value` (or `column!=a|b`) matches the other rows
-- `group` the category of the rule. Categories (their names and how many) are set per project in `.tadori/rule-groups.tsv` (columns `id name order`). The screen and `list_rules` show rules by category
+- `group` the category of the rule. Categories (their names and how many) are set per project in `.tadori/rule-groups.tsv` (columns `id name order color scope`). The screen and `list_rules` show rules by category
+  - `color` the band color on the screen: none, wait, hole, ok, blue, green, yellow, red, purple or gray (empty for the default)
+  - `scope` who the rules apply to: `team` (shared with the team, kept in git) or `local` (only between this person and the agents). Rules added to a `local` category go in `.tadori/rulesets/rules.local.tsv`, which is kept out of git (`.tadori/rulesets/.gitignore`) and never committed
 - `owner` who fixes the gap (e.g. design owner, verification owner). Shown on the screen and in `list_leaks`
 - `label` one sentence for people to read (e.g. every viewpoint has a test case)
 

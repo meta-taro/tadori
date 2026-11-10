@@ -5,7 +5,7 @@ import { api, ApiError, esc, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').Rule} Rule */
 /** @typedef {'leak' | 'wait' | 'ok' | 'note'} RuleStatusKey */
-/** @typedef {{ query: string, phase: string, group: string, judge: string, status: string, sort: string }} RuleFilters */
+/** @typedef {{ query: string, phase: string, group: string, judge: string, status: string, sort: string, band: string }} RuleFilters */
 
 const PAGE = 50
 /** @type {Readonly<Record<string, string>>} */
@@ -13,7 +13,7 @@ const KIND_NAMES = { covered: 'Has downstream', refers: 'Based on upstream', fil
 
 // 画面を移っても、絞り込みと開け閉めは覚えておく
 /** @type {RuleFilters} */
-const filters = { query: '', phase: 'all', group: 'all', judge: 'all', status: 'all', sort: 'id' }
+const filters = { query: '', phase: 'all', group: 'all', judge: 'all', status: 'all', sort: 'id', band: 'phase' }
 /** @type {Set<string>} */
 const closedPhases = new Set()
 /** @type {Map<string, number>} 工程 → いま出している件数 */
@@ -48,8 +48,21 @@ const STATUS_HTML = {
   note: () => `<span class="chip none">${esc(t('Not checked'))}</span>`,
 }
 
+/** 分類の色の印（rule-groups.tsv の color。無ければ空） @param {ProjectState} state @param {string} id */
+const groupColor = (state, id) => { const color = state.ruleGroups.find(g => g.id === id)?.color; return color ? `band-${color}` : '' }
+
 /** 分類の名前（rule-groups.tsv に無い ID はそのまま） @param {ProjectState} state @param {string | undefined} id */
 const groupName = (state, id) => (id ? state.ruleGroups.find(g => g.id === id)?.name ?? id : '')
+
+/**
+ * 分類の範囲の札：チームで共有するルールか、その人とエージェントの間だけのローカルなルールか
+ * @param {string | undefined} scope
+ */
+function scopeBadge(scope) {
+  if (scope === 'team') return `<span class="scope-badge team" title="${esc(t('Shared with the team (kept in git)'))}">${esc(t('Team'))}</span>`
+  if (scope === 'local') return `<span class="scope-badge local" title="${esc(t('Only between this person and the agents (kept out of git)'))}">${esc(t('Local'))}</span>`
+  return ''
+}
 
 /** 判定の別（機械・人・判定しない） @param {Rule} rule */
 const judgeOf = rule => (rule.kind === 'note' ? 'note' : rule.kind === 'approval' ? 'human' : 'machine')
@@ -104,7 +117,7 @@ function ruleRow(state, r) {
   return `<tr>
     <td class="rule-id">${esc(r.id)}</td>
     <td><div class="pair">${esc(whatText(r))}</div>${r.only ? `<div class="cond">${esc(onlyText(r.only))}</div>` : ''}</td>
-    <td class="cond">${esc(r.label)}${r.group ? `<div><span class="rule-group">${esc(groupName(state, r.group))}</span></div>` : ''}</td>
+    <td class="cond">${esc(r.label)}${r.group ? `<div><span class="rule-group ${esc(groupColor(state, r.group))}">${esc(groupName(state, r.group))}</span></div>` : ''}</td>
     <td>${judgeBadge(r.kind, t(KIND_NAMES[r.kind] ?? r.kind))}</td>
     <td>${personChips(r.owner)}</td>
     <td>${STATUS_HTML[s.key](s.count)}</td>
@@ -116,17 +129,22 @@ function ruleRow(state, r) {
 function listHtml(state) {
   const rules = filtered(state)
   if (!rules.length) return `<div class="note">${ICON_INFO}<span>${esc(t('No matching rules'))}</span></div>`
-  // 工程ごとの帯と、工程の無いルール（判定しない文のルール）の帯
-  const bands = [...state.phases.map(p => ({ id: p.id, name: p.name })), { id: '', name: t('No phase (written agreements)') }]
+  // 帯の分け方：工程ごと（工程の無い約束は最後の帯）か、分類ごと（分類の色と範囲の印を帯に出す）
+  /** @type {Array<{ id: string, name: string, color?: string, scope?: string, has: (r: Rule) => boolean }>} */
+  const bands = filters.band === 'group'
+    ? [...state.ruleGroups.map(g => ({ id: `g:${g.id}`, name: g.name, color: g.color, scope: g.scope, has: (/** @type {Rule} */ r) => r.group === g.id })),
+       { id: 'g:', name: t('No category'), has: (/** @type {Rule} */ r) => !r.group || !state.ruleGroups.some(g => g.id === r.group) }]
+    : [...state.phases.map(p => ({ id: p.id, name: p.name, has: (/** @type {Rule} */ r) => r.phase === p.id })),
+       { id: '', name: t('No phase (written agreements)'), has: (/** @type {Rule} */ r) => !r.phase }]
   return bands.map(phase => {
-    const inPhase = rules.filter(r => r.phase === phase.id)
+    const inPhase = rules.filter(phase.has)
     if (!inPhase.length) return ''
     const leaks = inPhase.reduce((n, r) => n + statusOf(state, r).count, 0)
     const limit = shownCount.get(phase.id) ?? PAGE
     const more = inPhase.length > limit
       ? `<button type="button" class="btn-ghost rules-more" data-more="${esc(phase.id)}">${esc(t('{n} more ({rest} left)', { n: Math.min(PAGE, inPhase.length - limit), rest: inPhase.length - limit }))}</button>` : ''
-    return `<details class="rules-group" data-group="${esc(phase.id)}" ${closedPhases.has(phase.id) ? '' : 'open'}>
-      <summary class="rules-band"><span class="tw">›</span><span>${esc(phase.name)}</span>
+    return `<details class="rules-group ${phase.color ? `band-${esc(phase.color)}` : ''}" data-group="${esc(phase.id)}" ${closedPhases.has(phase.id) ? '' : 'open'}>
+      <summary class="rules-band"><span class="tw">›</span><span>${esc(phase.name)}</span>${scopeBadge(phase.scope)}
         <span class="rules-band-counts">${leaks ? `<span class="nav-badge hole" title="${esc(t('Gaps: {n}', { n: leaks }))}">${leaks}</span>` : ''}<span class="pick-count">${esc(t('{n} items', { n: inPhase.length }))}</span></span></summary>
       <table><thead><tr><th style="width:72px">ID</th><th style="width:22%">${esc(t('What links to what'))}</th><th>${esc(t('Condition'))}</th><th style="width:170px">${esc(t('Check'))}</th><th style="width:130px">${esc(t('Owner'))}</th><th style="width:110px">${esc(t('Status now'))}</th><th style="width:130px"><span class="sr-only">${esc(t('Actions'))}</span></th></tr></thead>
       <tbody>${inPhase.slice(0, limit).map(r => ruleRow(state, r)).join('')}</tbody></table>${more}
@@ -220,6 +238,7 @@ export function renderRules(view, state, reload) {
         ${segHtml('judge', [['all', 'Check: all'], ['machine', 'Machine'], ['human', 'Human'], ['note', 'Not checked']])}
         ${segHtml('status', [['all', 'Status: all'], ['leak', 'Has gaps'], ['wait', 'Pending approval'], ['ok', 'Met']])}
         ${segHtml('sort', [['id', 'By ID'], ['leaks', 'Most gaps first']])}
+        ${state.ruleGroups.length ? segHtml('band', [['phase', 'Group by phase'], ['group', 'Group by category']]) : ''}
       </div>
     </div>
     <div class="cond rules-total" id="rules-total"></div>
@@ -231,6 +250,7 @@ export function renderRules(view, state, reload) {
     const n = filtered(state).length
     total.textContent = n === state.rules.length ? t('{n} rules', { n }) : t('{n} of {total} rules', { n, total: state.rules.length })
     list.innerHTML = listHtml(state)
+    list.classList.toggle('by-group', filters.band === 'group')
     list.querySelectorAll('details[data-group]').forEach(el => {
       const d = /** @type {HTMLDetailsElement} */ (el)
       const group = d.dataset.group ?? ''

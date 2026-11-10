@@ -38,6 +38,8 @@ TSV（タブ区切り）です。`#` で始まる行はコメントとして読�
 - `refs` この行が元にしている行の ID。`、` か `,` で区切って複数書けます
 - ほかの列はルールの `field`（filled）や `only` で使えます（例：`change` に 変わる／変わらない）。読み方は `.tadori/columns.tsv`
 
+予定の表は `ledger/wbs.tsv` です。画面での呼び名を変えるには（例：スケジュール・工程表）、`.tadori/project.tsv` に `schedule_label` を書きます。予定の表が無い案件では、プロダクトの画面に工程ごとのルール・台帳の行・漏れ・承認待ちが出ます。
+
 `ledger/wbs.tsv` の列：`id`（W で始める）・`phase`（工程の ID）・`name`・`start`・`end`（YYYY-MM-DD）・`status`（`.tadori/statuses.tsv` の ID）。
 書いても書かなくてもよい列：`owner`（担当）・`issue`（この作業の課題の ID）。人単位の 1 日の進行に使います（topic: daily）。
 WBS のタスクは台帳の行（種類 `W`）としても辿れます。台帳へ書き写さないでください。
@@ -68,7 +70,9 @@ WBS のタスクは台帳の行（種類 `W`）としても辿れます。台帳
 
 ほかの列：
 - `only` 対象の行を `列名=値` で絞る（例：`change=変わる` の節だけ commit を求める）。`列名=a|b` はどれかに合う行、`列名!=値`（`列名!=a|b` も可）はそれ以外の行
-- `group` ルールの分類。分類の名前と数は、案件ごとに `.tadori/rule-groups.tsv`（列 `id name order`）で決める。画面と `list_rules` は分類ごとに見せる
+- `group` ルールの分類。分類の名前と数は、案件ごとに `.tadori/rule-groups.tsv`（列 `id name order color scope`）で決める。画面と `list_rules` は分類ごとに見せる
+  - `color` 画面の帯の色：none・wait・hole・ok・blue・green・yellow・red・purple・gray（空なら既定）
+  - `scope` だれまでに効くか：`team`（チームで共有。git に入る）か `local`（その人とエージェントの間だけ）。`local` の分類に足したルールは `.tadori/rulesets/rules.local.tsv` に置き、git に入れない（`.tadori/rulesets/.gitignore`）。commit もしない
 - `owner` 漏れを直す担当（例：設計担当・検証担当）。画面と `list_leaks` に出ます
 - `label` 人が読む一文（例：観点ごとに試験ケースがある）
 

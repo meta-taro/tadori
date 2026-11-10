@@ -1,5 +1,6 @@
 # ルールの分類。名前と数は案件ごとに決める（order の小さい順に並ぶ）
-id	name	order
-visible	見える化（カンペ・報告の書き方）	1
-product	プロダクト向け（工程ごとの判定）	2
-agreement	人とエージェントの間の約束	3
+# color：帯の色（none・wait・hole・ok・blue・green・yellow・red・purple・gray）。scope：team＝チームで共有 / local＝その人とエージェントの間だけ（ルールは rulesets/*.local.tsv に置き、git に入れない）
+id	name	order	color	scope
+visible	見える化（カンペ・報告の書き方）	1	blue	team
+product	プロダクト向け（工程ごとの判定）	2		team
+agreement	人とエージェントの間の約束	3	purple	team

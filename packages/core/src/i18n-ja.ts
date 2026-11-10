@@ -152,4 +152,8 @@ export const JA: Readonly<Record<string, string>> = {
   '{file}: {path} is not an md-business verification sheet (its first line must be "#! md-business:test-spec-tsv/v1")': '{file}：{path} は md-business の検証シートではありません（1 行目が「#! md-business:test-spec-tsv/v1」のもの）',
   '{path}, line {line}: the row has no ID (fill the "{column}" column, or open the sheet in md-business once so it gives the row an ID)': '{path} の {line} 行目：行に ID がありません（「{column}」列を埋めるか、md-business で一度開いて行 ID を振ってもらってください）',
   '{id} is read from {file}. Change it there (tadori does not write to that file)': '{id} は {file} から読んでいる行です。そちらで直してください（tadori はそのファイルに書きません）',
+  '{file}, {id}: color "{value}" must be one of {allowed}': '{file} の {id}：color「{value}」は {allowed} のどれかにしてください',
+  '{file}, {id}: scope "{value}" must be one of {allowed}': '{file} の {id}：scope「{value}」は {allowed} のどれかにしてください',
+  'Keep local rules out of git': 'ローカルのルールを git に入れない',
+  'Not committed: local rules stay on this PC': 'commit しませんでした：ローカルのルールはこの PC にだけ置きます',
 }

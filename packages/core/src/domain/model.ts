@@ -64,7 +64,16 @@ export interface RuleGroup {
   readonly id: string
   readonly name: string
   readonly order: number
+  /** 帯の色（tone の none・wait・hole・ok か、決まった色の名前）。書かなければ既定の色 */
+  readonly color?: RuleGroupColor
+  /** だれまでに効くか。team＝チームで共有する / local＝その人とエージェントの間だけ（git に入れないファイルに置く） */
+  readonly scope?: RuleGroupScope
 }
+
+export const RULE_GROUP_COLORS = ['none', 'wait', 'hole', 'ok', 'blue', 'green', 'yellow', 'red', 'purple', 'gray'] as const
+export type RuleGroupColor = (typeof RULE_GROUP_COLORS)[number]
+export const RULE_GROUP_SCOPES = ['team', 'local'] as const
+export type RuleGroupScope = (typeof RULE_GROUP_SCOPES)[number]
 
 /**
  * ルールの対象を絞る条件（rulesets の only 列）。
@@ -176,6 +185,8 @@ export interface Project {
   /** ルールの分類（.tadori/rule-groups.tsv の並び順。書かなければ空） */
   readonly ruleGroups?: readonly RuleGroup[]
   readonly name: string
+  /** 予定の表（ledger/wbs.tsv）の呼び名（project.tsv の schedule_label。例：スケジュール・工程表）。書かなければ画面は「WBS」 */
+  readonly scheduleLabel?: string
   readonly phases: readonly Phase[]
   readonly rules: readonly Rule[]
   readonly items: readonly Item[]

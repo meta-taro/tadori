@@ -14,7 +14,8 @@ export type LeakWithLink = Leak & {
 /** 画面と MCP に渡す、案件のいまの姿（読むたびに TSV から組み立てる。tadori は控えを持たない） */
 export interface ProjectState {
   readonly today: string
-  readonly project: { readonly name: string }
+  /** 案件の名前と、予定の表の呼び名（書いていなければ無い。画面は「WBS」と呼ぶ） */
+  readonly project: { readonly name: string; readonly scheduleLabel?: string }
   readonly phases: Project['phases']
   readonly statuses: Project['statuses']
   readonly rules: Project['rules']
@@ -43,7 +44,7 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
   const prefix = await repositoryPrefix(dir)
   const state: ProjectState = {
     today,
-    project: { name: project.name },
+    project: { name: project.name, ...(project.scheduleLabel ? { scheduleLabel: project.scheduleLabel } : {}) },
     phases: [...project.phases].sort((a, b) => a.order - b.order),
     statuses: project.statuses,
     rules: project.rules,

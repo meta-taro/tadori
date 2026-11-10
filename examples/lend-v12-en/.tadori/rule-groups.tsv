@@ -1,5 +1,6 @@
 # Rule categories. Each project decides the names and how many (sorted by order)
-id	name	order
-visible	Visibility (briefings and reports)	1
-product	Product (checks per phase)	2
-agreement	Agreements between people and agents	3
+# color: band color (none, wait, hole, ok, blue, green, yellow, red, purple, gray). scope: team = shared with the team / local = only between this person and the agents (those rules go in rulesets/*.local.tsv, kept out of git)
+id	name	order	color	scope
+visible	Visibility (briefings and reports)	1	blue	team
+product	Product (checks per phase)	2		team
+agreement	Agreements between people and agents	3	purple	team

@@ -1,5 +1,5 @@
-import { readdir, readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import type { Item } from '../domain/model.js'
 import { ownersOf } from '../domain/people.js'
 import { joinList, t } from '../i18n.js'
@@ -24,6 +24,19 @@ export class WriteRefused extends Error {
 const MEMBERS = '.tadori/members.tsv'
 const RULESETS = PATHS.rulesets
 const DEFAULT_RULESET = 'rules.tsv'
+/** git に入れないルールのファイル（範囲が local の分類のルール） */
+const LOCAL_SUFFIX = '.local.tsv'
+const LOCAL_RULESET = `rules${LOCAL_SUFFIX}`
+const LOCAL_IGNORE = `${RULESETS}/.gitignore`
+
+/** rulesets の中の *.local.tsv を git が見ないようにする（.gitignore を置き、それだけは commit する） */
+async function ensureLocalIgnored(dir: string): Promise<void> {
+  const current = await readOr(join(dir, LOCAL_IGNORE), '')
+  if (current.split(/\r?\n/).includes(`*${LOCAL_SUFFIX}`)) return
+  const next = `${current}${current && !current.endsWith('\n') ? '\n' : ''}# その人とエージェントの間だけのルール（git に入れない）\n*${LOCAL_SUFFIX}\n`
+  await writeFile(join(dir, LOCAL_IGNORE), next, 'utf8')
+  await commitFiles(dir, [LOCAL_IGNORE], t('Keep local rules out of git'))
+}
 
 const ID_PATTERN = /^[^\s#][^\t\r\n]{0,63}$/
 const COLUMN_PATTERN = /^[A-Za-z_][A-Za-z0-9_]{0,31}$/
@@ -41,6 +54,7 @@ async function readOr(path: string, fallback: string): Promise<string> {
 
 /** 書いて、案件を読み直す。読めなければ元に戻して断る。読めれば commit する */
 async function writeChecked(dir: string, path: string, next: string, original: string | null, message: string): Promise<CommitResult> {
+  await mkdir(dirname(join(dir, path)), { recursive: true })
   await writeFile(join(dir, path), next, 'utf8')
   try {
     await loadProject(dir)
@@ -49,6 +63,8 @@ async function writeChecked(dir: string, path: string, next: string, original: s
     if (error instanceof ProjectLoadError) throw new WriteRefused(error.problems)
     throw error
   }
+  // ローカルのルールのファイルは commit しない（git に入れない約束）
+  if (path.endsWith('.local.tsv')) return { committed: false, reason: t('Not committed: local rules stay on this PC') }
   return commitFiles(dir, [path], message)
 }
 
@@ -216,7 +232,10 @@ export async function saveRule(dir: string, input: RuleInput, { create }: { crea
   if (input.phase === '' && !phaseOptional) throw new WriteRefused([t('A rule that checks needs a phase (only "note" rules may leave it empty)')])
   if (create && ((!input.phase && !phaseOptional) || !input.kind || !input.label)) throw new WriteRefused([t('A new rule needs phase, kind and label (a "note" rule needs only kind and label)')])
 
-  const path = create ? `${RULESETS}/${DEFAULT_RULESET}` : ((await rulesetOf(dir, id)) as string)
+  // 範囲が local の分類のルールは、git に入れないファイルに書く（その人とエージェントの間の約束は、チームの履歴に残さない）
+  const isLocal = project.ruleGroups?.find(g => g.id === input.group)?.scope === 'local'
+  const path = create ? `${RULESETS}/${isLocal ? LOCAL_RULESET : DEFAULT_RULESET}` : ((await rulesetOf(dir, id)) as string)
+  if (path.endsWith(LOCAL_SUFFIX)) await ensureLocalIgnored(dir)
   const original = await readOr(join(dir, path), RULE_HEADER)
   const { id: _ignored, ...rest } = input
   const values = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)) as Record<string, string>

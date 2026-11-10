@@ -131,7 +131,12 @@ function buildProjectTools(options: McpOptions): Tool[] {
         const kind = str(args.kind).trim()
         const rules = state.rules.filter(r => (group === undefined || (r.group ?? '') === group) && (!kind || r.kind === kind))
         if (!rules.length) return text(t('No matching rules'))
-        const groupName = (id: string | undefined) => (id ? state.ruleGroups.find(g => g.id === id)?.name ?? id : t('No category'))
+        const groupName = (id: string | undefined) => {
+          const group = id ? state.ruleGroups.find(g => g.id === id) : undefined
+          if (!id) return t('No category')
+          // ローカルの分類は、その人とエージェントの間だけの約束だと分かるように印を付ける
+          return group?.scope === 'local' ? t('{name} · local', { name: group.name }) : group?.name ?? id
+        }
         const phaseName = (id: string) => state.phases.find(p => p.id === id)?.name ?? id
         const lines = rules.map(r => t('- {id} [{group}] {kind}{phase}: {label}', {
           id: r.id, group: groupName(r.group), kind: r.kind, phase: r.phase ? ` · ${phaseName(r.phase)}` : '', label: r.label,

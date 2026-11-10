@@ -348,6 +348,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Category ID from .tadori/rule-groups.tsv. Omit for all; an empty string for rules without a category': '分類の ID（.tadori/rule-groups.tsv）。省くと全部、空文字なら分類の無いルール',
   'Only this kind (e.g. note). Omit for all': 'この種類だけ（例：note）。省くと全部',
   'No category': '分類なし',
+  '{name} · local': '{name}・ローカル',
   'No matching rules': '合うルールがありません',
   '- {id} [{group}] {kind}{phase}: {label}': '- {id}［{group}］{kind}{phase}：{label}',
 }

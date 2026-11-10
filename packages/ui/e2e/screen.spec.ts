@@ -318,3 +318,31 @@ test.describe('チェックの記録', () => {
     await expect(ids).toHaveAttribute('aria-expanded', 'true')
   })
 })
+
+test.describe('ルールの分類の色と範囲', () => {
+  test('分類で分けると、分類の帯に色と範囲（チーム）の札が付く', async ({ page }) => {
+    await page.goto('/#rules')
+    await page.locator('[data-filter="band"][data-value="group"]').click()
+    const visible = page.locator('details.rules-group[data-group="g:visible"]')
+    await expect(visible).toHaveClass(/band-blue/)
+    await expect(visible.locator('.scope-badge')).toHaveText('チーム')
+    // 前のテストで足したルールも入るので、数ではなく見本の 2 件が入っていることを見る
+    await expect(visible.locator('tbody tr', { hasText: 'N1' })).toHaveCount(1)
+    await expect(visible.locator('tbody tr', { hasText: 'N2' })).toHaveCount(1)
+    await page.locator('[data-filter="band"][data-value="phase"]').click()
+  })
+})
+
+test.describe('予定の表（WBS）の無い案件', () => {
+  const NO_SCHEDULE_URL = 'http://127.0.0.1:4988'
+  test('プロダクトの画面は、責めずに次の一手を出し、工程ごとにルール・台帳の行・漏れ・承認待ちの骨組みを出す', async ({ page }) => {
+    await page.goto(`${NO_SCHEDULE_URL}/#browse`)
+    await expect(page.locator('.note').first()).toContainText('ledger/wbs.tsv を置くと、ここに工程ごとの予定が出ます')
+    const rows = page.locator('.phase-outline-row')
+    await expect(rows).toHaveCount(5)
+    await expect(rows.nth(1)).toContainText('詳細設計')
+    await expect(rows.nth(1).locator('.chip.hole')).toContainText('漏れ')
+    await expect(rows.nth(1).locator('.kind-count').first()).toBeVisible()
+    await expect(page.locator('#wbs-sort')).toHaveCount(0)
+  })
+})

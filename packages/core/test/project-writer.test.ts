@@ -69,6 +69,16 @@ describe('WBS の作業（saveTask）', () => {
 })
 
 describe('ルール（saveRule・removeRule）', () => {
+  test('範囲が local の分類のルールは、git に入れないファイル（rules.local.tsv）に書き、commit しない', async () => {
+    await writeFile(join(dir, '.tadori/rule-groups.tsv'), 'id\tname\torder\tcolor\tscope\nmine\t自分との約束\t1\t\tlocal\n', 'utf8')
+    const result = await saveRule(dir, { id: 'L91', kind: 'note', group: 'mine', label: '自分の約束' }, { create: true })
+    expect(result.committed).toBe(false)
+    expect(await readFile(join(dir, '.tadori/rulesets/rules.local.tsv'), 'utf8')).toContain('L91')
+    expect(await readFile(join(dir, '.tadori/rulesets/.gitignore'), 'utf8')).toContain('*.local.tsv')
+    expect(await readFile(join(dir, '.tadori/rulesets/rules.tsv'), 'utf8').catch(() => '')).not.toContain('L91')
+    await removeRule(dir, 'L91')
+  })
+
   test('判定しない文のルール（note）は工程なしで足せ、分類（group）も書ける。判定のルールは工程が要る', async () => {
     await saveRule(dir, { id: 'N91', kind: 'note', group: 'visible', label: '朝会のカンペは結論を先に書く' }, { create: true })
     expect((await loadProject(dir)).rules.find(r => r.id === 'N91')).toMatchObject({ kind: 'note', phase: '', group: 'visible' })

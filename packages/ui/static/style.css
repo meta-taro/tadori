@@ -653,8 +653,9 @@
   .desktop .win-controls { position:absolute; top:0; right:0; height:46px; }
   .desktop .win-menu, .desktop .win-menu > button, .desktop .who-filter { flex:none; white-space:nowrap; }
   .desktop .topbar .crumb { flex:1 1 160px; }
-  .desktop .topbar .jump { flex:1 1 200px; min-width:180px; max-width:320px; }
-  .desktop .topbar .jump input { width:100%; min-width:0; }
+  /* 探す欄は、狭くても丸くつぶれない幅を持つ（足りなければ上の帯が折り返す。ブラウザでもデスクトップでも同じ） */
+  .topbar .jump { flex:1 1 200px; min-width:180px; max-width:320px; }
+  .topbar .jump input { width:100%; min-width:0; }
 
   /* ---- 絞り込みの札（× で解除） ---- */
   .filter-chip { display:inline-flex; align-items:center; gap:6px; height:var(--btn-h-sm); padding:0 4px 0 10px; border-radius:999px; font-size:12px; font-weight:500; color:var(--accent); background:var(--accent-soft); border:1px solid color-mix(in oklch, var(--accent) 35%, transparent); white-space:nowrap; }
@@ -696,3 +697,37 @@
   .log-met summary { cursor:pointer; font-size:12.5px; color:var(--ink-subtle); padding:4px 0; list-style:none; }
   .log-met summary::before { content:'›'; display:inline-block; margin-right:6px; transition:transform .15s; }
   .log-met[open] summary::before { transform:rotate(90deg); }
+
+  /* ---- ルールの分類の色（rule-groups.tsv の color）と範囲の札 ---- */
+  .rules-group { --band-color:var(--accent); }
+  .rules-group.band-none { --band-color:var(--ink-tertiary); }
+  .rules-group.band-wait, .rule-group.band-wait { --band-color:var(--wait); }
+  .rules-group.band-hole, .rule-group.band-hole { --band-color:var(--hole); }
+  .rules-group.band-ok, .rule-group.band-ok { --band-color:var(--ok); }
+  .rules-group.band-blue, .rule-group.band-blue { --band-color:#3b82f6; }
+  .rules-group.band-green, .rule-group.band-green { --band-color:#16a34a; }
+  .rules-group.band-yellow, .rule-group.band-yellow { --band-color:#ca8a04; }
+  .rules-group.band-red, .rule-group.band-red { --band-color:#dc2626; }
+  .rules-group.band-purple, .rule-group.band-purple { --band-color:#9333ea; }
+  .rules-group.band-gray, .rule-group.band-gray { --band-color:#6b7280; }
+  .rules-group .rules-band { border-left-color:var(--band-color); }
+  .rules-group[class*="band-"] .rules-band { background:color-mix(in oklch, var(--band-color) 9%, var(--band)); }
+  .rule-group[class*="band-"] { color:var(--band-color); background:color-mix(in oklch, var(--band-color) 12%, transparent); }
+  .scope-badge { display:inline-flex; align-items:center; height:20px; padding:0 8px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.2px; }
+  .scope-badge.team { color:var(--ink-muted); background:var(--surface-2); border:1px solid var(--hairline-strong); }
+  .scope-badge.local { color:var(--wait); background:var(--wait-soft); border:1px dashed color-mix(in oklch, var(--wait) 50%, transparent); }
+  /* 中身だけが動く広い画面では、帯は動く枠の上端に留める（上の帯の高さは折り返しで変わるので、その分を足さない） */
+  @media (min-width: 761px) { .rules-band { top:-24px; } }
+  /* 分類で分けているときは、行の分類の札は帯と同じなので出さない */
+  .rules-list.by-group .rule-group { display:none; }
+
+  /* ---- 予定の表が無い案件の、工程ごとの骨組み ---- */
+  .phase-outline { display:flex; flex-direction:column; border:1px solid var(--hairline); border-radius:var(--r-md); overflow:hidden; }
+  .phase-outline-row { display:grid; grid-template-columns:minmax(120px, 180px) auto 1fr auto; gap:12px; align-items:center; padding:12px 14px; border-top:1px solid var(--hairline); color:var(--ink-muted); text-decoration:none; transition:background .12s; }
+  .phase-outline-row:first-child { border-top:none; }
+  .phase-outline-row:hover { background:var(--surface-2); }
+  .phase-outline-name { color:var(--ink); font-weight:600; }
+  .phase-outline-state { display:inline-flex; gap:6px; flex-wrap:wrap; }
+  .phase-outline-kinds { display:flex; gap:6px; flex-wrap:wrap; }
+  .kind-count { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 8px; border-radius:var(--r-sm); font-size:12px; background:var(--surface-2); border:1px solid var(--hairline); }
+  .kind-count b { font-family:var(--mono); font-weight:600; color:var(--ink); }

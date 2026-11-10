@@ -279,3 +279,36 @@ describe('判定しない文のルール（note）と、ルールの分類（gro
     await expect(loadProject(dir)).rejects.toThrow(/X1/)
   })
 })
+
+describe('ルールの分類の色と範囲（rule-groups.tsv の color・scope）', () => {
+  test('color は tone か決まった色の名前、scope は team か local。書かなければ持たない', async () => {
+    await writeMinimalProject()
+    await put('.tadori/rule-groups.tsv', 'id\tname\torder\tcolor\tscope\nvisible\t見える化\t1\tblue\tteam\nmine\t自分との約束\t2\tpurple\tlocal\nproduct\tプロダクト向け\t3\t\t\n')
+    const groups = (await loadProject(dir)).ruleGroups
+    expect(groups?.[0]).toMatchObject({ id: 'visible', color: 'blue', scope: 'team' })
+    expect(groups?.[1]).toMatchObject({ id: 'mine', color: 'purple', scope: 'local' })
+    expect(groups?.[2]).not.toHaveProperty('color')
+    expect(groups?.[2]).not.toHaveProperty('scope')
+  })
+
+  test('知らない色・範囲は問題にする', async () => {
+    await writeMinimalProject()
+    await put('.tadori/rule-groups.tsv', 'id\tname\torder\tcolor\tscope\nx\tX\t1\tpink\tcompany\n')
+    await expect(loadProject(dir)).rejects.toThrow(/pink[\s\S]*company|company[\s\S]*pink/)
+  })
+
+  test('ローカルのルール（rulesets/*.local.tsv）も読む', async () => {
+    await writeMinimalProject()
+    await put('.tadori/rulesets/agreements.local.tsv', 'id\tphase\tkind\tgroup\tlabel\nL1\t\tnote\tmine\t自分の約束\n')
+    expect((await loadProject(dir)).rules.find(r => r.id === 'L1')).toMatchObject({ kind: 'note' })
+  })
+})
+
+describe('予定の表の呼び名（project.tsv の schedule_label）', () => {
+  test('書けばその名前、書かなければ持たない（画面は WBS と呼ぶ）', async () => {
+    await writeMinimalProject()
+    expect((await loadProject(dir)).scheduleLabel).toBeUndefined()
+    await put('.tadori/project.tsv', 'name\tschedule_label\n見本の案件\t工程表\n')
+    expect((await loadProject(dir)).scheduleLabel).toBe('工程表')
+  })
+})

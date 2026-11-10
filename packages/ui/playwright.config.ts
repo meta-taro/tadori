@@ -6,6 +6,8 @@ import { defineConfig } from '@playwright/test'
  * 先に pnpm -r build で CLI を建てておくこと（serve は packages/cli/dist を動かす）。
  */
 const PORT = 4987
+/** 予定の表の無い案件を開くサーバー（e2e/screen.spec.ts の NO_SCHEDULE_URL と同じ） */
+const NO_SCHEDULE_PORT = 4988
 const useEdge = process.platform === 'win32' && !process.env.CI
 
 export default defineConfig({
@@ -21,11 +23,20 @@ export default defineConfig({
     locale: 'ja-JP',
     ...(useEdge ? { channel: 'msedge' } : {}),
   },
-  webServer: {
-    // 見本を一時フォルダへ写して開く（テストが書いても、リポジトリの見本は変わらない）
-    command: `node e2e/serve.mjs ${PORT}`,
-    url: `http://127.0.0.1:${PORT}/api/state`,
-    reuseExistingServer: false,
-    timeout: 30_000,
-  },
+  webServer: [
+    {
+      // 見本を一時フォルダへ写して開く（テストが書いても、リポジトリの見本は変わらない）
+      command: `node e2e/serve.mjs ${PORT}`,
+      url: `http://127.0.0.1:${PORT}/api/state`,
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
+      // 予定の表（ledger/wbs.tsv）の無い案件。見本を写してから wbs.tsv を外す
+      command: `node e2e/serve.mjs ${NO_SCHEDULE_PORT} --no-wbs`,
+      url: `http://127.0.0.1:${NO_SCHEDULE_PORT}/api/state`,
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+  ],
 })

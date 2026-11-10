@@ -1,6 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { isAbsolute, join, normalize } from 'node:path'
-import type { Approval, ApprovalStatus, Item, Phase, Project, Rule, RuleGroup, RuleKind, StatusDef, Task } from '../domain/model.js'
+import { RULE_GROUP_COLORS, RULE_GROUP_SCOPES, type Approval, type ApprovalStatus, type Item, type Phase, type Project, type Rule, type RuleGroup, type RuleGroupColor, type RuleGroupScope, type RuleKind, type StatusDef, type Task } from '../domain/model.js'
 import { validateLinkTemplate, type LinkTemplate } from '../domain/links.js'
 import type { SourceDef } from '../domain/sources.js'
 import { t } from '../i18n.js'
@@ -305,10 +305,22 @@ function toLinks(rows: readonly Record<string, string>[], problems: string[]): L
 }
 
 /** ルールの分類（id・name・order）。order の小さい順。order が無ければ書いた順のうしろ */
-function toRuleGroups(rows: readonly Record<string, string>[]): RuleGroup[] {
+function toRuleGroups(rows: readonly Record<string, string>[], problems: string[]): RuleGroup[] {
   return rows.filter(r => r.id?.trim()).map((r, i) => {
+    const id = (r.id as string).trim()
     const order = Number(r.order)
-    return { id: (r.id as string).trim(), name: (r.name ?? '').trim() || (r.id as string).trim(), order: Number.isFinite(order) && r.order?.trim() ? order : 1000 + i }
+    const color = (r.color ?? '').trim()
+    const scope = (r.scope ?? '').trim()
+    // 色と範囲は決まった値だけ（打ち間違いを黙って既定に戻さない）
+    if (color && !(RULE_GROUP_COLORS as readonly string[]).includes(color)) problems.push(t('{file}, {id}: color "{value}" must be one of {allowed}', { file: PATHS.ruleGroups, id, value: color, allowed: RULE_GROUP_COLORS.join(' / ') }))
+    if (scope && !(RULE_GROUP_SCOPES as readonly string[]).includes(scope)) problems.push(t('{file}, {id}: scope "{value}" must be one of {allowed}', { file: PATHS.ruleGroups, id, value: scope, allowed: RULE_GROUP_SCOPES.join(' / ') }))
+    return {
+      id,
+      name: (r.name ?? '').trim() || id,
+      order: Number.isFinite(order) && r.order?.trim() ? order : 1000 + i,
+      ...((RULE_GROUP_COLORS as readonly string[]).includes(color) ? { color: color as RuleGroupColor } : {}),
+      ...((RULE_GROUP_SCOPES as readonly string[]).includes(scope) ? { scope: scope as RuleGroupScope } : {}),
+    }
   }).sort((a, b) => a.order - b.order)
 }
 
@@ -360,6 +372,7 @@ export async function loadProject(dir: string): Promise<Project> {
   problems.push(...duplicateIdProblems(items))
   const project: Project = {
     name: projectRows.at(0)?.name ?? '',
+    ...(projectRows.at(0)?.schedule_label?.trim() ? { scheduleLabel: (projectRows.at(0)?.schedule_label as string).trim() } : {}),
     phases,
     rules,
     items,
@@ -374,7 +387,7 @@ export async function loadProject(dir: string): Promise<Project> {
     },
     links: toLinks(linkRows, problems),
     sources: toSources(sourceRows, problems),
-    ruleGroups: toRuleGroups(ruleGroupRows),
+    ruleGroups: toRuleGroups(ruleGroupRows, problems),
   }
   if (problems.length) throw new ProjectLoadError(problems)
   return project

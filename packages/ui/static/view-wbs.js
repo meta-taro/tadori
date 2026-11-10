@@ -1,6 +1,6 @@
 // プロダクト → プロジェクト → WBS（Finder の列表示）。MVP では開いている案件 1 つを出す
 import { t } from './i18n.js'
-import { api, chip, day, esc, fullDate, ICON_INFO, isDoneStatus, isMine, lateColor, lateDays, messageOf, shortDate, toast, toastCommit, within, personChips } from './util.js'
+import { api, chip, day, esc, fullDate, ICON_INFO, isDoneStatus, isMine, lateColor, lateDays, messageOf, shortDate, toast, toastCommit, within, personChips, kindLabel } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').Task} Task */
@@ -51,8 +51,37 @@ function taskRow(state, task) {
   </div>`
 }
 
+/** 予定の表の呼び名（案件の project.tsv の schedule_label。書かなければ「WBS」） @param {ProjectState} state */
+const scheduleName = state => state.project.scheduleLabel || t('WBS')
+
+/**
+ * 予定の表が無い案件の骨組み：工程ごとに、ルールの数・台帳の行（種類ごと）・漏れ・承認待ちを並べる。
+ * 台帳の行は、その工程のルールが見る種類（from・to）の行を数える。点数や割合は出さない
+ * @param {ProjectState} state
+ */
+function phaseOutlineHtml(state) {
+  const rows = state.gates.map(gate => {
+    const kinds = [...new Set(gate.rules.flatMap(r => [r.from, r.to]).filter(Boolean))]
+    const counts = kinds.map(kind => `<span class="kind-count">${esc(kindLabel(kind))}<b>${state.items.filter(i => i.kind === kind).length}</b></span>`).join('')
+    const leaks = gate.leaks.length ? chip('hole', esc(t('Gaps: {n}', { n: gate.leaks.length }))) : ''
+    const pending = gate.pendingApprovals.length ? chip('wait', esc(t('Pending approval: {n}', { n: gate.pendingApprovals.length }))) : ''
+    const met = gate.rules.length && !gate.leaks.length && !gate.pendingApprovals.length ? chip('ok', esc(t('Met'))) : ''
+    const noRules = gate.rules.length ? '' : chip('', esc(t('No rules')))
+    return `<a class="phase-outline-row" href="#phases">
+      <span class="phase-outline-name">${esc(gate.phase.name)}</span>
+      <span class="phase-outline-state">${leaks}${pending}${met}${noRules}</span>
+      <span class="phase-outline-kinds">${counts || `<span class="cond">${esc(t('No ledger kinds checked'))}</span>`}</span>
+      <span class="count-badge">${esc(t('{n} rules', { n: gate.rules.length }))}</span>
+    </a>`
+  }).join('')
+  return `<div class="note">${ICON_INFO}<span>${esc(t('There is no {schedule} yet. Put ledger/wbs.tsv in the project and the plan for each phase appears here.', { schedule: scheduleName(state) }))}</span></div>
+    <div class="phase-outline">${rows}</div>`
+}
+
 /** @param {ProjectState} state */
 function wbsHtml(state) {
+  // 予定の表（ledger/wbs.tsv）が無い・空の案件は、工程ごとの骨組みを出す（画面がほぼ空にならないように）
+  if (!state.tasks.length) return phaseOutlineHtml(state)
   const statusOptions = state.statuses.map(s => `<option value="${esc(s.id)}" ${s.id === wbsFilter ? 'selected' : ''}>${esc(s.name)}</option>`).join('')
   const sortOptions = Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${k === wbsSort ? 'selected' : ''}>${esc(t(v.label))}</option>`).join('')
   const groups = state.phases.map(phase => {
@@ -76,7 +105,7 @@ function wbsHtml(state) {
       <span class="spacer"></span>
       <button type="button" class="btn-ghost" id="wbs-open-all">${esc(t('Expand all'))}</button>
       <button type="button" class="btn-ghost" id="wbs-close-all">${esc(t('Collapse all'))}</button>
-    </div>${groups || `<div class="note">${ICON_INFO}<span>${esc(t('There are no tasks in the WBS (ledger/wbs.tsv).'))}</span></div>`}`
+    </div>${groups || `<div class="note">${ICON_INFO}<span>${esc(t('No tasks match (the owner filter in the top bar may be hiding them).'))}</span></div>`}`
 }
 
 /**
@@ -93,12 +122,12 @@ export function renderWbs(view, state, reload, highlightId) {
   const period = dated.length ? esc(t('Planned {start} – {end}', { start: fullDate(spanOf(dated).start), end: fullDate(spanOf(dated).end) })) : esc(t('No planned dates'))
   view.innerHTML = `
     <h1>${esc(t('Product'))}</h1>
-    <p class="lede">${esc(t('Choose a project to open the outline of its WBS. In the MVP, the one project given at startup is shown.'))}</p>
+    <p class="lede">${esc(state.tasks.length ? t('Choose a project to open the outline of its {schedule}. In the MVP, the one project given at startup is shown.', { schedule: scheduleName(state) }) : t('Choose a project to see each phase: its rules, ledger rows, gaps and pending approvals.'))}</p>
     <div class="browser">
       <div class="col" role="listbox" aria-label="${esc(t('Project'))}"><div class="col-head">${esc(t('Project'))}<span>1</span></div>
         <button class="item" aria-selected="true"><span class="body"><span class="title">${esc(state.project.name)}</span><span class="meta">${period}</span></span><span class="chev">›</span></button>
       </div>
-      <div class="col wide"><div class="col-head">${esc(t('WBS · outline'))}</div>
+      <div class="col wide"><div class="col-head">${esc(state.tasks.length ? t('{schedule} · outline', { schedule: scheduleName(state) }) : t('Phases · outline'))}</div>
         <div class="wbs"><div class="wbs-head"><div><h3>${esc(state.project.name)}</h3><div class="meta">${period}</div></div>
           <a class="btn-primary" href="#phases" style="text-decoration:none;white-space:nowrap">${esc(t('Open remaining work →'))}</a></div>
           ${wbsHtml(state)}
@@ -111,6 +140,7 @@ export function renderWbs(view, state, reload, highlightId) {
     row?.scrollIntoView({ block: 'center' })
     row?.classList.add('flash-row')
   }
+  if (!state.tasks.length) return
   const filterSelect = /** @type {HTMLSelectElement} */ (within(view, '#wbs-filter'))
   filterSelect.addEventListener('change', () => { wbsFilter = filterSelect.value; rerender() })
   const sortSelect = /** @type {HTMLSelectElement} */ (within(view, '#wbs-sort'))

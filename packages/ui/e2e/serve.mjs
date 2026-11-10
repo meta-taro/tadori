@@ -11,6 +11,8 @@ const here = import.meta.dirname
 const example = resolve(here, '../../../examples', process.env.TADORI_E2E_EXAMPLE ?? 'lend-v12')
 const dir = await mkdtemp(join(tmpdir(), 'tadori-e2e-'))
 await cp(example, dir, { recursive: true })
+// --no-wbs：予定の表（ledger/wbs.tsv）の無い案件として開く
+if (process.argv.includes('--no-wbs')) await rm(join(dir, 'ledger/wbs.tsv'), { force: true })
 
 // テストでは GitHub に新しい版を見に行かない（確かめる画面のテストは、返事を差し替えて見る）
 const server = spawn(process.execPath, [resolve(here, '../../cli/dist/main.js'), 'serve', dir, '--port', port], { stdio: 'inherit', env: { ...process.env, TADORI_UPDATE_CHECK: 'off', TADORI_APP_VERSION: '0.1.0' } })
