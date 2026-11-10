@@ -44,6 +44,9 @@ jobs:
       - name: 出す前の試験（組んだ CLI・MCP・serve を本物のプロセスで動かす）
         run: pnpm exec vitest run --config harness/vitest.config.ts
 
+      - name: 出す前の試験を、インストーラーに入れる写しでも流す
+        run: node harness/bundle.mjs
+
       - name: 画面のテストの結果を残す（落ちたとき）
         if: failure()
         uses: actions/upload-artifact@v4
