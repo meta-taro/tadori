@@ -31,6 +31,8 @@
   }
   :root {
     --r-sm:6px; --r-md:8px; --r-lg:12px;
+    /* ボタンの大きさとすき間（どの画面も同じにする） */
+    --btn-h:32px; --btn-h-sm:28px; --btn-gap:8px;
     --sans:'Inter','Noto Sans JP',system-ui,sans-serif;
     --mono:'JetBrains Mono',ui-monospace,monospace;
   }
@@ -247,7 +249,7 @@
   /* ---- 表 ---- */
   .panel { background:var(--surface-1); border:1px solid var(--hairline); border-radius:var(--r-lg); overflow:hidden; }
   table { border-collapse:collapse; width:100%; }
-  th, td { padding:10px 14px; text-align:left; vertical-align:top; border-bottom:1px solid var(--hairline); }
+  th, td { padding:10px 14px; text-align:left; vertical-align:middle; border-bottom:1px solid var(--hairline); }
   tr:last-child td { border-bottom:none; }
   th { font-size:11.5px; font-weight:500; color:var(--ink-tertiary); text-transform:uppercase; letter-spacing:.5px; background:var(--surface-2); }
   td { color:var(--ink-muted); }
@@ -384,7 +386,7 @@
   .status-select.tone-hole { background:var(--hole-soft); border-color:transparent; color:var(--hole); }
   .status-select.tone-ok { background:var(--ok-soft); border-color:transparent; color:var(--ok); }
   .status-select option { background:var(--surface-2); color:var(--ink); }
-  .row-actions { display:flex; gap:6px; justify-content:flex-end; }
+  .row-actions { white-space:nowrap; text-align:right; vertical-align:middle; }
   .nav-bottom { margin-top:auto; }
   .nav-bottom + .aside-foot { margin-top:8px; }
   .wbs-task .tid { font-family:var(--mono); font-size:11.5px; color:var(--ink-tertiary); padding-top:1px; }
@@ -480,7 +482,7 @@
   @keyframes flashrow { 0%,40% { background:rgba(130,143,255,.28); } 100% { background:transparent; } }
   /* ルールセット：探す道具と工程ごとの帯 */
   .rules-tools { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
-  .rules-tools .seg { margin:0; flex-wrap:wrap; }
+  .rules-tools .seg { margin:0; flex-wrap:wrap; align-self:flex-start; }
   .rules-tools-row { display:flex; gap:10px; flex-wrap:wrap; }
   .rules-total { margin:0 0 8px; }
   .rules-list { overflow:visible; }
@@ -588,8 +590,8 @@
   .who-filter select { height:30px; }
   /* 担当・日付・ボタンを 1 列にそろえる（見出しは欄の左に置き、上に積まない） */
   .daily-bar label { display:inline-flex; flex-direction:row; align-items:center; gap:8px; margin:0; white-space:nowrap; }
-  .daily-bar .inline-input, .daily-bar .inline-select { height:34px; margin:0; }
-  .daily-bar button { height:34px; }
+  .daily-bar .inline-input, .daily-bar .inline-select { height:var(--btn-h); margin:0; }
+
 
   /* ---- バージョンと更新 ---- */
   .update-chip { cursor:pointer; background:var(--accent-soft); color:var(--accent); border-color:transparent; font:inherit; font-size:12px; font-weight:600; }
@@ -607,9 +609,23 @@
   .rule-form { margin:0 0 16px; }
   .rule-form h2 { width:100%; margin:0 0 4px; font-size:15px; }
   .rule-actions { white-space:nowrap; text-align:right; }
-  .rule-actions .btn-ghost { padding:2px 8px; font-size:12px; margin-left:4px; }
+
   .form-problems { width:100%; color:var(--hole); font-size:12.5px; }
   .form-problems:empty { display:none; }
 
   /* 1 日の進行の行の中の語のリンク（anchor）。本文の流れを崩さないよう、下線だけで示す */
   .daily-anchor { color:var(--accent); text-decoration:underline; text-underline-offset:2px; }
+
+  /* ---- ボタンをそろえる ----
+     どの画面でも、ボタンは同じ高さ・角の丸み・文字の大きさにし、並んだボタンの間は同じだけ空ける。
+     ふつう：var(--btn-h)。表や行の中の小さなボタン：var(--btn-h-sm)。 */
+  .btn-primary, .btn-ghost { display:inline-flex; align-items:center; justify-content:center; gap:6px; box-sizing:border-box; height:var(--btn-h); padding:0 14px; border-radius:var(--r-md); font-size:13px; font-weight:500; line-height:1; vertical-align:middle; }
+  td .btn-ghost, .daily-entry .btn-ghost, .ver-actions .btn-ghost, .wbs-head .btn-ghost { height:var(--btn-h-sm); padding:0 10px; font-size:12px; }
+  td .btn-ghost[aria-label] { min-width:var(--btn-h-sm); padding:0 8px; }
+  /* 並んだボタンの間 */
+  form.add .actions, .ver-actions, .rules-add, .wbs-head .actions { display:flex; gap:var(--btn-gap); align-items:center; }
+  form.add .actions { justify-content:flex-end; }
+  td > .btn-ghost + .btn-ghost, td > .btn-ghost + .btn-primary, td > .btn-primary + .btn-ghost { margin-left:var(--btn-gap); }
+  .daily-bar { gap:12px; }
+  /* ルールの分類の札（押せるものに見えないよう、枠を付けない） */
+  .rule-group { display:inline-block; margin-top:4px; padding:1px 8px; border-radius:999px; font-size:11px; color:var(--ink-subtle); background:var(--surface-2); }

@@ -104,8 +104,8 @@ function ruleRow(state, r) {
   return `<tr>
     <td class="rule-id">${esc(r.id)}</td>
     <td><div class="pair">${esc(whatText(r))}</div>${r.only ? `<div class="cond">${esc(onlyText(r.only))}</div>` : ''}</td>
-    <td class="cond">${esc(r.label)}${r.group ? ` <span class="chip rule-group">${esc(groupName(state, r.group))}</span>` : ''}</td>
-    <td class="kind">${KIND_NAMES[r.kind]}</td>
+    <td class="cond">${esc(r.label)}${r.group ? `<div><span class="rule-group">${esc(groupName(state, r.group))}</span></div>` : ''}</td>
+    <td class="kind">${esc(t(KIND_NAMES[r.kind] ?? r.kind))}</td>
     <td class="kind">${esc(r.owner ?? '')}</td>
     <td>${STATUS_HTML[s.key](s.count)}</td>
     <td class="rule-actions"><button type="button" class="btn-ghost" data-edit="${esc(r.id)}">${esc(t('Edit'))}</button><button type="button" class="btn-ghost" data-remove="${esc(r.id)}">${esc(r.id === armedRuleId ? t('Press again to remove') : t('Remove'))}</button></td>
