@@ -404,6 +404,17 @@ test.describe('ルールの分類の色と範囲', () => {
     await expect(visible.locator('tbody tr', { hasText: 'N2' })).toHaveCount(1)
     await page.locator('[data-filter="band"][data-value="phase"]').click()
   })
+
+  test('上の帯で担当を絞っていても、担当の無い約束（note）は分類の帯にも工程の無い帯にも出る（全員に効く約束なので）', async ({ page }) => {
+    await page.goto('/#rules')
+    await agent(page, { action: 'filter', value: '検証担当' })
+    await page.locator('[data-filter="band"][data-value="group"]').click()
+    await expect(page.locator('details.rules-group[data-group="g:visible"] tbody tr', { hasText: 'N1' })).toHaveCount(1)
+    await expect(page.locator('details.rules-group[data-group="g:agreement"] tbody tr', { hasText: 'N3' })).toHaveCount(1)
+    await page.locator('[data-filter="band"][data-value="phase"]').click()
+    await expect(page.locator('details.rules-group[data-group=""] tbody tr', { hasText: 'N1' })).toHaveCount(1)
+    await agent(page, { action: 'filter', value: '' })
+  })
 })
 
 test.describe('予定の表（WBS）の無い案件', () => {

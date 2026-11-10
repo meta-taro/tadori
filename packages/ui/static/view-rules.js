@@ -103,8 +103,9 @@ function filtered(state) {
     && (filters.group === 'all' || (r.group ?? '') === filters.group)
     && (filters.judge === 'all' || filters.judge === judgeOf(r))
     && (filters.status === 'all' || statusOf(state, r).key === filters.status)
-    // 上の帯の担当で絞る（ルールの担当は役割。人の表の役割でも見分ける）
-    && isMine(state, r.owner))
+    // 上の帯の担当で絞る（ルールの担当は役割。人の表の役割でも見分ける）。
+    // 担当の無いルール（文の約束など）は全員に効くので、誰で絞っても出す
+    && (!r.owner || isMine(state, r.owner)))
   const byId = (/** @type {Rule} */ a, /** @type {Rule} */ b) => a.id.localeCompare(b.id, 'ja', { numeric: true })
   return filters.sort === 'leaks'
     ? [...list].sort((a, b) => statusOf(state, b).count - statusOf(state, a).count || byId(a, b))
