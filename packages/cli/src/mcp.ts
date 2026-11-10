@@ -67,11 +67,21 @@ export interface McpOptions {
  * いま動いている MCP の版・組んだ commit・組んだ日時。元のコードが組んだあとに変わっていれば、組み直してつなぎ直す手順を添える。
  * 古い MCP のプロセスが残っていると、新しい直しが効いていないのか、そろっているのかを見分けられないため
  */
-async function versionText(options: McpOptions): Promise<ToolResult> {
+async function buildOf(options: McpOptions): ReturnType<typeof readBuildInfo> {
   const here = dirname(fileURLToPath(import.meta.url))
   const buildDir = options.buildDir ?? here
   const sourceDirs = options.sourceDirs ?? [resolve(here, '../src'), resolve(here, '../../core/src')]
-  const build = await readBuildInfo(buildDir, sourceDirs)
+  return readBuildInfo(buildDir, sourceDirs)
+}
+
+/** 名乗る版（MCP の serverInfo・how_to の 1 行目）。組んだ commit が分かれば「0.0.1+7a08b11」の形で付ける */
+async function versionLabel(options: McpOptions): Promise<string> {
+  const build = await buildOf(options)
+  return build.commit ? `${options.version}+${build.commit}` : options.version
+}
+
+async function versionText(options: McpOptions): Promise<ToolResult> {
+  const build = await buildOf(options)
   const lines = [`tadori ${options.version}`]
   lines.push(build.commit
     ? t('Built from commit {commit} at {builtAt}', { commit: build.commit, builtAt: build.builtAt })
@@ -303,9 +313,12 @@ function dailyTools(options: McpOptions): Tool[] {
   ]
 }
 
-async function howToText(path: string | undefined, topic: string): Promise<ToolResult> {
+async function howToText(options: McpOptions, topic: string): Promise<ToolResult> {
+  const path = options.guidePath
   if (!path) return text(t('The how-to document was not found (no guidePath was given)'), true)
   const result = await howTo(path, topic)
+  // 話題の一覧の 1 行目に版を出す（席が道具の一覧を始めのまま持っていて version が見えなくても、どの版か分かるように）
+  if (!topic && !result.isError) return text(`tadori ${await versionLabel(options)}\n\n${result.text}`)
   return text(result.text, result.isError)
 }
 
@@ -342,7 +355,7 @@ function buildTools(options: McpOptions): Tool[] {
       properties: { topic: { type: 'string', description: t('Topic (start, ledger, rules, check, daily, write, screen, links, sources, agent-rules). Empty for the list') } },
       additionalProperties: false,
     },
-    run: async args => howToText(options.guidePath, str(args.topic).trim()),
+    run: async args => howToText(options, str(args.topic).trim()),
   }, {
     name: 'version',
     description: t('Return the version of this tadori MCP, the commit it was built from and when, and whether it needs rebuilding. Use it to tell whether a fix is in the MCP you are talking to.'),
@@ -411,7 +424,7 @@ export function createMcpHandler(options: McpOptions): (message: JsonRpcMessage)
         return ok({
           protocolVersion: typeof requested === 'string' ? requested : PROTOCOL_VERSION,
           capabilities: { tools: {} },
-          serverInfo: { name: 'tadori', version: options.version },
+          serverInfo: { name: 'tadori', version: await versionLabel(context) },
         })
       }
       case 'ping':

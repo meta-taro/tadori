@@ -164,3 +164,21 @@ describe('MCP で 1 日の進行を作る・足す・直す・消す', () => {
     expect((await tool('daily_update', { date: '2026-11-05', id: 'zz9', text: 'a' })).isError).toBe(true)
   })
 })
+
+describe('how_to と initialize の版', () => {
+  test('how_to を話題なしで呼ぶと、1 行目に版と組んだ commit を出す（席が新しい道具を見られなくても版が分かるように）', async () => {
+    const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
+    const dir = await mkdtemp(join(tmpdir(), 'tadori-build-'))
+    try {
+      await writeFile(join(dir, 'build-info.json'), JSON.stringify({ builtAt: '2026-11-10T07:29:51Z', commit: '7a08b11' }), 'utf8')
+      const handler = createMcpHandler({ glossaryPath: GLOSSARY, guidePath: GUIDE, version: '0.0.1', buildDir: dir, sourceDirs: [] })
+      const first = (await toolOf(handler)('how_to')).content[0]?.text.split('\n')[0] ?? ''
+      expect(first).toContain('tadori 0.0.1')
+      expect(first).toContain('7a08b11')
+      const init = await handler({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }) as { result: { serverInfo: { version: string } } }
+      expect(init.result.serverInfo.version).toBe('0.0.1+7a08b11')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+})
