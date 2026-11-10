@@ -156,4 +156,6 @@ export const JA: Readonly<Record<string, string>> = {
   '{file}, {id}: scope "{value}" must be one of {allowed}': '{file} の {id}：scope「{value}」は {allowed} のどれかにしてください',
   'Keep local rules out of git': 'ローカルのルールを git に入れない',
   'Not committed: local rules stay on this PC': 'commit しませんでした：ローカルのルールはこの PC にだけ置きます',
+  '{who} looks at the change to {changed} ({commit}) and rewrites the date of the {rule} row in {file} to the day they looked': '{who}が {changed} の変更（{commit}）を見て、{file} の {rule} の行の日付を、見た日に書き直す',
+  'The approver looks at the change to {changed} ({commit}) and rewrites the date of the {rule} row in {file} to the day they looked': '承認する人が {changed} の変更（{commit}）を見て、{file} の {rule} の行の日付を、見た日に書き直す',
 }

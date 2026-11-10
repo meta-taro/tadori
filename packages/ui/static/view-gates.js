@@ -157,6 +157,11 @@ function ruleStatus(state, rule) {
     const a = state.approvals.find(x => x.rule === rule.id)
     if (a?.status === '承認') return chip('ok', esc(t('Approved {who} · {when}', { who: a.who, when: a.when })))
     const pending = state.gates.flatMap(g => g.pending ?? []).find(p => p.rule.id === rule.id)
+    // 承認のあとに見る文書が commit された：承認待ちに戻し、どのファイルのどの commit かを札で出す
+    const changed = pending?.changedAfter
+    if (a && changed) {
+      return chip('wait', esc(t('Changed after approval'))) + ` <span class="changed-after" title="${esc(t('Approved {who} · {when}', { who: a.who, when: a.when }))}"><code>${esc(changed.file)}</code> <code>${esc(changed.commit)}</code> ${esc(changed.date.slice(0, 10))}</span>` + fixHtml(pending?.fix)
+    }
     return chip('wait', a ? `${esc(t(APPROVAL_STATUS_NAMES[a.status] ?? a.status))} ${esc(a.who)} · ${esc(a.when)}` : esc(t('Pending approval'))) + fixHtml(pending?.fix)
   }
   const leaks = state.leaks.filter(l => l.rule === rule.id)

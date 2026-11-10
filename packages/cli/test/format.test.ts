@@ -88,3 +88,37 @@ describe('英語の見本（examples/lend-v12-en）', () => {
     expect(text).not.toMatch(/[ぁ-んァ-ヶ]/)
   })
 })
+
+describe('formatCheck の「承認のあとに変わった」', () => {
+  test('承認のあとに、承認のルールが見る文書（from の種類の行の source）が commit されたら、承認待ちに戻して何が変わったかを出す', async () => {
+    const { cp, mkdtemp, mkdir, readFile, rm, writeFile } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { execFileSync } = await import('node:child_process')
+    const dir = await mkdtemp(join(tmpdir(), 'tadori-stale-'))
+    try {
+      await cp(EXAMPLE, dir, { recursive: true })
+      // R2（基本設計書の承認）に見る文書の種類 BD を書き、承認にする
+      const rulesPath = join(dir, '.tadori/rulesets/basic-design.tsv')
+      const rules = await readFile(rulesPath, 'utf8')
+      await writeFile(rulesPath, rules.replace(/^R2\tbd\tapproval\t\t/m, 'R2\tbd\tapproval\tBD\t'), 'utf8')
+      await writeFile(join(dir, 'ledger/approvals.tsv'), 'rule\tstatus\twho\twhen\nR2\t承認\tレビュー担当\t2026-10-20\n', 'utf8')
+      await mkdir(join(dir, 'docs'), { recursive: true })
+      await writeFile(join(dir, 'docs/basic-design.md'), '# 基本設計\n', 'utf8')
+      const git = (args: string[], date?: string) => execFileSync('git', ['-c', 'user.name=test', '-c', 'user.email=test@example.invalid', ...args], { cwd: dir, env: { ...process.env, ...(date ? { GIT_COMMITTER_DATE: date, GIT_AUTHOR_DATE: date } : {}) } })
+      git(['init', '-q'])
+      git(['add', '.'])
+      git(['commit', '-q', '-m', 'before'], '2026-10-18T09:00:00+09:00')
+      const before = formatCheck((await loadState(dir, '2026-11-05')).state)
+      expect(before).not.toMatch(/R2 承認待ち/)
+
+      await writeFile(join(dir, 'docs/basic-design.md'), '# 基本設計\n\n書き足し\n', 'utf8')
+      git(['commit', '-q', '-am', 'after'], '2026-10-25T09:00:00+09:00')
+      const after = formatCheck((await loadState(dir, '2026-11-05')).state)
+      expect(after).toMatch(/R2 承認待ち（承認のあとに docs\/basic-design\.md が変わった：[0-9a-f]+ 2026-10-25）/)
+      expect(after).toContain('レビュー担当が docs/basic-design.md の変更')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+})

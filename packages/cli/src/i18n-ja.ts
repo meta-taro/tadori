@@ -351,4 +351,5 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   '{name} · local': '{name}・ローカル',
   'No matching rules': '合うルールがありません',
   '- {id} [{group}] {kind}{phase}: {label}': '- {id}［{group}］{kind}{phase}：{label}',
+  '{file} changed after approval: {commit} {date}': '承認のあとに {file} が変わった：{commit} {date}',
 }

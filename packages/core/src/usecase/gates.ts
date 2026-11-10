@@ -5,7 +5,10 @@ export interface PendingApproval {
   readonly rule: Rule
   readonly status: ApprovalStatus
   readonly fix: string
+  /** 承認のあとに、ルールが見る文書が commit された（承認待ちに戻った理由） */
+  readonly changedAfter?: ChangeAfterApproval
 }
+import { approvalTargets, changedAfterApproval, type ChangeAfterApproval, type FileChange } from './approval-changes.js'
 import { lateDays } from '../domain/schedule.js'
 import { t } from '../i18n.js'
 
@@ -52,9 +55,17 @@ function spanOf(tasks: readonly Task[]): Gate['span'] {
  * 承認待ちの中身。承認するのは人なので、誰が・どのファイルに・何を書けば承認になるかを案内する
  * （tadori もエージェントも、代わりに承認しない）。
  */
-function pendingOf(project: Project, rule: Rule): PendingApproval {
+function pendingOf(project: Project, rule: Rule, changedAfter?: ChangeAfterApproval): PendingApproval {
   const record = project.approvals.find(a => a.rule === rule.id)
   const vars = { who: rule.owner ?? '', file: LEDGER_FILES.approvals, rule: rule.id }
+  if (record && changedAfter) {
+    // 承認は残したまま、変わった所を人が見直して日付を書き直せば、また承認になる
+    const changeVars = { ...vars, changed: changedAfter.file, commit: changedAfter.commit }
+    const fix = rule.owner !== undefined
+      ? t('{who} looks at the change to {changed} ({commit}) and rewrites the date of the {rule} row in {file} to the day they looked', changeVars)
+      : t('The approver looks at the change to {changed} ({commit}) and rewrites the date of the {rule} row in {file} to the day they looked', changeVars)
+    return { rule, status: record.status, fix, changedAfter }
+  }
   // 「承認」は approvals.tsv に書く値そのもの（データ）なので、英語の文でも訳さない
   const fix = rule.owner !== undefined
     ? (record
@@ -73,11 +84,29 @@ function stateOf(leaks: readonly Leak[], pending: readonly Rule[]): GateState {
 }
 
 /** 工程ごとに、漏れ・承認待ち・期間・いまのタスク・前の完了判定より前に着手・遅れを組み立てる */
-export function buildGates(project: Project, leaks: readonly Leak[], today: string): Gate[] {
+/**
+ * 承認のあとに見る文書が変わったルール（ルール ID → いちばん新しい変更）。
+ * changes はファイルごとの最後の commit。渡されなければ何も見ない（承認の記録だけで決める）
+ */
+function changedApprovals(project: Project, changes: Readonly<Record<string, FileChange>>): Map<string, ChangeAfterApproval> {
+  return new Map(project.rules.flatMap(rule => {
+    const record = project.approvals.find(a => a.rule === rule.id && a.status === '承認')
+    if (!record) return []
+    const change = changedAfterApproval(record.when, approvalTargets(project, rule), changes)
+    return change ? [[rule.id, change] as const] : []
+  }))
+}
+
+/**
+ * 工程ごとに、漏れ・承認待ち・期間・いまのタスク・前の完了判定より前に着手・遅れを組み立てる。
+ * changes（ファイルごとの最後の commit）を渡すと、承認のあとに見る文書が変わった承認を承認待ちに戻す
+ */
+export function buildGates(project: Project, leaks: readonly Leak[], today: string, changes: Readonly<Record<string, FileChange>> = {}): Gate[] {
   const isDone = doneChecker(project)
   const notStarted = notStartedStatus(project)
   const phases = [...project.phases].sort((a, b) => a.order - b.order)
-  const approved = new Set(project.approvals.filter(a => a.status === '承認').map(a => a.rule))
+  const changed = changedApprovals(project, changes)
+  const approved = new Set(project.approvals.filter(a => a.status === '承認' && !changed.has(a.rule)).map(a => a.rule))
 
   const base = phases.map(phase => {
     // 判定しない文のルール（note）は、工程の「ルールあり」に数えない（判定のルールが無い工程を、通ったように見せない）
@@ -85,7 +114,7 @@ export function buildGates(project: Project, leaks: readonly Leak[], today: stri
     const ruleIds = new Set(rules.map(r => r.id))
     const phaseLeaks = leaks.filter(l => ruleIds.has(l.rule))
     const pendingApprovals = rules.filter(r => r.kind === 'approval' && !approved.has(r.id))
-    const pending = pendingApprovals.map(rule => pendingOf(project, rule))
+    const pending = pendingApprovals.map(rule => pendingOf(project, rule, changed.get(rule.id)))
     const tasks = project.tasks.filter(t => t.phase === phase.id)
     const open = tasks.filter(t => !isDone(t.status)).sort((a, b) => a.id.localeCompare(b.id))
     return {

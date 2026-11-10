@@ -38,6 +38,24 @@ export async function repositoryPrefix(dir: string): Promise<string> {
   }
 }
 
+/**
+ * ファイルごとに、最後に変えた commit（短い ID と commit の日時）。commit の無いファイルは入れない。
+ * 承認のあとに文書が変わったかを見るためだけに使う（読むだけ）
+ */
+export async function lastCommits(dir: string, files: readonly string[]): Promise<Record<string, { commit: string; date: string }>> {
+  const entries = await Promise.all(files.map(async file => {
+    try {
+      const { stdout } = await run('git', ['log', '-1', '--format=%h%x09%cI', '--', file], { cwd: dir })
+      const [commit, date] = stdout.trim().split('\t')
+      return commit && date ? [[file, { commit, date }] as const] : []
+    } catch {
+      // git が無い・git 管理外：比べる commit が無いので、承認はそのまま（承認の記録だけで決める）
+      return []
+    }
+  }))
+  return Object.fromEntries(entries.flat())
+}
+
 /** 案件のフォルダが、それ自身の git リポジトリの最上位か */
 async function isOwnRepository(dir: string): Promise<boolean> {
   try {

@@ -30,7 +30,13 @@ export function formatCheck(state: ProjectState): string {
       // 誰が・どこをどう直せば消えるか
       if (leak.fix) lines.push(`        ${fixText(leak.fix, leak.owner)}`)
     }
-    for (const p of gate.pending) lines.push(`    ${t('{rule} pending approval ({status})  How to fix: {fix}', { rule: p.rule.id, status: approvalStatusText(p.status), fix: p.fix })}`)
+    for (const p of gate.pending) {
+      // 承認のあとに見る文書が変わったものは、状態ではなく何が変わったかを出す
+      const status = p.changedAfter
+        ? t('{file} changed after approval: {commit} {date}', { file: p.changedAfter.file, commit: p.changedAfter.commit, date: p.changedAfter.date.slice(0, 10) })
+        : approvalStatusText(p.status)
+      lines.push(`    ${t('{rule} pending approval ({status})  How to fix: {fix}', { rule: p.rule.id, status, fix: p.fix })}`)
+    }
   }
   // 同じ漏れかは、ルールと行の ID で見る（画面向けにリンクを足した写しと、工程が持つ元の漏れは別の物なので、物の同一では比べない）
   const keyOf = (l: { rule: string; itemId: string }) => `${l.rule}\t${l.itemId}`

@@ -111,6 +111,7 @@ export const JA = {
   'This is a build made from the source code on this PC.': 'この PC でソースから組んだ版です。',
   'It is not compared with the released versions. To update, pull the repository and build again.': '配った版の番号とは比べません。新しくするには、リポジトリを pull して組み直してください。',
   'Team': 'チーム',
+  'Changed after approval': '承認のあとに変わった',
   'Local': 'ローカル',
   'Shared with the team (kept in git)': 'チームで共有するルール（git に入る）',
   'Only between this person and the agents (kept out of git)': 'その人とエージェントの間だけのルール（git に入れない）',

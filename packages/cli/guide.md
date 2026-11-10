@@ -66,6 +66,7 @@ There are 5 check kinds for `kind`, and `note`:
 - `filled` every row of the from kind has a value in the field column (e.g. every detailed design section DD has change written)
 - `allowed` every row of the from kind holds one of `values` in the field column (`a|b`, e.g. a test run RUN has `OK|NG` as its result). Empty cells are left to `filled`
 - `approval` needs approval by a person. tadori only reads `ledger/approvals.tsv` and never approves on anyone's behalf
+  - Write a kind in `from` (e.g. `BD`) and the rule also watches the files in the `source` of those rows. If one of them is committed after the approval, the rule is pending again and shows which file and commit changed. The approver looks at the change and rewrites `when` to the day they looked. With a date only in `when`, commits on the same day count as before the approval; write a time (e.g. `2026-10-20T15:00+09:00`) to compare by time
 - `note` a written agreement that is **read, not checked** (how to write a stand-up briefing, how to reply in chat, a promise between people and agents). Write it in `label`. It never makes a gap and does not count as a rule of its phase. `phase` may be empty (only for `note`)
 
 Other columns:

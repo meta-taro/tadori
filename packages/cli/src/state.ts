@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { buildGates, buildLink, loadProject, originOf, type Origin, readChecks, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
+import { approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 漏れに「md-business で開く」の URL を付けたもの（雛形が .tadori/links.tsv にあるとき） */
 export type LeakWithLink = Leak & {
@@ -54,13 +54,20 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     approvals: project.approvals,
     labels: project.labels ?? { kinds: {}, columns: {} },
     leaks: withOpenLinks(project, dir, prefix, leaks),
-    gates: buildGates(project, leaks, today),
+    gates: buildGates(project, leaks, today, await approvalChanges(dir, project)),
     checks,
     resolved: resolvedItems(checks, leaks),
     members,
     origins: originsOf(project, today),
   }
   return { project, state }
+}
+
+/** 承認された承認のルールが見る文書の、最後の commit（承認のあとに変わったかを見るため） */
+async function approvalChanges(dir: string, project: Project): Promise<Awaited<ReturnType<typeof lastCommits>>> {
+  const approved = new Set(project.approvals.filter(a => a.status === '承認').map(a => a.rule))
+  const files = [...new Set(project.rules.filter(r => approved.has(r.id)).flatMap(r => approvalTargets(project, r)))]
+  return files.length ? lastCommits(dir, files) : {}
 }
 
 /** 正本の表にある行だけ、正本へのリンクと反映の記録を集める */
