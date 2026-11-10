@@ -300,3 +300,17 @@ test.describe('判定しない文のルールと分類', () => {
     await expect(page.locator('tr', { hasText: 'N9' })).toContainText('報告は結論を先に書く')
   })
 })
+
+test.describe('チェックの記録', () => {
+  test('1 回を 1 まとまりにし、見出しは結果の要約。新しいものが上で、切った文は押すと全部出る', async ({ page }) => {
+    await page.goto('/#log')
+    const entries = page.locator('.log-entry')
+    await expect(entries.first().locator('.log-head')).toContainText('漏れ 2 件')
+    await expect(entries.first().locator('.log-meta')).toContainText('2026-10-30')
+    await expect(entries.last().locator('.log-meta')).toContainText('2026-10-20')
+    const rows = entries.first().locator('.log-body .log-clamp')
+    await expect(rows).toHaveAttribute('aria-expanded', 'false')
+    await rows.click()
+    await expect(rows).toHaveAttribute('aria-expanded', 'true')
+  })
+})

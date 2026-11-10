@@ -629,3 +629,20 @@
   .daily-bar { gap:12px; }
   /* ルールの分類の札（押せるものに見えないよう、枠を付けない） */
   .rule-group { display:inline-block; margin-top:4px; padding:1px 8px; border-radius:999px; font-size:11px; color:var(--ink-subtle); background:var(--surface-2); }
+
+  /* ---- チェックの記録（1 回 1 まとまり。新しいものが上） ---- */
+  .log-list { display:flex; flex-direction:column; gap:10px; }
+  .log-entry { background:var(--surface-1); border:1px solid var(--hairline); border-left:3px solid var(--hairline-strong); border-radius:var(--r-md); padding:12px 16px; display:flex; flex-direction:column; gap:6px; }
+  .log-entry.hole { border-left-color:var(--hole); }
+  .log-entry.ok { border-left-color:var(--ok); }
+  .log-entry.wait { border-left-color:var(--wait); }
+  .log-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .log-what { color:var(--ink); font-weight:500; }
+  .log-body { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--ink-muted); }
+  .log-where { display:flex; gap:6px; flex-wrap:wrap; font-size:12px; color:var(--ink-subtle); }
+  .log-meta { display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-tertiary); }
+  .log-sep { color:var(--ink-tertiary); }
+  .log-clamp { font:inherit; color:inherit; text-align:left; background:none; border:none; padding:0; cursor:pointer; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; max-width:100%; }
+  .log-meta .log-clamp { -webkit-line-clamp:1; flex:1 1 0; min-width:0; }
+  .log-clamp[aria-expanded="true"] { display:block; -webkit-line-clamp:unset; }
+  .log-clamp:hover { color:var(--ink-muted); }

@@ -10,22 +10,59 @@ import { renderPicker } from './trace-picker.js'
 const RESULT_TONE = (/** @type {string} */ result) => (/^(漏れ|差し戻し|Gaps:|sent back|rejected)/i.test(result) ? 'hole' : /^(満たす|承認|Met|approved)/i.test(result) ? 'ok' : '')
 
 /**
+ * 結果を、見出しにする要約と、そのうしろの中身（漏れの行の並びなど）に分ける。
+ * 例：「漏れ 2 件（DD-2.3・DD-3.2）」→ 見出し「漏れ 2 件」・中身「DD-2.3・DD-3.2」
+ * @param {string} result
+ */
+function splitResult(result) {
+  const match = /^(.*?)\s*[（(](.*)[）)]\s*$/.exec(result)
+  return match ? { head: match[1] || result, detail: match[2] ?? '' } : { head: result, detail: '' }
+}
+
+/**
+ * 長い文は切り、押すと全部出す（見出しと要約だけで一覧として流し読みできるように）
+ * @param {string} text
+ * @param {string} label
+ */
+const clamp = (text, label) => (text
+  ? `<button type="button" class="log-clamp" aria-expanded="false" title="${esc(t('Show all'))}" aria-label="${esc(label)}">${esc(text)}</button>`
+  : '')
+
+/**
+ * チェックの記録 1 回分：見出し（結果の要約と、何を）・中身（どこで・どうやって・漏れの行）・下に小さく いつ・だれが・なぜ
+ * @param {ProjectState['checks'][number]} r
+ */
+function logEntry(r) {
+  const tone = RESULT_TONE(r.result)
+  const { head, detail } = splitResult(r.result)
+  const where = [r.where, r.how].filter(Boolean).map(v => `<span class="mono">${esc(v)}</span>`).join('<span class="log-sep">·</span>')
+  const body = where || detail
+    ? `<div class="log-body">${where ? `<div class="log-where">${where}</div>` : ''}${clamp(detail, t('Rows: {rows}', { rows: detail }))}</div>`
+    : ''
+  const why = r.why ? `<span class="log-sep">·</span>${clamp(r.why, t('Why: {why}', { why: r.why }))}` : ''
+  return `<article class="log-entry ${tone || 'none'}">
+    <header class="log-head">${chip(tone, esc(head))}<span class="log-what">${esc(r.what)}</span></header>
+    ${body}
+    <footer class="log-meta"><span class="mono">${esc(r.when)}</span><span class="log-sep">·</span><span>${esc(r.who)}</span>${why}</footer>
+  </article>`
+}
+
+/**
  * @param {HTMLElement} view
  * @param {ProjectState} state
  */
 export function renderLog(view, state) {
-  const rows = [...state.checks].reverse().map(r => `<tr>
-    <td class="mono">${esc(r.when)}</td><td>${esc(r.who)}</td><td class="pair">${esc(r.what)}</td>
-    <td class="mono src">${esc(r.where)}</td><td class="cond">${esc(r.why)}</td><td class="mono src">${esc(r.how)}</td>
-    <td>${chip(RESULT_TONE(r.result), esc(r.result))}</td></tr>`).join('')
+  // 新しいものが上
+  const entries = [...state.checks].reverse().map(logEntry).join('')
   view.innerHTML = `
     <h1>${esc(t('Check log'))}</h1>
     <p class="lede">${esc(t('Each time the rules are checked, one row is added in 5W1H form ({file}, managed in git). People write the rows for their own approvals.')).replace('{file}', () => '<span class="mono">.tadori/checks.tsv</span>')}</p>
     <div class="note">${ICON_INFO}<span>${esc(t('To add a row, use {command}.')).replace('{command}', () => `<span class="mono">${esc(t('tadori check --log --who NAME --why REASON'))}</span>`)}</span></div>
-    <div class="panel"><table>
-      <thead><tr><th>${esc(t('When'))}</th><th>${esc(t('Who'))}</th><th>${esc(t('What'))}</th><th>${esc(t('Where'))}</th><th>${esc(t('Why'))}</th><th>${esc(t('How'))}</th><th>${esc(t('Result'))}</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="7" class="cond">${esc(t('No records yet'))}</td></tr>`}</tbody>
-    </table></div>`
+    <div class="log-list">${entries || `<p class="cond">${esc(t('No records yet'))}</p>`}</div>`
+  // 切った文は、押すと全部出る（もう一度押すと戻る）
+  view.querySelectorAll('.log-clamp').forEach(el => el.addEventListener('click', () => {
+    el.setAttribute('aria-expanded', String(el.getAttribute('aria-expanded') !== 'true'))
+  }))
 }
 
 const ICON_OK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 8.5l3 3 6-7"/></svg>'
