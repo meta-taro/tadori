@@ -12,6 +12,7 @@ import { serveMcp } from './mcp.js'
 import { howTo } from './guide.js'
 import { runCheck } from './check-log.js'
 import { isDay, loadDaily } from './daily.js'
+import { parentPidFromEnv, watchParent } from './parent-watch.js'
 
 const DEFAULT_PORT = 4870
 /** 使い方（いまの言語で。日本語の文は i18n-ja.ts） */
@@ -135,6 +136,9 @@ async function main(): Promise<void> {
     const bound = typeof server.address === 'object' && server.address ? server.address.port : port
     // URL の後ろは改行にする（デスクトップアプリは URL を空白か改行まで読む）
     process.stdout.write(`${t('tadori started: {url}\nProject: {dir}\nPress Ctrl+C to stop', { url: `http://127.0.0.1:${bound}/`, dir })}\n`)
+    // デスクトップアプリから起こしたときは、アプリが落ちたら一緒に止まる（残って番号をふさがないように）
+    const parentPid = parentPidFromEnv(process.env.TADORI_PARENT_PID)
+    if (parentPid) watchParent(parentPid, () => { void server.close().finally(() => process.exit(0)) })
     return
   }
 

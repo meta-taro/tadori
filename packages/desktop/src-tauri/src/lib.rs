@@ -194,6 +194,8 @@ fn start_and_show(handle: &AppHandle, project: &Path) -> Result<(), String> {
     let mut command = Command::new("node");
     command
         .args(sidecar::serve_args(&cli, project, sidecar::choose_port(sidecar::PREFERRED_PORT)))
+        // アプリが落ちても裏の serve が残らないよう、serve にアプリの番号を渡して見張らせる（どの OS でも同じ仕組み）
+        .env("TADORI_PARENT_PID", std::process::id().to_string())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     // 画面のヘルプ「バージョンと更新」に、アプリの版を出すため。debug で組んだ版は渡さない（手元で組んだ版として、配布の版と比べない）

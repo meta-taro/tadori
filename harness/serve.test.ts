@@ -67,3 +67,33 @@ describe('配った版として起こした serve（デスクトップがアプ�
     }
   })
 })
+
+describe('デスクトップアプリが落ちたとき', () => {
+  test('親（デスクトップアプリ）のプロセスが急に終わったら、裏の serve も止まる（残って番号をふさがない）', async () => {
+    const { spawn } = await import('node:child_process')
+    const { CLI, harnessEnv } = await import('./run.js')
+    // 親の代わり：serve を子として起こし、子の番号を出してから居続ける。親を強く止めて、子が止まるかを見る。
+    // detached にする：Node の spawn は Windows で子を「親が閉じたら止める」組に入れるので、そのままだと
+    // デスクトップアプリ（Rust の Command。その組を作らない）と違って、直さなくても子が止まって見えてしまう
+    const script = String.raw`const { spawn } = require('node:child_process');
+const child = spawn(process.execPath, [${JSON.stringify(CLI)}, 'serve', ${JSON.stringify(EXAMPLE)}, '--port', '0'], { env: { ...process.env, TADORI_PARENT_PID: String(process.pid) }, stdio: ['ignore', 'pipe', 'ignore'], detached: true });
+child.stdout.on('data', d => { const m = String(d).match(/http:\/\/127\.0\.0\.1:\d+\//); if (m) console.log(JSON.stringify({ url: m[0], pid: child.pid })) });
+setInterval(() => {}, 1000);`
+    const parent = spawn(process.execPath, ['-e', script], { env: harnessEnv(), stdio: ['ignore', 'pipe', 'pipe'] })
+    const info = await new Promise<{ url: string; pid: number }>((done, fail) => {
+      const timer = setTimeout(() => fail(new Error('serve が立ち上がりません')), 15_000)
+      parent.stdout.on('data', d => { clearTimeout(timer); done(JSON.parse(String(d).trim().split('\n')[0] as string)) })
+    })
+    expect((await fetch(info.url)).status).toBe(200)
+    parent.kill('SIGKILL')
+    // 数秒のうちに子も止まる
+    const deadline = Date.now() + 10_000
+    let alive = true
+    while (alive && Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 300))
+      try { process.kill(info.pid, 0) } catch { alive = false }
+    }
+    if (alive) process.kill(info.pid)
+    expect(alive).toBe(false)
+  })
+})
