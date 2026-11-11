@@ -1,3 +1,4 @@
+<!-- prettier-ignore-start -->
 <!-- 正本: templates/ux-checklist/product-ux-checklist-ja.md（横断の正本リポ）
      配布先: .claude/templates/ux-checklist/product-ux-checklist-ja.md
      このファイルは配られてきた写しです。直したいところがあれば、
@@ -457,3 +458,4 @@ NOの場合、その工程には体験価値が存在する可能性がある。
 > **体験・選択・納得・遊び・達成・自己決定。**
 >
 > **AIが賢くなるほど、人間を見る。**
+<!-- prettier-ignore-end -->
