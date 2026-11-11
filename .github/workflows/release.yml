@@ -131,6 +131,22 @@ jobs:
             tadori のデスクトップアプリです。Node.js 22 以上が入った PC で動きます。
             - macOS：Apple シリコンは aarch64、Intel は x64 の .dmg
             - Windows：x64（Intel / AMD）・ARM（arm64）とも .msi か .exe
-            コード署名はまだありません。初めて開くとき、OS やウイルス対策ソフトが確認を求めることがあります。
+            macOS 版は Apple の Developer ID で署名し、公証（notarization）を受けています。Windows 版はまだ署名がなく、初めて開くとき OS やウイルス対策ソフトが確認を求めることがあります。
           releaseDraft: true
           prerelease: false
+
+      # 署名の材料があるのに、できたアプリが署名・公証されていなければ、ここで止める（署名したつもりで配らない）
+      - name: Mac のアプリが署名・公証されたかを確かめる（署名の材料があるときだけ）
+        if: runner.os == 'macOS' && env.APPLE_CERTIFICATE != ''
+        shell: bash
+        run: |
+          app=$(find packages/desktop/src-tauri/target -maxdepth 6 -type d -path '*/bundle/macos/*.app' | head -n 1)
+          if [ -z "$app" ]; then
+            echo "::error::できた .app が見つかりません"
+            exit 1
+          fi
+          echo "確かめるアプリ：$app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E '^(Authority|TeamIdentifier)='
+          xcrun stapler validate "$app"
+          spctl --assess --type execute --verbose=2 "$app"
