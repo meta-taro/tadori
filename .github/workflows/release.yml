@@ -81,6 +81,42 @@ jobs:
       - name: インストーラーに入れる写しで、出す前の試験を流す（この OS の上で）
         run: pnpm -r --filter '!@tadori/desktop' build && node harness/bundle.mjs
 
+      # Mac の署名と公証。証明書（.p12）の Secret が入っているときだけ効く（無ければ、これまでどおり署名なしで作る）。
+      # 公証は App Store Connect の API キー（.p8）で行う。鍵はファイルにして渡し、ログには出さない
+      - name: Mac の署名と公証の材料を用意する（証明書の Secret があるときだけ）
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          API_KEY: ${{ secrets.APPLE_API_KEY }}
+          API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          if [ -z "$CERTIFICATE" ]; then
+            echo "証明書の Secret（APPLE_CERTIFICATE）が無いので、署名せずに作ります"
+            exit 0
+          fi
+          for name in API_KEY_P8 CERTIFICATE_PASSWORD SIGNING_IDENTITY API_KEY API_ISSUER; do
+            if [ -z "${!name}" ]; then
+              echo "::error::証明書はあるのに、APPLE_${name} の Secret がありません"
+              exit 1
+            fi
+          done
+          key_path="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s\n' "$API_KEY_P8" > "$key_path"
+          chmod 600 "$key_path"
+          echo "APPLE_API_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+          # 値が空のまま渡すと、作る道具が空の証明書を読もうとするので、揃ったときだけ渡す（Secret の値はログでは伏せ字になる）
+          {
+            echo "APPLE_CERTIFICATE=$CERTIFICATE"
+            echo "APPLE_CERTIFICATE_PASSWORD=$CERTIFICATE_PASSWORD"
+            echo "APPLE_SIGNING_IDENTITY=$SIGNING_IDENTITY"
+            echo "APPLE_API_KEY=$API_KEY"
+            echo "APPLE_API_ISSUER=$API_ISSUER"
+          } >> "$GITHUB_ENV"
+
       - name: インストーラーを作り、下書きのリリースに付ける
         uses: tauri-apps/tauri-action@v0
         env:
