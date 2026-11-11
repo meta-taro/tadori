@@ -111,17 +111,38 @@ function filtered(state) {
     : [...list].sort(byId)
 }
 
+/** 手順の印（(1)・（1）・①）。2 つ以上あれば手順の形として、段ごとに改行して見せる */
+const STEP_MARK = /[(（]\d{1,2}[)）]|[①-⑳]/g
+
+/**
+ * ルールの本文。手順の形なら、前置きを見出しにし、段ごとに 1 行ずつ並べる（長い手順が細い欄で何行にも折り返されないように）
+ * @param {string} label
+ */
+export function ruleTextHtml(label) {
+  const marks = [...label.matchAll(STEP_MARK)].map(m => m.index ?? 0)
+  if (marks.length < 2) return `<div class="rule-text">${esc(label)}</div>`
+  const head = label.slice(0, marks[0]).trim()
+  const steps = marks.map((start, i) => label.slice(start, marks[i + 1] ?? label.length).trim())
+  return `<div class="rule-text">${head ? `<div class="rule-steps-head">${esc(head)}</div>` : ''}${steps.map(step => `<div class="rule-step">${esc(step)}</div>`).join('')}</div>`
+}
+
 /** @param {ProjectState} state @param {Rule} r */
 function ruleRow(state, r) {
   const s = statusOf(state, r)
+  const what = whatText(r)
+  // 本文を幅いっぱいに使い、何と何が・対象の条件・分類・判定の種類は本文の下の 1 行にまとめる
+  const meta = [
+    judgeBadge(r.kind, t(KIND_NAMES[r.kind] ?? r.kind)),
+    r.group ? `<span class="rule-group ${esc(groupColor(state, r.group))}">${esc(groupName(state, r.group))}</span>` : '',
+    what ? `<span class="pair">${esc(what)}</span>` : '',
+    r.only ? `<span class="cond">${esc(onlyText(r.only))}</span>` : '',
+  ].filter(Boolean).join('')
   return `<tr>
-    <td class="rule-id">${esc(r.id)}</td>
-    <td><div class="pair">${esc(whatText(r))}</div>${r.only ? `<div class="cond">${esc(onlyText(r.only))}</div>` : ''}</td>
-    <td class="cond">${esc(r.label)}${r.group ? `<div><span class="rule-group ${esc(groupColor(state, r.group))}">${esc(groupName(state, r.group))}</span></div>` : ''}</td>
-    <td>${judgeBadge(r.kind, t(KIND_NAMES[r.kind] ?? r.kind))}</td>
-    <td>${personChips(r.owner)}</td>
-    <td>${STATUS_HTML[s.key](s.count)}</td>
-    <td class="rule-actions"><button type="button" class="btn-ghost" data-edit="${esc(r.id)}">${esc(t('Edit'))}</button><button type="button" class="btn-ghost" data-remove="${esc(r.id)}">${esc(r.id === armedRuleId ? t('Press again to remove') : t('Remove'))}</button></td>
+    <td class="rule-id fit">${esc(r.id)}</td>
+    <td class="rule-body">${ruleTextHtml(r.label)}<div class="rule-meta">${meta}</div></td>
+    <td class="fit">${personChips(r.owner)}</td>
+    <td class="fit">${STATUS_HTML[s.key](s.count)}</td>
+    <td class="rule-actions fit"><button type="button" class="btn-ghost" data-edit="${esc(r.id)}">${esc(t('Edit'))}</button><button type="button" class="btn-ghost" data-remove="${esc(r.id)}">${esc(r.id === armedRuleId ? t('Press again to remove') : t('Remove'))}</button></td>
   </tr>`
 }
 
@@ -146,7 +167,7 @@ function listHtml(state) {
     return `<details class="rules-group ${phase.color ? `band-${esc(phase.color)}` : ''}" data-group="${esc(phase.id)}" ${closedPhases.has(phase.id) ? '' : 'open'}>
       <summary class="rules-band"><span class="tw">›</span><span>${esc(phase.name)}</span>${scopeBadge(phase.scope)}
         <span class="rules-band-counts">${leaks ? `<span class="nav-badge hole" title="${esc(t('Gaps: {n}', { n: leaks }))}">${leaks}</span>` : ''}<span class="pick-count">${esc(t('{n} items', { n: inPhase.length }))}</span></span></summary>
-      <table><thead><tr><th style="width:72px">ID</th><th style="width:22%">${esc(t('What links to what'))}</th><th>${esc(t('Condition'))}</th><th style="width:170px">${esc(t('Check'))}</th><th style="width:130px">${esc(t('Owner'))}</th><th style="width:110px">${esc(t('Status now'))}</th><th style="width:130px"><span class="sr-only">${esc(t('Actions'))}</span></th></tr></thead>
+      <table class="rules-table"><thead><tr><th class="fit">ID</th><th>${esc(t('Rule'))}</th><th class="fit">${esc(t('Owner'))}</th><th class="fit">${esc(t('Status now'))}</th><th class="fit"><span class="sr-only">${esc(t('Actions'))}</span></th></tr></thead>
       <tbody>${inPhase.slice(0, limit).map(r => ruleRow(state, r)).join('')}</tbody></table>${more}
     </details>`
   }).join('')

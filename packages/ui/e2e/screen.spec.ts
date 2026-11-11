@@ -372,6 +372,39 @@ test.describe('判定しない文のルールと分類', () => {
     await form.getByRole('button', { name: '保存' }).click()
     await expect(page.locator('tr', { hasText: 'N9' })).toContainText('報告は結論を先に書く')
   })
+
+  test('ルールの本文は表の幅の大半を使い、手順の形（(1)〜(5)）は段ごとに改行する。ID・種類・ボタンは中身の幅だけ', async ({ page }) => {
+    await page.setViewportSize({ width: 1350, height: 900 })
+    await page.goto('/#rules')
+    await page.getByRole('button', { name: 'ルールを足す' }).click()
+    const form = page.locator('#rule-form')
+    await form.locator('[name="id"]').fill('N8')
+    await form.locator('[name="phase"]').selectOption('')
+    await form.locator('[name="kind"]').selectOption('note')
+    await form.locator('[name="label"]').fill('MR までの流れ：(1) 過去の指摘と照らす (2) コミット文を人に見せる (3) push のコマンドを出す (4) MR の URL を出す (5) レビューが通ったら報告の文案を出し、課題に MR のリンクを書く')
+    await form.getByRole('button', { name: '保存' }).click()
+    const row = page.locator('tr', { has: page.locator('.rule-id', { hasText: /^N8$/ }) })
+    await expect(row).toContainText('過去の指摘と照らす')
+    // 段ごとに 1 行（前置きの「MR までの流れ：」は見出しとして残す）
+    await expect(row.locator('.rule-step')).toHaveCount(5)
+    await expect(row.locator('.rule-step').first()).toContainText('(1) 過去の指摘と照らす')
+    // 本文の欄が表の幅の半分以上を使う（以前は 2 割ほどで、1 行 10 文字前後に折り返されていた）
+    const table = await row.locator('xpath=ancestor::table').boundingBox()
+    const body = await row.locator('.rule-body').boundingBox()
+    expect(table && body).toBeTruthy()
+    expect((body?.width ?? 0) / (table?.width ?? 1)).toBeGreaterThan(0.5)
+    // 1 件の高さは、5 段と見出しの行に収まる（折り返しで 15 行にならない）
+    expect(body?.height ?? 0).toBeLessThan(200)
+    // 種類（判定しない）は本文の下にまとめる
+    await expect(row.locator('.rule-body')).toContainText('判定しない')
+    // 右の列（担当・状態・ボタン）が表からはみ出さず、ID が本文に重ならない
+    const actions = await row.locator('.rule-actions').boundingBox()
+    expect((actions?.x ?? 0) + (actions?.width ?? 0)).toBeLessThanOrEqual((table?.x ?? 0) + (table?.width ?? 0) + 1)
+    const id = await row.locator('.rule-id').boundingBox()
+    expect((id?.x ?? 0) + (id?.width ?? 0)).toBeLessThanOrEqual(body?.x ?? 0)
+    await row.scrollIntoViewIfNeeded()
+    await expect(row.getByRole('button', { name: '直す' })).toBeInViewport({ ratio: 1 })
+  })
 })
 
 test.describe('チェックの記録', () => {

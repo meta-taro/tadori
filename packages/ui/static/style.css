@@ -617,6 +617,19 @@
   .rule-form { margin:0 0 16px; }
   .rule-form h2 { width:100%; margin:0 0 4px; font-size:15px; }
   .rule-actions { white-space:nowrap; text-align:right; }
+  /* ルールの表：本文が残りの幅を全部使い、ID・担当・状態・ボタンは中身の幅だけ */
+  .rules-group table.rules-table { table-layout:auto; width:100%; }
+  .rules-table th.fit, .rules-table td.fit { width:1%; white-space:nowrap; }
+  /* 帯ごとに別の表なので、列の幅の下限をそろえて、帯をまたいでも列が縦にそろうようにする */
+  .rules-table th:nth-child(1), .rules-table td:nth-child(1) { width:4em; }
+  .rules-table th:nth-child(3), .rules-table td:nth-child(3) { width:120px; }
+  .rules-table th:nth-child(4), .rules-table td:nth-child(4) { width:110px; }
+  .rule-body { line-height:1.55; overflow-wrap:anywhere; }
+  .rule-text { color:var(--ink); font-size:13.5px; }
+  .rule-steps-head { font-weight:600; margin-bottom:2px; }
+  .rule-step { padding-left:1.2em; text-indent:-1.2em; }
+  .rule-meta { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin-top:6px; font-size:12px; color:var(--ink-subtle); }
+  .rule-meta .cond { font-size:12px; }
 
   .form-problems { width:100%; color:var(--hole); font-size:12.5px; }
   .form-problems:empty { display:none; }
