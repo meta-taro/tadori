@@ -12,6 +12,7 @@ export const JA: Readonly<Record<string, string>> = {
   'Not committed: this project folder is not its own git repository': 'この案件のフォルダは、それ自身の git リポジトリではないので commit していません',
   'Not committed: there are no changes': '変更が無いので commit していません',
   'git commit failed: {detail}': 'git commit に失敗しました：{detail}',
+  'Not committed: another agent or a person is using git in this project right now. The change is written to the file and goes into the next commit of that file': 'commit していません：この案件では、別の席か人がいま git を使っています。変更はファイルに書いてあり、次にそのファイルを commit するときに一緒に入ります',
 
   // ---- 漏れ（チェック） ----
   'the {id} row in {file} (line {line})': '{file} の {id} の行（{line} 行目）',

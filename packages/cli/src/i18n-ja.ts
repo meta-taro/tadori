@@ -106,6 +106,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Status {no} has the wrong shape (id, name and tone are required)': '{no} 番目のステータスの形が違います（id・name・tone が要ります）',
   'Not found': '見つかりません',
   'No tadori screen is open. Open the screen, then send again': 'tadori の画面が開いていません。画面を開いてから送ってください',
+  'Another write is being saved in this project ({seconds} seconds so far). Nothing was changed. Try again in a moment': 'この案件では別の書き込みを保存しています（{seconds} 秒前から）。今回の変更はしていません。少し待ってからもう一度送ってください',
   'Give the date as YYYY-MM-DD': '日付は YYYY-MM-DD で渡してください',
   'No such operation': 'その操作はありません',
   'That ID is not in the ledger': 'その ID は台帳にありません',

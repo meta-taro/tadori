@@ -82,6 +82,10 @@ export async function commitFiles(dir: string, files: readonly string[], message
     await run('git', ['commit', '-q', '-m', `chore(tadori): ${message}`, '--', ...files], { cwd: dir })
     return { committed: true, unpushed: await unpushedCount(dir) }
   } catch (error: unknown) {
+    // ほかの席や人が同じ案件で git を使っている途中（index.lock がある）。生の誤りではなく、何が起きたかを返す
+    if (error instanceof Error && /index\.lock/.test(error.message)) {
+      return { committed: false, reason: t('Not committed: another agent or a person is using git in this project right now. The change is written to the file and goes into the next commit of that file') }
+    }
     const detail = error instanceof Error ? error.message.split('\n').at(0) : String(error)
     return { committed: false, reason: t('git commit failed: {detail}', { detail: String(detail) }) }
   }

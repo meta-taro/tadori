@@ -173,15 +173,42 @@ async function serveStatic(uiDir: string, urlPath: string, res: ServerResponse):
   }
 }
 
+/** 前の書き込みが終わるのを待つ上限。過ぎたら待たせ続けず「いま別の書き込みをしています」と返す */
+const BUSY_WAIT_MS = 4_000
+
 /**
  * 書き込みを 1 本の列に並べる。読み込み → 検査 → 書き込み → commit の途中に別の書き込みが割り込むと、
- * 片方の変更が失われたり、git の index がぶつかったりするため。手元の道具なので、同時に来る書き込みは少ない。
+ * 片方の変更が失われたり、git の index がぶつかったりするため。
+ * 1 台の PC で何人もの席がこの server を共有するので、前の書き込みが長引いても（commit 前の検査が遅い案件など）
+ * 後ろを黙って待たせ続けない。待つのは BUSY_WAIT_MS までで、それを過ぎたら何もせずに 409 で返す（読む呼び出しは並ばない）
  */
 let writeChain: Promise<unknown> = Promise.resolve()
+let writingSince: number | null = null
 function serialized<T>(work: () => Promise<T>): Promise<T> {
-  const run = writeChain.then(work, work)
+  let started = false
+  let gaveUp = false
+  const run = writeChain.then(async () => {
+    if (gaveUp) return undefined
+    started = true
+    writingSince = Date.now()
+    try {
+      return await work()
+    } finally {
+      writingSince = null
+    }
+  })
   writeChain = run.catch(() => undefined) // 失敗しても、次の書き込みは続ける
-  return run
+  const busy = new Promise<never>((_, reject) => {
+    const timer = setTimeout(() => {
+      if (started) return // 自分の番が来て書いている途中なら、終わるまで待つ
+      gaveUp = true
+      const seconds = writingSince === null ? 0 : Math.round((Date.now() - writingSince) / 1000)
+      reject(new HttpError(409, t('Another write is being saved in this project ({seconds} seconds so far). Nothing was changed. Try again in a moment', { seconds })))
+    }, BUSY_WAIT_MS)
+    timer.unref()
+    void run.finally(() => clearTimeout(timer)).catch(() => undefined)
+  })
+  return Promise.race([run as Promise<T>, busy])
 }
 
 async function route(options: ServerOptions, port: number, notifier: ChangeNotifier, req: IncomingMessage, res: ServerResponse): Promise<void> {
