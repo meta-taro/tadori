@@ -116,6 +116,17 @@ export function isMine(state, owner) {
 /** 担当の選択肢：人の表の名前と、WBS の担当（人）。役割だけの名前は出さない */
 export const peopleOf = (/** @type {import('./types').ProjectState} */ state) => [...new Set([...(state.members ?? []).map(m => m.name), ...state.tasks.flatMap(t => ownersOf(t.owner))])]
 
+/**
+ * 承認のルールが、いま承認済みか。approvals.tsv が「承認」でも、承認のあとに見る文書が commit されたものは
+ * server が承認待ちに戻している（工程の pending に入る）ので、承認済みとは見ない
+ * @param {import('./types').ProjectState} state
+ * @param {string} ruleId
+ */
+export function isApproved(state, ruleId) {
+  if (state.gates.some(g => (g.pending ?? []).some(p => p.rule.id === ruleId))) return false
+  return state.approvals.some(a => a.rule === ruleId && a.status === '承認')
+}
+
 /** 終わったステータス（設定で色の意味が ok のもの）か */
 export const isDoneStatus = (/** @type {import('./types').ProjectState} */ state, /** @type {string} */ status) => state.statuses.some(s => s.id === status && s.tone === 'ok')
 

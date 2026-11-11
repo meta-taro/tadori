@@ -1,6 +1,6 @@
 // リリースまでの残課題：タイムラインとカードの切り替え。割合や点数は出さない
 import { t } from './i18n.js'
-import { chip, day, esc, fullDate, getWho, isMine, kindLabel, lateColor, shortDate, isDoneStatus, whoFilterChip, judgeBadge, personChips } from './util.js'
+import { chip, day, isApproved, esc, fullDate, getWho, isMine, kindLabel, lateColor, shortDate, isDoneStatus, whoFilterChip, judgeBadge, personChips } from './util.js'
 
 // つながりを辿るボタンの印（「つながりを辿る」の画面と同じ形）
 const ICON_TRACE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="5" cy="3.5" r="1.6"/><circle cx="5" cy="12.5" r="1.6"/><path d="M5 5.1v5.8M5 8h4.5"/><circle cx="11" cy="8" r="1.6"/></svg>'
@@ -93,7 +93,7 @@ function timelineHtml(state) {
  */
 function rulePip(state, rule) {
   if (rule.kind === 'approval') {
-    const ok = state.approvals.some(a => a.rule === rule.id && a.status === '承認')
+    const ok = isApproved(state, rule.id)
     return `<span class="pip ${ok ? 'ok' : 'wait'}" title="${esc(rule.label)}">${esc(rule.id)}</span>`
   }
   const n = state.leaks.filter(l => l.rule === rule.id).length
@@ -155,10 +155,11 @@ function fixHtml(fix, leak) {
 function ruleStatus(state, rule) {
   if (rule.kind === 'approval') {
     const a = state.approvals.find(x => x.rule === rule.id)
-    if (a?.status === '承認') return chip('ok', esc(t('Approved {who} · {when}', { who: a.who, when: a.when })))
-    const pending = state.gates.flatMap(g => g.pending ?? []).find(p => p.rule.id === rule.id)
-    // 承認のあとに見る文書が commit された：承認待ちに戻し、どのファイルのどの commit かを札で出す
+    const pending = pendingOf(state, rule)
+    // 承認のあとに見る文書が commit された：approvals.tsv は「承認」のままでも承認待ちに戻っているので、
+    // 「承認」の札より先に見て、どのファイルのどの commit かを札で出す
     const changed = pending?.changedAfter
+    if (a?.status === '承認' && !changed) return chip('ok', esc(t('Approved {who} · {when}', { who: a.who, when: a.when })))
     if (a && changed) {
       return chip('wait', esc(t('Changed after approval'))) + ` <span class="changed-after" title="${esc(t('Approved {who} · {when}', { who: a.who, when: a.when }))}"><code>${esc(changed.file)}</code> <code>${esc(changed.commit)}</code> ${esc(changed.date.slice(0, 10))}</span>` + fixHtml(pending?.fix)
     }
@@ -182,12 +183,21 @@ let showSatisfied = false
 let rulesShown = RULES_PAGE
 
 /**
+ * そのルールの承認待ち（server の判定。承認のあとに見る文書が変わったものも入る）
+ * @param {ProjectState} state
+ * @param {Rule} rule
+ */
+function pendingOf(state, rule) {
+  return state.gates.flatMap(g => g.pending ?? []).find(p => p.rule.id === rule.id)
+}
+
+/**
  * 残っているルール（漏れがある・承認されていない）
  * @param {ProjectState} state
  * @param {Rule} rule
  */
 function isRemaining(state, rule) {
-  if (rule.kind === 'approval') return !state.approvals.some(a => a.rule === rule.id && a.status === '承認')
+  if (rule.kind === 'approval') return !isApproved(state, rule.id)
   return state.leaks.some(l => l.rule === rule.id)
 }
 

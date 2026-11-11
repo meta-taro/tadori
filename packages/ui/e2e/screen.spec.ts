@@ -430,3 +430,55 @@ test.describe('予定の表（WBS）の無い案件', () => {
     await expect(page.locator('#wbs-sort')).toHaveCount(0)
   })
 })
+
+test.describe('承認のあとの変更と、一覧に無い状態', () => {
+  /** 本物の /api/state を取り、承認のあとに見る文書が commit された形（server の判定と同じ形）に書き換えて返す */
+  async function approvedThenChanged(page: Page): Promise<void> {
+    await page.route('**/api/state*', async route => {
+      const res = await route.fetch()
+      const state = await res.json() as { approvals: { rule: string; status: string; who: string; when: string }[]; gates: { phase: { id: string }; rules: { id: string }[]; pending?: unknown[] }[] }
+      state.approvals = [{ rule: 'R2', status: '承認', who: 'レビュー担当', when: '2026-10-20' }]
+      const gate = state.gates.find(g => g.rules.some(r => r.id === 'R2'))
+      const rule = gate?.rules.find(r => r.id === 'R2')
+      if (!gate || !rule) throw new Error('見本に R2 がありません')
+      gate.pending = [...(gate.pending ?? []).filter(p => (p as { rule: { id: string } }).rule.id !== 'R2'), {
+        rule, status: '承認', fix: 'レビュー担当が docs/basic-design.md の変更（abc1234）を見て、approvals.tsv の R2 の日付を見た日に書き直す',
+        changedAfter: { file: 'docs/basic-design.md', commit: 'abc1234', date: '2026-10-25T10:00:00+09:00' },
+      }]
+      await route.fulfill({ response: res, json: state })
+    })
+  }
+
+  test('承認のあとに見る文書が commit されたら、「承認」ではなく「承認のあとに変わった」と、どのファイルのどの commit かを出す', async ({ page }) => {
+    await approvedThenChanged(page)
+    await page.goto('/#phases-bd')
+    const row = page.locator('tr', { has: page.locator('.rule-id', { hasText: /^R2$/ }) })
+    await expect(row).toContainText('承認のあとに変わった')
+    await expect(row.locator('.changed-after')).toContainText('docs/basic-design.md')
+    await expect(row.locator('.changed-after')).toContainText('abc1234')
+    await expect(row).toContainText('日付を見た日に書き直す')
+  })
+
+  test('承認のあとに変わったルールは、ルールの画面でも工程のカードの札でも「承認待ち」に数える', async ({ page }) => {
+    await approvedThenChanged(page)
+    await page.goto('/#rules')
+    const row = page.locator('tr', { has: page.locator('.rule-id', { hasText: /^R2$/ }) })
+    await expect(row.locator('.chip.wait')).toContainText('承認待ち')
+    await page.goto('http://127.0.0.1:4988/#phases') // 予定の表の無い案件（工程はカードで出る）
+    await expect(page.locator('.pip', { hasText: /^R2$/ })).toHaveClass(/wait/)
+  })
+
+  test('WBS の状態が statuses.tsv に無ければ、予定の画面にその状態とタスクを出す', async ({ page }) => {
+    await page.route('**/api/state*', async route => {
+      const res = await route.fetch()
+      const state = await res.json() as Record<string, unknown>
+      await route.fulfill({ response: res, json: { ...state, unknownStatuses: [{ status: '保留', taskIds: ['W-01', 'W-02'] }] } })
+    })
+    await page.goto('/#browse')
+    const note = page.locator('.note.warn')
+    await expect(note).toContainText('statuses.tsv')
+    await expect(note.locator('.status-unknown')).toContainText('保留')
+    await expect(note.locator('.status-unknown code')).toHaveText(['W-01', 'W-02'])
+    await expect(note).toBeVisible()
+  })
+})

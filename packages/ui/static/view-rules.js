@@ -1,6 +1,6 @@
 // ルールセット：1,000 行を超えても探せるように、探す欄・絞り込み・工程ごとの帯・少しずつ出す
 import { t } from './i18n.js'
-import { api, ApiError, esc, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, toastCommit, within, judgeBadge, personChips } from './util.js'
+import { api, ApiError, esc, isApproved, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, toastCommit, within, judgeBadge, personChips } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').Rule} Rule */
@@ -33,8 +33,7 @@ function statusOf(state, rule) {
   // 判定しない文のルールは、満たす・漏れのどちらでもない
   if (rule.kind === 'note') return { key: 'note', count: 0 }
   if (rule.kind === 'approval') {
-    const approved = state.approvals.some(a => a.rule === rule.id && a.status === '承認')
-    return approved ? { key: 'ok', count: 0 } : { key: 'wait', count: 0 }
+    return isApproved(state, rule.id) ? { key: 'ok', count: 0 } : { key: 'wait', count: 0 }
   }
   const count = state.leaks.filter(l => l.rule === rule.id).length
   return count ? { key: 'leak', count } : { key: 'ok', count: 0 }
