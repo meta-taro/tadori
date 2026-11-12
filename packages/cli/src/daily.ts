@@ -1,7 +1,7 @@
 import './i18n.js'
 import {
   BADGE_TONES, buildDaily, carriedOver, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
-  readStatusChanges, t, writeDaily, type BadgeTone, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
+  readAloud, readStatusChanges, t, withoutSummaries, writeDaily, type BadgeTone, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
 import { dailyFormatOf, formatEntries, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
@@ -77,14 +77,20 @@ async function mergedEntries(dir: string, date: string): Promise<{ entries: Dail
 const visible = (e: DailyEntry) => e.origin !== 'removed'
 const mine = (who?: string) => (e: DailyEntry) => !who || ownersOf(e.who).includes(who)
 
-export async function loadDaily(dir: string, date: string, who?: string): Promise<Daily> {
+/** read：読み上げの文（課題ごとの要約があれば、その課題の今日の細かい行の代わりに要約を出す）。既定は詳しく（今までどおり） */
+export interface DailyView {
+  readonly read?: boolean
+}
+
+export async function loadDaily(dir: string, date: string, who?: string, view: DailyView = {}): Promise<Daily> {
   const project = await loadProject(dir)
   const { entries, saved } = await mergedEntries(dir, date)
   const shown = entries.filter(visible).filter(mine(who))
   // 担当の選択肢は、WBS の担当と、行の担当（commit やチェックの記録から来た人）の両方から
   const owners = [...new Set([...project.tasks.flatMap(t => ownersOf(t.owner)), ...entries.flatMap(e => ownersOf(e.who))])]
   const format = await formatOf(dir)
-  return { date, text: formatEntries(shown, project, date, format, { showWho: !who }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
+  const spoken = view.read ? readAloud(shown) : withoutSummaries(shown)
+  return { date, text: formatEntries(spoken, project, date, format, { showWho: !who }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
     whoMarks: who ? [] : [...new Set(shown.map(e => whoMark(e.who, format)).filter(Boolean))] }
 }
 
@@ -220,10 +226,17 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
   const chosenTag = tag(body)
   const links = linkList(body)
   const badges = badgeList(body)
+  const chosenSection = section(body, true) as DailySection
+  // 課題ごとの要約は、課題を付けて 1 日 1 課題に 1 つ（2 つ目は今ある要約を直してもらう）
+  if (chosenSection === 'summary') {
+    if (!issue) throw new DailyInputError(t('A summary needs issue (the summary is one per issue)'))
+    const same = entries.find(e => e.section === 'summary' && e.issue === issue && e.origin !== 'removed')
+    if (same) throw new DailyInputError(t('{issue} already has a summary for this day ({id}). Edit that row instead', { issue, id: same.id }))
+  }
   const entry: DailyEntry = await withIssueHead(dir, {
     id: `m${n}`,
     who: text(body, 'who', false) ?? '',
-    section: section(body, true) as DailySection,
+    section: chosenSection,
     text: text(body, 'text', true) as string,
     wbs: wbsList(body) ?? [],
     ...(issue ? { issue } : {}),

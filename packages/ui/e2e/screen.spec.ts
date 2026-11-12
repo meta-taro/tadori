@@ -515,3 +515,31 @@ test.describe('承認のあとの変更と、一覧に無い状態', () => {
     await expect(note).toBeVisible()
   })
 })
+
+test.describe('1 日の進行：課題ごとの要約', () => {
+  test('要約は今日の上に出し、「読み上げ」では要約のある課題の細かい行をたたむ。「詳しく」で戻る', async ({ page }) => {
+    const post = (data: Record<string, unknown>) => page.request.post('/api/daily/2026-10-30/entries', { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data })
+    expect((await post({ who: '設計担当', section: 'today', issue: 'Q-1', text: '回答の下書きを作った' })).ok()).toBe(true)
+    expect((await post({ who: '設計担当', section: 'summary', issue: 'Q-1', text: '問い合わせがあって、いまは回答の下書きまでです。今日は終わりません。終わったら送ります' })).ok()).toBe(true)
+    await openDaily(page)
+    // 詳しく（既定）：要約の見出しの下に要約、今日の欄には細かい行
+    const summaries = page.locator('.daily-section[data-section="summary"]')
+    await expect(summaries.locator('.daily-text')).toHaveValue(/今日は終わりません。終わったら送ります/)
+    // 要約は長くなりやすいので、欄の中で折り返して全文が見える（途中で切れない）
+    const clipped = await summaries.locator('.daily-text').evaluate(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)
+    expect(clipped).toBe(false)
+    await expect(page.locator('.daily-section[data-section="today"] .daily-text[value*="回答の下書きを作った"]')).toHaveCount(1)
+    // 読み上げ：今日の欄の先頭に要約、その課題の細かい行は出さない。文の形も同じ
+    await page.getByRole('button', { name: '読み上げ' }).click()
+    const today = page.locator('.daily-section[data-section="today"]')
+    await expect(today.locator('.daily-text').first()).toHaveValue(/今日は終わりません/)
+    expect(await today.locator('.daily-text').first().evaluate(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)).toBe(false)
+    await expect(today.locator('.daily-text[value*="回答の下書きを作った"]')).toHaveCount(0)
+    await expect(page.locator('.daily-section[data-section="summary"]')).toHaveCount(0)
+    await expect(page.locator('.daily-preview')).toContainText('今日は終わりません')
+    await expect(page.locator('.daily-preview')).not.toContainText('回答の下書きを作った')
+    // 詳しくへ戻す
+    await page.getByRole('button', { name: '詳しく' }).click()
+    await expect(page.locator('.daily-section[data-section="today"] .daily-text[value*="回答の下書きを作った"]')).toHaveCount(1)
+  })
+})

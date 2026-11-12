@@ -106,6 +106,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Status {no} has the wrong shape (id, name and tone are required)': '{no} 番目のステータスの形が違います（id・name・tone が要ります）',
   'Not found': '見つかりません',
   'No tadori screen is open. Open the screen, then send again': 'tadori の画面が開いていません。画面を開いてから送ってください',
+  'A summary needs issue (the summary is one per issue)': '要約には issue（課題）が要ります（要約は課題ごとに 1 つです）',
+  '{issue} already has a summary for this day ({id}). Edit that row instead': '{issue} にはこの日の要約がもうあります（{id}）。その行を直してください',
   'Another write is being saved in this project ({seconds} seconds so far). Nothing was changed. Try again in a moment': 'この案件では別の書き込みを保存しています（{seconds} 秒前から）。今回の変更はしていません。少し待ってからもう一度送ってください',
   'Give the date as YYYY-MM-DD': '日付は YYYY-MM-DD で渡してください',
   'No such operation': 'その操作はありません',
@@ -224,6 +226,9 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'No row matches "{query}"': '「{query}」に合う行がありません',
   '- {id} ({kind}) {title}': '- {id}（{kind}）{title}',
   '{count} more. Add words to narrow it down': 'ほか {count} 件。言葉を足して絞ってください',
+  'today = Today / next = Next working day / consult = Questions / upkeep = Ledger upkeep (not work on deliverables) / summary = a short summary per issue to read out (needs issue, one per issue per day: what happened, which phase it is in, whether it finishes today, what comes next)':
+    'today＝今日 / next＝次の作業日 / consult＝相談 / upkeep＝台帳の整備（成果物の作業ではないもの） / summary＝課題ごとの読み上げ用の要約（issue が要る・1 日 1 課題に 1 つ。何があって・今どの工程か・今日終わるか・終わったら何をするか）',
+  'true for the text to read out: an issue with a summary shows the summary instead of its detailed lines for Today': 'true で読み上げの文にする（要約のある課題は、今日の細かい行の代わりに要約を出す）',
   'today = Today / next = Next working day / consult = Questions / upkeep = Ledger upkeep (not work on deliverables)':
     'today＝今日 / next＝次の作業日 / consult＝相談 / upkeep＝台帳の整備（成果物の作業ではないもの）',
   'Date (YYYY-MM-DD). Empty for today': '日付（YYYY-MM-DD）。空なら今日',

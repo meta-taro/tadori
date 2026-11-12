@@ -569,6 +569,7 @@
   .daily-entry { display:flex; align-items:center; gap:10px; padding:4px 0; }
   .daily-no { width:24px; color:var(--ink-subtle); font-variant-numeric:tabular-nums; flex:none; }
   .daily-text { flex:1; min-width:200px; max-width:none; }
+  .daily-summary-text { resize:vertical; line-height:1.55; padding-top:6px; padding-bottom:6px; white-space:pre-wrap; font:inherit; }
   .daily-meta { display:flex; align-items:center; gap:8px; flex:none; max-width:40%; overflow:hidden; white-space:nowrap; }
   /* 担当で絞っていないときの、行の担当の札と見出しの「全員」。行の末尾の、正本などへのリンク */
   .daily-who { flex:none; max-width:9em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:600; background:var(--surface-2); border:1px solid var(--hairline-strong); color:var(--ink-muted); }
