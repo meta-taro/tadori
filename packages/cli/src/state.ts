@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { unknownTaskStatuses, type UnknownTaskStatus, approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
+import { unknownTaskStatuses, type UnknownTaskStatus, approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readCheckpointLog, checkpointsOf, type Checkpoint, type CheckpointRow, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 漏れに「md-business で開く」の URL を付けたもの（雛形が .tadori/links.tsv にあるとき） */
 export type LeakWithLink = Leak & {
@@ -28,6 +28,10 @@ export interface ProjectState {
   readonly leaks: readonly LeakWithLink[]
   readonly gates: readonly Gate[]
   readonly checks: Awaited<ReturnType<typeof readChecks>>
+  /** 節目で確かめた記録（.tadori/checkpoint-log.tsv。書いた順） */
+  readonly checkpointLog: readonly CheckpointRow[]
+  /** 節目の並び（案件が決めたものか、既定の 4 つ） */
+  readonly checkpoints: readonly Checkpoint[]
   /** 前のチェックでは漏れだったが、いまは漏れの無い行（チェックの記録から読むだけ） */
   readonly resolved: readonly ResolvedItem[]
   /** 人の表（.tadori/members.tsv。人 → 役割。書かなくてもよい）。画面で人ごとに絞るのに使う */
@@ -58,6 +62,8 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     leaks: withOpenLinks(project, dir, prefix, leaks),
     gates: buildGates(project, leaks, today, await approvalChanges(dir, project)),
     checks,
+    checkpointLog: await readCheckpointLog(dir),
+    checkpoints: checkpointsOf(project),
     resolved: resolvedItems(checks, leaks),
     members,
     origins: originsOf(project, today),

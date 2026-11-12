@@ -36,7 +36,7 @@ describe('節目のチェック（MCP）', () => {
     const list = (await handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' })) as { result: { tools: Array<{ name: string }> } }
     expect(list.result.tools.map(t => t.name)).toEqual(expect.arrayContaining(['checkpoint', 'checkpoint_record']))
     expect((await tool('rule_update', { id: 'N1', at: 'cases-written|before-commit', check: '期待する結果に作りを書いていないか' })).isError).toBeFalsy()
-    expect((await tool('rule_update', { id: 'N2', at: 'cases-written' })).isError).toBeFalsy()
+    expect((await tool('rule_update', { id: 'N2', at: 'cases-written', check: '' })).isError).toBeFalsy()
   })
 
   test('at を渡さなければ、節目の一覧と、それぞれに効くルールの数', async () => {

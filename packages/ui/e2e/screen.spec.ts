@@ -425,6 +425,48 @@ test.describe('チェックの記録', () => {
   })
 })
 
+test.describe('節目の確かめの記録', () => {
+  test('1 行 = 1 回の確かめで新しい順。結果を一言で出し、押すと当てたルールと根拠が開く', async ({ page }) => {
+    await page.goto('/#log')
+    const rows = page.locator('.cp-run')
+    await expect(rows).toHaveCount(3)
+    // いちばん新しいのは W-04 の投稿の前で、ミスが未対応
+    const newest = rows.first()
+    await expect(newest).toContainText('2026-10-30')
+    await expect(newest).toContainText('W-04')
+    await expect(newest).toContainText('外へ投稿する前')
+    await expect(newest.locator('.cp-result')).toContainText('2 件中 1 件ミス → 未対応')
+    await expect(newest).toHaveClass(/hole/)
+    // 対応済みのミス・すべて OK
+    await expect(rows.nth(1).locator('.cp-result')).toContainText('2 件中 1 件ミス → 対応済み')
+    await expect(rows.nth(2).locator('.cp-result')).toContainText('該当ルール 2 件すべて OK')
+    await expect(rows.nth(2)).toHaveClass(/ok/)
+
+    // 開くと、当てたルール・結果・根拠の場所・何をしたか、と当時のルールセットの版
+    await rows.nth(1).locator('summary').click()
+    const detail = rows.nth(1).locator('.cp-rules')
+    await expect(detail).toBeVisible()
+    await expect(detail.locator('tbody tr')).toHaveCount(2)
+    await expect(detail).toContainText('docs/briefing.md:4')
+    await expect(detail).toContainText('理由と次の手を 1 行ずつ足した')
+    await expect(rows.nth(1)).toContainText('a1b2c3d')
+  })
+
+  test('タスクで絞ると行と報告用のまとめが変わり、まとめは事実だけの文', async ({ page }) => {
+    await page.goto('/#log')
+    await page.locator('#cp-target').selectOption('W-05')
+    await expect(page.locator('.cp-run')).toHaveCount(2)
+    const report = page.locator('#cp-report')
+    await expect(report).toHaveValue(/節目の確かめ 2 回/)
+    await expect(report).toHaveValue(/当てたルール 延べ 4 件/)
+    await expect(report).toHaveValue(/ミス 1 件（対応済み 1・未対応 0）/)
+    await expect(report).toHaveValue(/N2/)
+    await expect(report).not.toHaveValue(/%|点/)
+    await page.locator('#cp-target').selectOption('')
+    await expect(page.locator('.cp-run')).toHaveCount(3)
+  })
+})
+
 test.describe('ルールの分類の色と範囲', () => {
   test('分類で分けると、分類の帯に色と範囲（チーム）の札が付く', async ({ page }) => {
     await page.goto('/#rules')

@@ -2,6 +2,7 @@
 import { t } from './i18n.js'
 import { api, chip, esc, ICON_INFO, idPill, kindLabel, messageOf, originHtml, toast, within, ICON_LINK, personChips } from './util.js'
 import { renderPicker } from './trace-picker.js'
+import { renderCheckpoints } from './view-checkpoints.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').TraceResult} TraceResult */
@@ -117,9 +118,12 @@ export function renderLog(view, state) {
   const entries = runsOf([...state.checks].reverse()).map(logEntry).join('')
   view.innerHTML = `
     <h1>${esc(t('Check log'))}</h1>
+    <section class="cp-section"></section>
+    <h2>${esc(t('Gap checks (tadori check)'))}</h2>
     <p class="lede">${esc(t('Each time the rules are checked, one row is added in 5W1H form ({file}, managed in git). People write the rows for their own approvals.')).replace('{file}', () => '<span class="mono">.tadori/checks.tsv</span>')}</p>
     <div class="note">${ICON_INFO}<span>${esc(t('To add a row, use {command}.')).replace('{command}', () => `<span class="mono">${esc(t('tadori check --log --who NAME --why REASON'))}</span>`)}</span></div>
     <div class="log-list">${entries || `<p class="cond">${esc(t('No records yet'))}</p>`}</div>`
+  renderCheckpoints(/** @type {HTMLElement} */ (view.querySelector('.cp-section')), state)
   // 切った文は、押すと全部出る（もう一度押すと戻る）
   view.querySelectorAll('.log-clamp').forEach(el => el.addEventListener('click', () => {
     el.setAttribute('aria-expanded', String(el.getAttribute('aria-expanded') !== 'true'))

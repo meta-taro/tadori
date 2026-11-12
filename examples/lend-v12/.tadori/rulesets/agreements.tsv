@@ -1,6 +1,6 @@
 # 判定しない文のルール（note）。書くときの約束を label に書く。工程は書かなくてよい
-id	phase	kind	from	to	field	only	group	owner	label
-N1		note					visible		朝会のカンペは、1 行目に結論（終わった・遅れている・相談がある）を書く
-N2		note					visible		遅れは日数で書き、理由と次の手を 1 行ずつ添える
-N3		note					agreement		エージェントは「漏れを埋めた」と書かない。漏れの一覧までを出し、認めるのは人
-N4		note					agreement		チャットの返事は、1 行目で用件を言い、できていないことはできていないと書く
+id	phase	kind	from	to	field	only	group	owner	label	at	check
+N1		note					visible		朝会のカンペは、1 行目に結論（終わった・遅れている・相談がある）を書く	cases-written|before-post	1 行目に結論（終わった・遅れている・相談がある）が書いてあるか
+N2		note					visible		遅れは日数で書き、理由と次の手を 1 行ずつ添える	cases-written|before-post	遅れを日数で書き、理由と次の手を 1 行ずつ添えているか
+N3		note					agreement		エージェントは「漏れを埋めた」と書かない。漏れの一覧までを出し、認めるのは人		
+N4		note					agreement		チャットの返事は、1 行目で用件を言い、できていないことはできていないと書く		

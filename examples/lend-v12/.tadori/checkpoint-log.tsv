@@ -1,0 +1,11 @@
+# 節目で確かめた記録（架空の見本）。追記だけで、過去の行は書き換えない
+run	when	who	at	target	ruleset	rule	result	where	note
+20261028100000-1	2026-10-28 10:00:00	エージェント	cases-written	W-05	a1b2c3d	N1	ok	docs/briefing.md:1	
+20261028100000-1	2026-10-28 10:00:00	エージェント	cases-written	W-05	a1b2c3d	N2	ok	docs/briefing.md:3	
+20261028100000-1	2026-10-28 10:00:00	エージェント	cases-written	W-05	a1b2c3d	*	clear	cases-written：該当ルール 2 件すべて OK（確かめた 2・該当なし 0）	N1|N2
+20261029170000-2	2026-10-29 17:00:00	エージェント	before-post	W-05	a1b2c3d	N1	ok	docs/briefing.md:1	
+20261029170000-2	2026-10-29 17:00:00	エージェント	before-post	W-05	a1b2c3d	N2	fixed	docs/briefing.md:4	遅れの理由が無かった。理由と次の手を 1 行ずつ足した
+20261029170000-2	2026-10-29 17:00:00	エージェント	before-post	W-05	a1b2c3d	*	clear	before-post：該当ルール 2 件中 1 件ミス（対応済み 1・未対応 0）	N1|N2
+20261030090000-3	2026-10-30 09:00:00	エージェント	before-post	W-04	a1b2c3d	N1	open	docs/briefing.md:1	結論が 3 行目にあった。書いた人に確かめてから直す
+20261030090000-3	2026-10-30 09:00:00	エージェント	before-post	W-04	a1b2c3d	N2	na	遅れていない	
+20261030090000-3	2026-10-30 09:00:00	エージェント	before-post	W-04	a1b2c3d	*	open	before-post：該当ルール 2 件中 1 件ミス（対応済み 0・未対応 1）	N1|N2
