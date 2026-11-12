@@ -1,6 +1,6 @@
 {
   "name": "@tadori/desktop",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "private": true,
   "description": "tadori のデスクトップアプリ（Tauri の窓から tadori serve を起こして映す）",
   "scripts": {
