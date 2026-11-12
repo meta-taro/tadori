@@ -161,4 +161,23 @@ export const JA: Readonly<Record<string, string>> = {
   'The approver looks at the change to {changed} ({commit}) and rewrites the date of the {rule} row in {file} to the day they looked': '承認する人が {changed} の変更（{commit}）を見て、{file} の {rule} の行の日付を、見た日に書き直す',
   'The order of the rows matters: the 1st row means "not started yet", and a status with tone ok means "done". Every other status counts as started and not done': '行の順番に意味があります：1 行目は「まだ始めていない」、tone が ok の状態は「終わった」。ほかの状態は「始まっていて、終わっていない」として数えます',
   'Write the status column of ledger/wbs.tsv with an id (or a name) from this table. tadori check shows statuses that are not here': 'ledger/wbs.tsv の status 列には、この表の id（か name）を書きます。この表に無い状態は tadori check が知らせます',
+
+  // ---- 節目のチェック ----
+  'Rule {id}: the checkpoint "{at}" is not defined ({allowed})': 'ルール {id}：節目「{at}」はありません（{allowed}）',
+  'Test cases written': '試験ケースを書き終えた',
+  'Before giving a verdict': '判定を付ける前',
+  'Before posting outside': '外へ投稿する前',
+  'Before committing': 'コミット前',
+  'No result for: {ids}. Check every item before recording': '{ids} の結果がありません。項目をすべて確かめてから記録してください',
+  '{rule} does not apply at the checkpoint {at}': '{rule} は節目 {at} に効くルールではありません',
+  '{rule}: the result "{result}" is not allowed ({allowed})': '{rule}：結果「{result}」は使えません（{allowed}）',
+  '{rule}: write where you checked (file:line or ledger ID). For na, write why it does not apply': '{rule}：確かめた場所（ファイル:行か台帳の ID）を書いてください。na なら、当てはまらない理由を書きます',
+  '{at}: all {count} applicable rules OK (ok {ok}, na {na})': '{at}：該当ルール {count} 件すべて OK（確かめた {ok}・該当なし {na}）',
+  '{at}: {misses} of {count} applicable rules missed (fixed {fixed}, not fixed {open})': '{at}：該当ルール {count} 件中 {misses} 件ミス（対応済み {fixed}・未対応 {open}）',
+  '{rule}: for {result}, write in note what was missing and what you did (or that it is not fixed yet)': '{rule}：{result} のときは、何が抜けていて何をしたか（まだ直していないなら、そう）を note に書いてください',
+  'Nothing is staged. Stage the change you are about to commit, then record': 'stage してある変更がありません。コミットする変更を stage してから記録してください',
+  'Give the target: the WBS task ID or ledger ID this check is for': '対象（このチェックがどの WBS のタスクか、台帳のどの ID か）を渡してください',
+  '{id} is not in the ledger or the WBS': '{id} は台帳にも WBS にもありません',
+  'No rule applies at the checkpoint {at}': '節目 {at} に効くルールがありません（ルールの at 列に書きます）',
+  'Record checkpoint {at} for {target}': '節目 {at} の記録（{target}）',
 }

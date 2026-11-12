@@ -11,6 +11,7 @@ import { CLI_VERSION } from './version.js'
 import { serveMcp } from './mcp.js'
 import { howTo } from './guide.js'
 import { runCheck } from './check-log.js'
+import { checklistText, checkpointListText, verifyCheckpoint } from './checkpoint.js'
 import { isDay, loadDaily } from './daily.js'
 import { parentPidFromEnv, watchParent } from './parent-watch.js'
 
@@ -22,6 +23,8 @@ const usage = (): string => t(`Usage:
   tadori why <ID> [project folder]
   tadori serve [project folder] [--port {port}] [--today YYYY-MM-DD]
   tadori daily [project folder] [--who owner] [--date YYYY-MM-DD]
+  tadori checkpoint [project folder] [--at checkpoint] [--target ID]
+  tadori checkpoint verify [project folder] --at checkpoint [--target ID]
   tadori how-to [topic]
   tadori mcp [project folder] [--screen http://127.0.0.1:4873]
 
@@ -31,6 +34,8 @@ const usage = (): string => t(`Usage:
   why    Follow links up and down from one row and show where they break
   serve  Start the screen on this machine (127.0.0.1)
   daily  Daily progress per person (Today, Next working day, Questions, Notes). --who filters by owner
+  checkpoint  Show the checkpoints, or the check items at one checkpoint (--at). verify exits with 1 if the last record does not cover every applicable rule
+              (call it from git pre-commit with --at before-commit, or from an agent hook before posting)
   how-to Show how to use tadori (same content as MCP how_to). Topics: start, ledger, rules, check, daily, write, screen, links, sources, agent-rules
   mcp    Open the MCP server on standard input/output (how-to, glossary, remaining work, gaps, links, ledger search, the dedicated screen cursor)
          --screen is where the screen operated by the dedicated cursor lives (default: the desktop app at http://127.0.0.1:4873)
@@ -49,6 +54,8 @@ const { values, positionals } = parseArgs({
     screen: { type: 'string' },
     date: { type: 'string' },
     lang: { type: 'string' },
+    at: { type: 'string' },
+    target: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
   },
 })
@@ -148,6 +155,24 @@ async function main(): Promise<void> {
     if (!isDay(date)) fail(t('Write --date as YYYY-MM-DD: {value}', { value: date }))
     const daily = await loadDaily(dir, date, values.who)
     process.stdout.write(`${daily.text}\n`)
+    return
+  }
+
+  if (command === 'checkpoint') {
+    const isVerify = rest[0] === 'verify'
+    const dir = resolve((isVerify ? rest[1] : rest[0]) ?? '.')
+    const at = (values.at ?? '').trim()
+    const request = { at, ...(values.target ? { target: values.target } : {}) }
+    if (isVerify) {
+      if (!at) fail(t('Give the checkpoint with --at (e.g. --at before-commit)'))
+      const verified = await verifyCheckpoint(dir, request)
+      ;(verified.ok ? process.stdout : process.stderr).write(`${verified.text}
+`)
+      process.exitCode = verified.ok ? 0 : 1
+      return
+    }
+    process.stdout.write(`${at ? await checklistText(dir, request) : await checkpointListText(dir)}
+`)
     return
   }
 

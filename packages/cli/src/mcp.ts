@@ -5,6 +5,7 @@ import { currentLang, parseTsv, t, trace } from '@tadori/core'
 import { fixText, formatCheck, formatTrace, originText } from './format.js'
 import { howTo } from './guide.js'
 import { committed, writeTools, type WriteContext } from './mcp-write.js'
+import { checkpointTools } from './mcp-checkpoint.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 import { loadState, localToday } from './state.js'
 import { defaultLogDir, readServerErrors } from './error-log.js'
@@ -346,7 +347,7 @@ const currentLangHeader = (): string => currentLang()
 function buildTools(options: McpOptions): Tool[] {
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
   // 書く道具は、open_project で替えた案件を読むので、同じ入れ物（options）を渡す
-  return [...buildProjectTools(options), ...writeTools(options as WriteContext), {
+  return [...buildProjectTools(options), ...writeTools(options as WriteContext), ...checkpointTools(options), {
     name: 'how_to',
     description: t('Return how to use tadori (getting started, writing the ledger and rules, checking, guiding a person on the screen, what agents must follow). '
       + 'Leave topic empty for the list of topics. When you first use tadori, read start and agent-rules.'),

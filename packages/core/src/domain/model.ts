@@ -105,7 +105,27 @@ export interface Rule {
   readonly group?: string
   /** 担当の役割（例：設計担当・検証担当・PM）。漏れを直す人・承認する人。案件ごとに自由に書く */
   readonly owner?: string
+  /** 効く節目の ID（rulesets の at 列を「|」で分けたもの）。その節目で、このルールをチェック項目として突きつける */
+  readonly at?: readonly string[]
+  /** 節目で突きつけるチェック項目の文（rulesets の check 列）。無ければ label を使う */
+  readonly check?: string
 }
+
+/**
+ * 工程の節目（試験ケースを書き終えた・判定を付ける前・外へ投稿する前・コミット前など）。
+ * 節目では、そこに効くルールだけを並べ、項目ごとに結果と根拠の場所を記録させる。
+ * 案件が .tadori/checkpoints.tsv で決める。書かなければ既定の 4 つ
+ */
+export interface Checkpoint {
+  readonly id: string
+  readonly name: string
+}
+
+/** 既定の節目の ID（名前はそのときの言語で付ける） */
+export const DEFAULT_CHECKPOINT_IDS = ['cases-written', 'before-judge', 'before-post', 'before-commit'] as const
+
+/** コミット前の節目。対象は「いま stage してある変更」で、tadori が印を付ける */
+export const STAGED_CHECKPOINT = 'before-commit'
 
 /** 台帳のファイル（直し方の案内に使う。読み書きの場所と同じ） */
 export const LEDGER_FILES = {
@@ -184,6 +204,8 @@ export interface Project {
   readonly sources?: readonly import('./sources.js').SourceDef[]
   /** ルールの分類（.tadori/rule-groups.tsv の並び順。書かなければ空） */
   readonly ruleGroups?: readonly RuleGroup[]
+  /** 節目（.tadori/checkpoints.tsv。書かなければ無く、既定の 4 つを使う） */
+  readonly checkpoints?: readonly Checkpoint[]
   readonly name: string
   /** 予定の表（ledger/wbs.tsv）の呼び名（project.tsv の schedule_label。例：スケジュール・工程表）。書かなければ画面は「WBS」 */
   readonly scheduleLabel?: string

@@ -78,6 +78,8 @@ Other columns:
   - `scope` who the rules apply to: `team` (shared with the team, kept in git) or `local` (only between this person and the agents). Rules added to a `local` category go in `.tadori/rulesets/rules.local.tsv`, which is kept out of git (`.tadori/rulesets/.gitignore`) and never committed
 - `owner` who fixes the gap (e.g. design owner, verification owner). Shown on the screen and in `list_leaks`
 - `label` one sentence for people to read (e.g. every viewpoint has a test case)
+- `at` the checkpoints where this rule is put to the agent as a check item, separated by `|` (e.g. `cases-written|before-judge`). See `checkpoint`
+- `check` the check item to put at those checkpoints (a question answered by looking). Empty uses `label`
 
 Example:
 ```
@@ -99,6 +101,20 @@ Agents read the rules with `list_rules` (filter with `group` or `kind`). Read th
 
 Each gap comes with an "owner" and "how to fix" (which column of which line in which file to write what, so the gap goes away).
 After fixing, run check again and make sure the gap is gone.
+
+## checkpoint Checking at checkpoints
+
+Written agreements are easy to forget at the moment they matter. A checkpoint puts the rules that apply there in front of the agent as check items, and keeps a record that every one was checked.
+
+- Checkpoints: `cases-written` (test cases written), `before-judge` (before a verdict), `before-post` (before posting outside), `before-commit`. A project can define its own in `.tadori/checkpoints.tsv` (columns `id name`)
+- Make a rule apply at a checkpoint with its `at` column, and write the check item in `check`
+- At the checkpoint, read the items with `checkpoint` (MCP, `at` and `target`) or `tadori checkpoint <folder> --at <checkpoint>`
+- Check each item by looking, then record with `checkpoint_record`: for every item, a result (`ok` checked and met / `na` does not apply / `fixed` found a miss and fixed it / `open` found a miss, not fixed yet) and where you checked (file:line or ledger ID). `fixed` and `open` need a `note` on what was missing and what you did. If any item is missing, nothing is written
+- The target is the WBS task ID or ledger ID. For `before-commit` it is the staged change: record after staging, and do not change what is staged afterwards
+- The record goes to `.tadori/checkpoint-log.tsv` (append only, committed). Each record keeps the ruleset version at that time (the last commit of the rule files), so a later defect can be told apart: a rule was missing, or a rule was not applied
+- `tadori checkpoint verify <folder> --at <checkpoint> [--target ID]` exits with 1 when the last record does not cover every rule that applies now (rules added later count), or has an `open` miss. Call it from git pre-commit (`--at before-commit`) or from an agent hook before posting. Installing hooks is up to the person who owns the setup
+
+This is the agent's own record, not a human approval. It never marks a gap as filled.
 
 ## daily Daily progress per person
 

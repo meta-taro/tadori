@@ -79,10 +79,11 @@ const taskSchema = () => ({
   id: S(t('Task ID (starts with W)')), phase: S(t('Phase ID')), name: S(t('Task name')), start: S(t('Start date YYYY-MM-DD')), end: S(t('End date YYYY-MM-DD')),
   status: S(t('Status (one from the settings)')), owner: S(t('Owner (for two or more, "A・B")')), issue: S(t('Issue ID (a ledger row)')),
 })
-const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'group', 'owner', 'label'] as const
+const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'group', 'owner', 'label', 'at', 'check'] as const
 const ruleSchema = () => ({
   id: S(t('Rule ID')), phase: S(t('Phase ID')), kind: S(t('covered, refers, filled, allowed or approval, or note (a written agreement that is not checked)')), from: S(t('Source kind')), to: S(t('Target kind')),
   field: S(t('Column that filled and allowed check')), only: S(t('Narrow the targets with "column=value", "column=a|b" (any of them) or "column!=value"')), values: S(t('For allowed: the values the column may hold, separated by | (e.g. OK|NG)')), group: S(t('Category ID from .tadori/rule-groups.tsv (empty to remove)')), owner: S(t('Owner who fixes it (a role)')), label: S(t('One sentence for people to read')),
+  at: S(t('Checkpoints where this rule is put to the agent as a check item, separated by | (e.g. cases-written|before-judge). Empty to remove')), check: S(t('The check item to put at those checkpoints (a question that can be answered by looking). Empty to use label')),
 })
 
 /** デスクトップアプリが覚えている最近の案件（OS ごとの置き場所） */

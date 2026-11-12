@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { isAbsolute, join, normalize } from 'node:path'
 import { RULE_GROUP_COLORS, RULE_GROUP_SCOPES, type Approval, type ApprovalStatus, type Item, type Phase, type Project, type Rule, type RuleGroup, type RuleGroupColor, type RuleGroupScope, type RuleKind, type StatusDef, type Task } from '../domain/model.js'
+import { checkpointsOf } from '../usecase/checkpoint.js'
 import { validateLinkTemplate, type LinkTemplate } from '../domain/links.js'
 import type { SourceDef } from '../domain/sources.js'
 import { t } from '../i18n.js'
@@ -15,6 +16,8 @@ import { parseTsv } from './tsv.js'
  *   .tadori/statuses.tsv         WBS のステータスの設定
  *   .tadori/rulesets/*.tsv       工程ごとのルールセット
  *   .tadori/checks.tsv           チェックの記録（5W1H）
+ *   .tadori/checkpoints.tsv      節目の並び（無くてもよい。無ければ既定の 4 つ）
+ *   .tadori/checkpoint-log.tsv   節目で確かめた記録（追記だけ）
  *   ledger/items.tsv             台帳（設計書の章・節、commit、観点、試験ケース、試験の記録、指摘…）
  *   ledger/wbs.tsv               WBS のタスク
  *   ledger/approvals.tsv         人の承認の記録（人が書く）
@@ -36,7 +39,15 @@ export const PATHS = {
   columns: '.tadori/columns.tsv',
   sheets: '.tadori/sheets.tsv',
   ruleGroups: '.tadori/rule-groups.tsv',
+  checkpoints: '.tadori/checkpoints.tsv',
 } as const
+
+/** ルールの at 列に、案件の節目に無い ID が書かれていないか（打ち間違いで黙って効かなくならないように） */
+function unknownCheckpointProblems(project: Project): string[] {
+  const known = new Set(checkpointsOf(project).map(c => c.id))
+  return project.rules.flatMap(rule => (rule.at ?? []).filter(id => !known.has(id)).map(id =>
+    t('Rule {id}: the checkpoint "{at}" is not defined ({allowed})', { id: rule.id, at: id, allowed: [...known].join(' / ') })))
+}
 
 /** 読み込みで見つかった問題をまとめて返す（1 つずつ直させない） */
 export class ProjectLoadError extends Error {
@@ -221,6 +232,8 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
       const values = splitValues(row.values ?? '')
       const group = (row.group ?? '').trim()
       const phase = (row.phase ?? '').trim()
+      const at = splitValues(row.at ?? '')
+      const check = (row.check ?? '').trim()
       // 判定するルールは、どの工程のものかが無いと、工程の完了判定に入らず黙って抜ける
       if (kind !== 'note' && !phase) {
         problems.push(t('{file}, rule {id}: write the phase (only "note" rules may leave it empty)', { file: `${PATHS.rulesets}/${file}`, id: String(row.id) }))
@@ -237,6 +250,8 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
         ...(values.length ? { values } : {}),
         ...(owner ? { owner } : {}),
         ...(group ? { group } : {}),
+        ...(at.length ? { at } : {}),
+        ...(check ? { check } : {}),
       }]
     })
   }))
@@ -345,7 +360,7 @@ export async function loadProject(dir: string): Promise<Project> {
     throw new ProjectLoadError([t('{dir} has no .tadori folder. Specify a tadori project folder', { dir })])
   }
   const problems: string[] = []
-  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows, sourceRows, sheetRows, ruleGroupRows] = await Promise.all([
+  const [projectRows, phaseRows, statusRows, rules, itemRows, wbsRows, approvalRows, kindRows, columnRows, linkRows, sourceRows, sheetRows, ruleGroupRows, checkpointRows] = await Promise.all([
     readRows(dir, PATHS.project),
     readRequiredRows(dir, PATHS.phases, problems),
     readRequiredRows(dir, PATHS.statuses, problems),
@@ -359,6 +374,7 @@ export async function loadProject(dir: string): Promise<Project> {
     readRows(dir, PATHS.sources),
     readRows(dir, PATHS.sheets),
     readRows(dir, PATHS.ruleGroups),
+    readRows(dir, PATHS.checkpoints),
   ])
   const phases: Phase[] = phaseRows.map(row => {
     const order = Number(row.order)
@@ -392,7 +408,9 @@ export async function loadProject(dir: string): Promise<Project> {
     links: toLinks(linkRows, problems),
     sources: toSources(sourceRows, problems),
     ruleGroups: toRuleGroups(ruleGroupRows, problems),
+    ...(checkpointRows.length ? { checkpoints: checkpointRows.map(r => ({ id: (r.id ?? '').trim(), name: (r.name ?? '').trim() || (r.id ?? '').trim() })) } : {}),
   }
+  problems.push(...unknownCheckpointProblems(project))
   if (problems.length) throw new ProjectLoadError(problems)
   return project
 }

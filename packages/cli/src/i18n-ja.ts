@@ -299,6 +299,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   tadori why <ID> [project folder]
   tadori serve [project folder] [--port {port}] [--today YYYY-MM-DD]
   tadori daily [project folder] [--who owner] [--date YYYY-MM-DD]
+  tadori checkpoint [project folder] [--at checkpoint] [--target ID]
+  tadori checkpoint verify [project folder] --at checkpoint [--target ID]
   tadori how-to [topic]
   tadori mcp [project folder] [--screen http://127.0.0.1:4873]
 
@@ -308,6 +310,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   why    Follow links up and down from one row and show where they break
   serve  Start the screen on this machine (127.0.0.1)
   daily  Daily progress per person (Today, Next working day, Questions, Notes). --who filters by owner
+  checkpoint  Show the checkpoints, or the check items at one checkpoint (--at). verify exits with 1 if the last record does not cover every applicable rule
+              (call it from git pre-commit with --at before-commit, or from an agent hook before posting)
   how-to Show how to use tadori (same content as MCP how_to). Topics: start, ledger, rules, check, daily, write, screen, links, sources, agent-rules
   mcp    Open the MCP server on standard input/output (how-to, glossary, remaining work, gaps, links, ledger search, the dedicated screen cursor)
          --screen is where the screen operated by the dedicated cursor lives (default: the desktop app at http://127.0.0.1:4873)
@@ -318,6 +322,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   tadori why <ID> [案件のフォルダ]
   tadori serve [案件のフォルダ] [--port {port}] [--today YYYY-MM-DD]
   tadori daily [案件のフォルダ] [--who 担当] [--date YYYY-MM-DD]
+  tadori checkpoint [案件のフォルダ] [--at 節目] [--target ID]
+  tadori checkpoint verify [案件のフォルダ] --at 節目 [--target ID]
   tadori how-to [話題]
   tadori mcp [案件のフォルダ] [--screen http://127.0.0.1:4873]
 
@@ -327,6 +333,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   why    1 件から上下に辿り、線が切れている所を出す
   serve  手元（127.0.0.1）で画面を立ち上げる
   daily  人単位の 1 日の進行（今日・次の作業日・相談・補足）。--who で担当を絞る
+  checkpoint  節目の一覧か、1 つの節目（--at）で確かめる項目を出す。verify は、最後の記録が効くルールを全部当てていなければ終了コード 1
+              （git の pre-commit から --at before-commit で、エージェントのフックから投稿の前に呼ぶ）
   how-to 使い方を出す（MCP の how_to と同じ中身）。話題：start・ledger・rules・check・daily・write・screen・links・sources・agent-rules
   mcp    MCP の口を標準入出力で開く（使い方・用語・残課題・漏れ・つながり・台帳の行を探す・画面の専用カーソル）
          --screen は専用カーソルで操作する画面の場所（既定はデスクトップアプリの http://127.0.0.1:4873）
@@ -367,4 +375,28 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Return the version of this tadori MCP, the commit it was built from and when, and whether it needs rebuilding. Use it to tell whether a fix is in the MCP you are talking to.': 'この tadori の MCP の版・組んだ commit と日時・組み直しが要るかを返す。いま話している MCP に直しが入っているかを見分けるのに使う。',
   'seconds must be a number from {min} to {max}': 'seconds は {min}〜{max} の数にしてください',
   'How many seconds to keep the remark on the screen (1–60). Leave it out and the screen decides from the length (at least 5 seconds, longer for long remarks)': '一言を画面に出しておく秒数（1〜60）。省くと画面が文の長さで決める（最低 5 秒・長い文ほど長く）',
+  // ---- 節目のチェック ----
+  '- {id} ({name}): {count} rules': '- {id}（{name}）：ルール {count} 件',
+  'Checkpoints (rules apply through the at column of the rulesets):': '節目（ルールセットの at 列で、ルールを節目に効かせる）：',
+  'There is no record yet for this target (rules to check: {ids})': 'この対象には、まだ記録がありません（当てるルール：{ids}）',
+  'The last record did not check: {ids} (rules added since then). Check them and record again': '最後の記録は {ids} を当てていません（そのあとに足されたルール）。確かめて記録し直してください',
+  'The last record has misses not fixed yet: {ids}': '最後の記録に、未対応のミスがあります：{ids}',
+  'There is a record that checked every applicable rule': '効くルールをすべて当てた記録があります',
+  'The checkpoint "{at}" is not defined ({allowed})': '節目「{at}」はありません（{allowed}）',
+  'Check each item at {at}. For each, record ok / na / fixed / open and where you checked (file:line or ledger ID) with checkpoint_record:': '節目 {at} の項目を 1 つずつ確かめ、それぞれ ok（確かめた）/ na（該当なし）/ fixed（ミスを直した）/ open（ミス・未対応）と、確かめた場所（ファイル:行か台帳の ID）を checkpoint_record で記録してください：',
+  'Nothing to check: nothing is staged': '確かめるものはありません（stage してある変更が無い）',
+  'Read the items with checkpoint (MCP) or tadori checkpoint --at {at}, check each one, and record with checkpoint_record': 'checkpoint（MCP）か tadori checkpoint --at {at} で項目を読み、1 つずつ確かめて checkpoint_record で記録してください',
+  'Give the checkpoint with --at (e.g. --at before-commit)': '節目を --at で渡してください（例：--at before-commit）',
+  'Checkpoint ID (e.g. cases-written, before-judge, before-post, before-commit). Omit to list the checkpoints': '節目の ID（例：cases-written・before-judge・before-post・before-commit）。省くと節目の一覧',
+  'WBS task ID or ledger ID the check is for. Not used for before-commit (the staged change is the target)': 'このチェックの対象（WBS のタスク ID か台帳の ID）。before-commit では使わない（stage してある変更が対象）',
+  'At a checkpoint in your work (test cases written, before a verdict, before posting outside, before committing), return the rules that apply there as check items, and whether there is already a record for the target. Check every item by looking, then record the results with checkpoint_record. This is not a human approval.': '仕事の節目（試験ケースを書き終えた・判定の前・外へ投稿する前・コミット前）で、そこに効くルールをチェック項目として返し、対象の記録がもうあるかも返す。項目を 1 つずつ実物を見て確かめ、結果を checkpoint_record で記録する。人の承認ではない。',
+  'Record the results of every check item at a checkpoint (.tadori/checkpoint-log.tsv, append only, committed). Every item needs a result and where you checked; fixed and open need a note on what was missing and what you did. If any item is missing, nothing is written. The record keeps the ruleset version at that time, so a later defect can be told apart: a rule was missing, or a rule was not applied.': '節目のチェック項目の結果を全部記録する（.tadori/checkpoint-log.tsv。追記だけで commit する）。どの項目にも結果と確かめた場所が要り、fixed と open には何が抜けていて何をしたかを note に書く。1 つでも欠ければ何も書かない。記録にはその時点のルールセットの版が残るので、後で不具合が見つかったとき「ルールが無かった」のか「ルールを当てていなかった」のかを切り分けられる。',
+  'Checkpoint ID': '節目の ID',
+  'Who checked (your seat name, or the person who asked)': '確かめた人（自分の席の名前か、頼んだ人）',
+  'ok = checked and met / na = does not apply here / fixed = found a miss and fixed it / open = found a miss, not fixed yet': 'ok＝確かめて満たしていた / na＝ここには当てはまらない / fixed＝ミスを見つけて直した / open＝ミスを見つけたが、まだ直していない',
+  'Where you checked (file:line or ledger ID). For na, why it does not apply': '確かめた場所（ファイル:行か台帳の ID）。na なら当てはまらない理由',
+  'For fixed and open: what was missing and what you did': 'fixed と open のとき：何が抜けていて、何をしたか',
+  'Recorded ({target}): {summary}. {commit}': '記録しました（{target}）：{summary}。{commit}',
+  'Checkpoints where this rule is put to the agent as a check item, separated by | (e.g. cases-written|before-judge). Empty to remove': 'このルールをチェック項目としてエージェントに突きつける節目（| で分ける。例：cases-written|before-judge）。空で外す',
+  'The check item to put at those checkpoints (a question that can be answered by looking). Empty to use label': 'その節目で突きつけるチェック項目の文（実物を見て答えられる問い）。空なら label を使う',
 }

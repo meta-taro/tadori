@@ -204,6 +204,10 @@ export interface RuleInput {
   readonly group?: string
   readonly owner?: string
   readonly label?: string
+  /** 効く節目の ID（「a|b」）。空で外す */
+  readonly at?: string
+  /** 節目で突きつけるチェック項目の文 */
+  readonly check?: string
 }
 
 const RULE_HEADER = 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\tgroup\towner\tlabel\n'
