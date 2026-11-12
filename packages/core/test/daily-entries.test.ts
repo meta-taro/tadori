@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { carriedOver, entriesFromSheet, memberOf, mergeDaily, type DailyEntry } from '../src/usecase/daily-entries.js'
+import { carriedOver, entriesFromSheet, memberOf, mergeDaily, readAloud, withoutSummaries, type DailyEntry } from '../src/usecase/daily-entries.js'
 import { buildDaily, type StatusChange } from '../src/usecase/daily.js'
 import type { Project, Task } from '../src/domain/model.js'
 
@@ -120,5 +120,40 @@ describe('carriedOver（前の作業日の「次の作業日」に人が足し�
     const todayFile: DailyEntry[] = [{ ...(carried[0] as DailyEntry), id: 'a1', text: '直した', origin: 'edited' }]
     const merged = mergeDaily(todayFile, carried)
     expect(merged.filter(e => e.key === 'carry:2026-11-09:m1').map(e => e.text)).toEqual(['直した'])
+  })
+})
+
+describe('課題ごとの要約（読み上げ用）', () => {
+  const row = (id: string, text: string, extra: Partial<DailyEntry> = {}): DailyEntry =>
+    ({ id, who: '設計担当', section: 'today', text, wbs: [], origin: 'manual', ...extra })
+  const entries: DailyEntry[] = [
+    row('m1', '設計書を直した', { issue: 'BL-1' }),
+    row('m2', '試験書を直した', { issue: 'BL-1' }),
+    row('m3', '問い合わせに答えた', { issue: 'BL-2' }),
+    row('m4', '朝会の準備'),
+    row('m5', '仕様変更があって、いまは結合試験の途中です。今日は終わりません。終わったらリリースの準備をします', { section: 'summary', issue: 'BL-1' }),
+    row('m6', '明日は BL-1 の試験の残り', { section: 'next', issue: 'BL-1' }),
+  ]
+
+  test('読み上げでは、要約のある課題の今日の行を要約 1 行に置き換え、要約を今日の先頭に出す', () => {
+    const read = readAloud(entries)
+    expect(read.filter(e => e.section === 'today').map(e => e.id)).toEqual(['m5', 'm3', 'm4'])
+    expect(read.find(e => e.id === 'm5')?.section).toBe('today')
+  })
+
+  test('読み上げでも、要約の無い課題・課題の無い行・次の作業日の行はそのまま', () => {
+    const read = readAloud(entries)
+    expect(read.map(e => e.id)).toContain('m3')
+    expect(read.map(e => e.id)).toContain('m4')
+    expect(read.find(e => e.id === 'm6')?.section).toBe('next')
+  })
+
+  test('要約が無ければ、読み上げも今の行のまま', () => {
+    const plain = entries.filter(e => e.section !== 'summary')
+    expect(readAloud(plain)).toEqual(plain)
+  })
+
+  test('詳しく（今の表示）の文には、要約の行を入れない', () => {
+    expect(withoutSummaries(entries).map(e => e.id)).toEqual(['m1', 'm2', 'm3', 'm4', 'm6'])
   })
 })

@@ -210,7 +210,7 @@ function buildProjectTools(options: McpOptions): Tool[] {
 
 /** 1 日の進行の道具の入力の形（説明はそのときの言語で） */
 function dailySchemas() {
-  const SECTION = { type: 'string', enum: ['today', 'next', 'consult', 'upkeep'], description: t('today = Today / next = Next working day / consult = Questions / upkeep = Ledger upkeep (not work on deliverables)') }
+  const SECTION = { type: 'string', enum: ['today', 'next', 'consult', 'upkeep', 'summary'], description: t('today = Today / next = Next working day / consult = Questions / upkeep = Ledger upkeep (not work on deliverables) / summary = a short summary per issue to read out (needs issue, one per issue per day: what happened, which phase it is in, whether it finishes today, what comes next)') }
   const DATE = { type: 'string', description: t('Date (YYYY-MM-DD). Empty for today') }
   const ENTRY_FIELDS = {
     who: { type: 'string', description: t('Owner (for two or more, "A・B")') },
@@ -272,9 +272,9 @@ function dailyTools(options: McpOptions): Tool[] {
       description: t('Return a person\'s "daily progress" (Today, Next working day, Questions, Notes) and the list of lines (with [ID]). Pass an owner as who to get only that person\'s lines. '
         + 'It combines a draft built from the inputs (WBS status changes, ledger diffs, check records) with lines that people or agents edited. '
         + 'To edit the text or write a question, use daily_update / daily_add.'),
-      inputSchema: { type: 'object', properties: { who: { type: 'string', description: t('Owner. Empty for everyone') }, date: DATE }, additionalProperties: false },
+      inputSchema: { type: 'object', properties: { who: { type: 'string', description: t('Owner. Empty for everyone') }, date: DATE, read: { type: 'boolean', description: t('true for the text to read out: an issue with a summary shows the summary instead of its detailed lines for Today') } }, additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
-        const daily = await loadDaily(dir, date, str(args.who).trim() || undefined)
+        const daily = await loadDaily(dir, date, str(args.who).trim() || undefined, { read: args.read === true })
         const rows = daily.entries.map(e => `- [${e.id}] ${e.section} · ${e.who || t('no owner')} · ${e.text}${e.origin === 'auto' ? '' : e.origin === 'manual' ? t(' (added line)') : t(' (edited line)')}`)
         const where = daily.saved ? t('saved in the file') : t('a draft not saved yet; save it with daily_generate')
         return text(t('{text}\n\nLines ({where}):\n{rows}', { text: daily.text, where, rows: rows.join('\n') }))

@@ -122,6 +122,9 @@ Adding or editing ledger rows normally shows under a separate heading, **ledger 
 For kinds where adding a row is itself "the work done", such as response records or test records, add a `work` column to `.tadori/kinds.tsv` and mark it (`yes`); then they show as today's work.
 For ledger diffs, the commit author is taken as the owner. If the WBS owners and git names do not match, write the mapping in `.tadori/members.tsv` (columns `name` (owner) and `git` (git author name)).
 
+**A summary per issue (to read out).** When an issue has many lines for Today, add one short summary for it with `daily_add` (`section: summary`, `issue` required, one per issue per day). tadori does not write the summary; an agent or a person does. A good shape is: what happened → which phase it is in now → whether it finishes today → what comes after (end with a question if there is something to confirm). Example: "A spec change came in; we are in the middle of integration testing. It will not finish today. After that we prepare the release."
+On the screen, **Read out** shows the summary at the top of Today instead of that issue's detailed lines, and **Details** shows the lines as before. `daily` with `read: true` returns the read-out text. Issues without a summary keep their lines either way.
+
 **They are stored** in one file per day, `.tadori/daily/YYYY-MM-DD.tsv` (committed on every save; a person pushes).
 Lines that a person or an agent edited, added or removed are not overwritten when the draft is made again. Only automatic lines nobody touched are rebuilt from new material.
 

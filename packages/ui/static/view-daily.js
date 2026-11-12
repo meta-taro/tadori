@@ -15,6 +15,20 @@ let date = ''
 // 台帳の整備（台帳の行を足した・直した）は、成果物の作業と読み違えないよう別の見出しにする。無い日は出さない
 /** @type {Array<[string, string]>} */
 const SECTIONS = [['today', 'Today'], ['next', 'Next working day'], ['consult', 'Questions'], ['upkeep', 'Ledger upkeep']]
+
+/** 読み上げ（課題ごとの要約だけ）か、詳しく（今までどおりの細かい行）か。夕会で読む・聞かれたら引く、を切り替える */
+let readMode = false
+
+/**
+ * 読み上げ：要約のある課題は、今日の細かい行の代わりに要約を今日の先頭に出す（server の readAloud と同じ決まり）
+ * @param {readonly DailyEntry[]} entries
+ */
+function readAloud(entries) {
+  const summaries = entries.filter(e => e.section === 'summary' && e.issue)
+  const summarized = new Set(summaries.map(e => e.issue))
+  const rest = entries.filter(e => e.section !== 'summary' && !(e.section === 'today' && e.issue && summarized.has(e.issue)))
+  return [...summaries.map(e => ({ ...e, section: /** @type {const} */ ('today') })), ...rest]
+}
 /** @type {Readonly<Record<string, string>>} */
 const ORIGIN_LABEL = { edited: 'Edited', manual: 'Added' }
 // 行の印（やり終えたことか、これからのことか）。文に出す言葉は案件の設定で決まる。画面の選択肢は意味で示す
@@ -54,8 +68,9 @@ function originLink(origin) {
  * @param {number} no
  * @param {Origins} [origins]
  * @param {boolean} [isAll]
+ * @param {boolean} [isSummary] 課題ごとの要約の行（読み上げでは今日の欄に入っても、折り返して全文を見せる）
  */
-function entryRow(entry, no, origins = {}, isAll = true) {
+function entryRow(entry, no, origins = {}, isAll = true, isSummary = entry.section === 'summary') {
   const badge = ORIGIN_LABEL[entry.origin] ? `<span class="chip mono">${esc(t(ORIGIN_LABEL[entry.origin] ?? ''))}</span>` : ''
   // 課題は「つながりを辿る」へ、WBS は「プロダクト」のその行へ（会議の場で、その場から開けるように）
   const issue = entry.issue ? `<a class="cond mono" href="#trace-${encodeURIComponent(entry.issue)}" title="${esc(t('Trace from {id}', { id: entry.issue }))}">${esc(entry.issue)}</a>` : ''
@@ -67,7 +82,10 @@ function entryRow(entry, no, origins = {}, isAll = true) {
     <span class="daily-no">${no}.</span>
     ${tagSelect(entry)}
     ${isAll ? `<span class="daily-who" title="${esc(t('Owner of this row'))}">${esc(entry.who || t('No owner'))}</span>` : ''}
-    <input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${esc(t('Text of row {n}', { n: no }))}" maxlength="500">
+    ${isSummary
+      // 要約は長くなりやすいので、折り返して全文を見せる（読み上げる文なので、途中で切らない）
+      ? `<textarea class="inline-input daily-text daily-summary-text" data-entry="${esc(entry.id)}" rows="${Math.min(4, Math.max(2, Math.ceil(entry.text.length / 45)))}" aria-label="${esc(t('Text of row {n}', { n: no }))}" maxlength="500">${esc(entry.text)}</textarea>`
+      : `<input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${esc(t('Text of row {n}', { n: no }))}" maxlength="500">`}
     <span class="daily-badges">${badges}</span>
     <span class="daily-links">${origin}${entryLinks(entry)}</span>
     <span class="daily-meta">${badge}${issue}${wbs}</span>
@@ -85,11 +103,15 @@ function sectionsHtml(entries, origins = {}) {
   const isAll = !who
   const scope = `<span class="chip daily-scope">${isAll ? esc(t('Everyone')) : esc(who)}</span>`
   let no = 0
-  return SECTIONS.map(([id, label]) => {
-    const list = entries.filter(e => e.section === id)
-    if (id === 'upkeep' && !list.length) return ''
-    const rows = list.map(e => entryRow(e, ++no, origins, isAll)).join('')
-    return `<section class="daily-section"><h2>${esc(t(label))}${id === 'today' ? ` ${esc(t('{n} items', { n: list.length }))}` : ''}${scope}</h2>
+  const shown = readMode ? readAloud(entries) : entries
+  const summaryIds = new Set(entries.filter(e => e.section === 'summary').map(e => e.id))
+  // 詳しくのときは、課題ごとの要約を今日の上にまとめて出す（読み上げのときは今日の欄の先頭に入る）
+  const sections = readMode ? SECTIONS : [['summary', 'Summaries per issue'], ...SECTIONS]
+  return sections.map(([id, label]) => {
+    const list = shown.filter(e => e.section === id)
+    if ((id === 'upkeep' || id === 'summary') && !list.length) return ''
+    const rows = list.map(e => entryRow(e, ++no, origins, isAll, summaryIds.has(e.id))).join('')
+    return `<section class="daily-section" data-section="${esc(id)}"><h2>${esc(t(label))}${id === 'today' ? ` ${esc(t('{n} items', { n: list.length }))}` : ''}${scope}</h2>
       ${rows ? `<ol class="daily-list">${rows}</ol>` : `<p class="cond">${esc(id === 'consult' ? t('Add one with the form below') : t('Nothing'))}</p>`}</section>`
   }).join('')
 }
@@ -123,7 +145,7 @@ export async function renderDaily(view, state) {
   let daily
   try {
     const who = getWho()
-    daily = await api(`/api/daily?date=${encodeURIComponent(date)}${who ? `&who=${encodeURIComponent(who)}` : ''}`)
+    daily = await api(`/api/daily?date=${encodeURIComponent(date)}${who ? `&who=${encodeURIComponent(who)}` : ''}${readMode ? '&read=1' : ''}`)
   } catch (error) {
     view.innerHTML = `<h1>${esc(t('Daily progress'))}</h1><div class="note">${ICON_INFO}<span>${esc(messageOf(error))}</span></div>`
     return
@@ -136,6 +158,10 @@ export async function renderDaily(view, state) {
       <label class="cond">${esc(t('Date'))} <input id="daily-date" class="inline-input" type="date" value="${esc(date)}"></label>
       <button type="button" class="btn-primary" id="daily-generate">${esc(daily.saved ? t('Rebuild the draft') : t('Build the draft'))}</button>
       <button type="button" class="btn-ghost" id="daily-copy">${esc(t('Copy text'))}</button>
+      <div class="seg" role="group" aria-label="${esc(t('How to show'))}">
+        <button type="button" data-read="1" aria-pressed="${readMode}" class="${readMode ? 'on' : ''}" title="${esc(t('Show only the summary for issues that have one'))}">${esc(t('Read out'))}</button>
+        <button type="button" data-read="0" aria-pressed="${!readMode}" class="${readMode ? '' : 'on'}">${esc(t('Details'))}</button>
+      </div>
     </div>
     ${daily.saved ? '' : `<div class="note">${ICON_INFO}<span>${esc(t('This draft is not saved to the daily file yet. It is saved as soon as you edit or add a row.'))}</span></div>`}
     <div class="panel daily-sheet">
@@ -152,8 +178,12 @@ export async function renderDaily(view, state) {
 
   const dateInput = /** @type {HTMLInputElement} */ (within(view, '#daily-date'))
   dateInput.addEventListener('change', () => { if (dateInput.value) { date = dateInput.value; rerender() } })
+  view.querySelectorAll('[data-read]').forEach(button => button.addEventListener('click', () => {
+    readMode = /** @type {HTMLElement} */ (button).dataset.read === '1'
+    rerender()
+  }))
   within(view, '#daily-generate').addEventListener('click', () => write(`${base}/generate`, 'POST', {}, t('the daily draft'), rerender))
-  const entryInputs = /** @type {NodeListOf<HTMLInputElement>} */ (view.querySelectorAll('[data-entry]'))
+  const entryInputs = /** @type {NodeListOf<HTMLInputElement | HTMLTextAreaElement>} */ (view.querySelectorAll('[data-entry]'))
   entryInputs.forEach(input => input.addEventListener('change', () =>
     write(`${base}/entries/${encodeURIComponent(input.dataset.entry ?? '')}`, 'PUT', { text: input.value }, t('the row'), rerender)))
   const tagSelects = /** @type {NodeListOf<HTMLSelectElement>} */ (view.querySelectorAll('[data-tag]'))

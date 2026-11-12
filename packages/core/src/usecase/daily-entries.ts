@@ -25,9 +25,12 @@ export interface DailyBadge {
   readonly tone: BadgeTone
 }
 
-/** upkeep＝台帳の整備（台帳の行を足した・直した。成果物の作業とは分けて出す） */
-export type DailySection = 'today' | 'next' | 'consult' | 'upkeep'
-export const DAILY_SECTIONS: readonly DailySection[] = ['today', 'next', 'consult', 'upkeep']
+/**
+ * upkeep＝台帳の整備（台帳の行を足した・直した。成果物の作業とは分けて出す）
+ * summary＝課題ごとの要約（夕会で読み上げる一言〜三言。書くのはエージェントか人で、tadori は文を作らない）
+ */
+export type DailySection = 'today' | 'next' | 'consult' | 'upkeep' | 'summary'
+export const DAILY_SECTIONS: readonly DailySection[] = ['today', 'next', 'consult', 'upkeep', 'summary']
 
 /**
  * auto＝tadori が作った下書きのまま / edited＝人かエージェントが直した / manual＝人かエージェントが足した /
@@ -161,4 +164,21 @@ export function carriedOver(previous: readonly DailyEntry[], previousDate: strin
         ...(links?.length ? { links } : {}),
       }
     })
+}
+
+/** 詳しく（今の表示）：要約の行を除いた、今までどおりの行 */
+export function withoutSummaries(entries: readonly DailyEntry[]): DailyEntry[] {
+  return entries.filter(e => e.section !== 'summary')
+}
+
+/**
+ * 読み上げ：要約のある課題は、今日の細かい行の代わりに要約 1 行を今日の先頭に出す。
+ * 要約の無い課題・課題の無い行・今日以外の見出しの行は、そのまま残す（要約を書き忘れても行は消えない）
+ */
+export function readAloud(entries: readonly DailyEntry[]): DailyEntry[] {
+  const summaries = entries.filter(e => e.section === 'summary' && e.issue)
+  if (!summaries.length) return [...entries]
+  const summarized = new Set(summaries.map(e => e.issue))
+  const rest = entries.filter(e => e.section !== 'summary' && !(e.section === 'today' && e.issue && summarized.has(e.issue)))
+  return [...summaries.map(e => ({ ...e, section: 'today' as const })), ...rest]
 }

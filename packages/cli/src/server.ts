@@ -242,7 +242,8 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
     const date = url.searchParams.get('date') || today
     if (!isDay(date)) throw new HttpError(400, t('Give the date as YYYY-MM-DD'))
     const who = url.searchParams.get('who')?.trim()
-    return sendJson(res, 200, await loadDaily(dir, date, who || undefined))
+    // read=1：読み上げの文（課題ごとの要約があれば、その課題の今日の細かい行の代わりに要約を出す）
+    return sendJson(res, 200, await loadDaily(dir, date, who || undefined, { read: url.searchParams.get('read') === '1' }))
   }
 
   // 1 日の進行を作る・足す・直す・消す（日ごとのファイルに書き、git リポジトリなら commit）

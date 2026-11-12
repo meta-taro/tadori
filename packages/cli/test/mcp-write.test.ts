@@ -81,3 +81,22 @@ describe('MCP の書く道具', () => {
     expect((await tool('list_projects')).content[0]?.text).toContain('いま開いている')
   })
 })
+
+describe('MCP の 1 日の進行：課題ごとの要約', () => {
+  test('daily_add の section に summary があり、daily の read で読み上げの文になる', async () => {
+    const list = (await handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' })) as { result: { tools: Array<{ name: string; inputSchema: { properties: Record<string, { enum?: string[] }> } }> } }
+    const add = list.result.tools.find(t => t.name === 'daily_add')
+    expect(add?.inputSchema.properties.section?.enum).toContain('summary')
+    expect(list.result.tools.find(t => t.name === 'daily')?.inputSchema.properties).toHaveProperty('read')
+
+    const date = '2026-11-12'
+    await tool('daily_add', { date, who: '設計担当', section: 'today', issue: 'Q-1', text: '問い合わせの回答を下書きした' })
+    const added = await tool('daily_add', { date, who: '設計担当', section: 'summary', issue: 'Q-1', text: '回答の下書きまで済みました。今日は終わりません。明日送ります' })
+    expect(added.isError).toBeFalsy()
+    const read = await tool('daily', { date, read: true })
+    expect(read.content[0]?.text).toContain('明日送ります')
+    expect(read.content[0]?.text.split('\n\n')[0]).not.toContain('回答を下書きした')
+    const detail = await tool('daily', { date })
+    expect(detail.content[0]?.text.split('\n\n')[0]).toContain('回答を下書きした')
+  })
+})
