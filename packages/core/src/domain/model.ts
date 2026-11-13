@@ -119,6 +119,11 @@ export interface Rule {
 export interface Checkpoint {
   readonly id: string
   readonly name: string
+  /**
+   * 記録が無いまま節目を過ぎようとしたときの tadori nudge の振る舞い（checkpoints.tsv の nudge 列）。
+   * notify＝知らせるだけ（既定）/ block＝フックに止めさせる
+   */
+  readonly nudge?: 'notify' | 'block'
 }
 
 /** 既定の節目の ID（名前はそのときの言語で付ける） */

@@ -304,6 +304,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   tadori daily [project folder] [--who owner] [--date YYYY-MM-DD]
   tadori checkpoint [project folder] [--at checkpoint] [--target ID]
   tadori checkpoint verify [project folder] --at checkpoint [--target ID]
+  tadori nudge [project folder] [--at checkpoint] [--target ID] [--stale-waits] [--hook event]
   tadori how-to [topic]
   tadori mcp [project folder] [--screen http://127.0.0.1:4873]
 
@@ -315,6 +316,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   daily  Daily progress per person (Today, Next working day, Questions, Notes). --who filters by owner
   checkpoint  Show the checkpoints, or the check items at one checkpoint (--at). verify exits with 1 if the last record does not cover every applicable rule
               (call it from git pre-commit with --at before-commit, or from an agent hook before posting)
+  nudge  Tell an agent that it passed a checkpoint without a record (call it from agent hooks or on a timer). Without --at, today's records
+         --stale-waits also looks at stale waiting lines in today's daily progress. --hook prints JSON that Claude Code hooks read as is
   how-to Show how to use tadori (same content as MCP how_to). Topics: start, ledger, rules, check, daily, write, screen, links, sources, agent-rules
   mcp    Open the MCP server on standard input/output (how-to, glossary, remaining work, gaps, links, ledger search, the dedicated screen cursor)
          --screen is where the screen operated by the dedicated cursor lives (default: the desktop app at http://127.0.0.1:4873)
@@ -327,6 +330,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   tadori daily [案件のフォルダ] [--who 担当] [--date YYYY-MM-DD]
   tadori checkpoint [案件のフォルダ] [--at 節目] [--target ID]
   tadori checkpoint verify [案件のフォルダ] --at 節目 [--target ID]
+  tadori nudge [案件のフォルダ] [--at 節目] [--target ID] [--stale-waits] [--hook フックの種類]
   tadori how-to [話題]
   tadori mcp [案件のフォルダ] [--screen http://127.0.0.1:4873]
 
@@ -338,6 +342,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   daily  人単位の 1 日の進行（今日・次の作業日・相談・補足）。--who で担当を絞る
   checkpoint  節目の一覧か、1 つの節目（--at）で確かめる項目を出す。verify は、最後の記録が効くルールを全部当てていなければ終了コード 1
               （git の pre-commit から --at before-commit で、エージェントのフックから投稿の前に呼ぶ）
+  nudge  記録の無いまま節目を過ぎようとしていることをエージェントに知らせる（エージェントのフックや定時の起動から呼ぶ）。--at が無ければ今日の記録のまとめ
+         --stale-waits で今日の 1 日の進行の古い待ちの行も見る。--hook で Claude Code の hooks がそのまま読める JSON を出す
   how-to 使い方を出す（MCP の how_to と同じ中身）。話題：start・ledger・rules・check・daily・write・screen・links・sources・agent-rules
   mcp    MCP の口を標準入出力で開く（使い方・用語・残課題・漏れ・つながり・台帳の行を探す・画面の専用カーソル）
          --screen は専用カーソルで操作する画面の場所（既定はデスクトップアプリの http://127.0.0.1:4873）
@@ -384,6 +390,17 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'There is no record yet for this target (rules to check: {ids})': 'この対象には、まだ記録がありません（当てるルール：{ids}）',
   'The last record did not check: {ids} (rules added since then). Check them and record again': '最後の記録は {ids} を当てていません（そのあとに足されたルール）。確かめて記録し直してください',
   'The last record has misses not fixed yet: {ids}': '最後の記録に、未対応のミスがあります：{ids}',
+  '{shortfall} {next}': '{shortfall}{next}',
+  'The last record did not check: {ids}.': '最後の記録は {ids} を当てていません。',
+  'Misses in the last record are not fixed yet: {ids}.': '最後の記録のミスがまだ直っていません：{ids}。',
+  'Checkpoint records today ({date}): none yet. At each checkpoint, read the items with checkpoint and record with checkpoint_record': '今日（{date}）の節目の記録：まだありません。節目ごとに checkpoint で項目を読み、checkpoint_record で記録してください',
+  'Checkpoint records today ({date}): {n} ({counts}). Last recorded at {time}.{open}': '今日（{date}）の節目の記録：{n} 回（{counts}）。最後の記録は {time}。{open}',
+  ' {n} of them still have misses not fixed': 'うち {n} 回は未対応のミスが残っています',
+  'Changes are staged, but there is no {at} record for them yet.': '変更を stage していますが、その変更の {at} の記録がまだありません。',
+  'There is no {at} record for {target} yet.': '{target} の {at} の記録がまだありません。',
+  'There is no {at} record today ({date}).': '今日（{date}）の {at} の記録がありません。',
+  "{n} waiting lines in today's daily progress have not been edited for {hours} hours or more: {ids}. Check whether the answer came, then update them": "今日の 1 日の進行で、待ちの行のうち {n} 件が {hours} 時間以上直されていません：{ids}。返事が来たかを確かめて、直してください",
+  '{at}: records are in place ({time})': '{at}：記録はそろっています（{time}）',
   'There is a record that checked every applicable rule': '効くルールをすべて当てた記録があります',
   'The checkpoint "{at}" is not defined ({allowed})': '節目「{at}」はありません（{allowed}）',
   'Check each item at {at}. For each, record ok / na / fixed / open and where you checked (file:line or ledger ID) with checkpoint_record:': '節目 {at} の項目を 1 つずつ確かめ、それぞれ ok（確かめた）/ na（該当なし）/ fixed（ミスを直した）/ open（ミス・未対応）と、確かめた場所（ファイル:行か台帳の ID）を checkpoint_record で記録してください：',
@@ -391,7 +408,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Read the items with checkpoint (MCP) or tadori checkpoint --at {at}, check each one, and record with checkpoint_record': 'checkpoint（MCP）か tadori checkpoint --at {at} で項目を読み、1 つずつ確かめて checkpoint_record で記録してください',
   'Give the checkpoint with --at (e.g. --at before-commit)': '節目を --at で渡してください（例：--at before-commit）',
   'Checkpoint ID (e.g. cases-written, before-judge, before-post, before-commit). Omit to list the checkpoints': '節目の ID（例：cases-written・before-judge・before-post・before-commit）。省くと節目の一覧',
-  'WBS task ID or ledger ID the check is for. Not used for before-commit (the staged change is the target)': 'このチェックの対象（WBS のタスク ID か台帳の ID）。before-commit では使わない（stage してある変更が対象）',
+  'WBS task ID or ledger ID the check is for. For a once-a-day checkpoint (such as before a stand-up), the date as YYYY-MM-DD. Not used for before-commit (the staged change is the target)': 'このチェックの対象（WBS のタスク ID か台帳の ID）。日に 1 回の節目（朝会・夕会の前など）は日付を YYYY-MM-DD で。before-commit では使わない（stage してある変更が対象）',
   'At a checkpoint in your work (test cases written, before a verdict, before posting outside, before committing), return the rules that apply there as check items, and whether there is already a record for the target. Check every item by looking, then record the results with checkpoint_record. This is not a human approval.': '仕事の節目（試験ケースを書き終えた・判定の前・外へ投稿する前・コミット前）で、そこに効くルールをチェック項目として返し、対象の記録がもうあるかも返す。項目を 1 つずつ実物を見て確かめ、結果を checkpoint_record で記録する。人の承認ではない。',
   'Record the results of every check item at a checkpoint (.tadori/checkpoint-log.tsv, append only, committed). Every item needs a result and where you checked; fixed and open need a note on what was missing and what you did. If any item is missing, nothing is written. The record keeps the ruleset version at that time, so a later defect can be told apart: a rule was missing, or a rule was not applied.': '節目のチェック項目の結果を全部記録する（.tadori/checkpoint-log.tsv。追記だけで commit する）。どの項目にも結果と確かめた場所が要り、fixed と open には何が抜けていて何をしたかを note に書く。1 つでも欠ければ何も書かない。記録にはその時点のルールセットの版が残るので、後で不具合が見つかったとき「ルールが無かった」のか「ルールを当てていなかった」のかを切り分けられる。',
   'Checkpoint ID': '節目の ID',

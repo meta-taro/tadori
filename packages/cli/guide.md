@@ -106,13 +106,19 @@ After fixing, run check again and make sure the gap is gone.
 
 Written agreements are easy to forget at the moment they matter. A checkpoint puts the rules that apply there in front of the agent as check items, and keeps a record that every one was checked.
 
-- Checkpoints: `cases-written` (test cases written), `before-judge` (before a verdict), `before-post` (before posting outside), `before-commit`. A project can define its own in `.tadori/checkpoints.tsv` (columns `id name`)
+- Checkpoints: `cases-written` (test cases written), `before-judge` (before a verdict), `before-post` (before posting outside), `before-commit`. A project can define its own in `.tadori/checkpoints.tsv` (columns `id name nudge`), including once-a-day ones such as `before-standup`
 - Make a rule apply at a checkpoint with its `at` column, and write the check item in `check`
 - At the checkpoint, read the items with `checkpoint` (MCP, `at` and `target`) or `tadori checkpoint <folder> --at <checkpoint>`
 - Check each item by looking, then record with `checkpoint_record`: for every item, a result (`ok` checked and met / `na` does not apply / `fixed` found a miss and fixed it / `open` found a miss, not fixed yet) and where you checked (file:line or ledger ID). `fixed` and `open` need a `note` on what was missing and what you did. If any item is missing, nothing is written
-- The target is the WBS task ID or ledger ID. For `before-commit` it is the staged change: record after staging, and do not change what is staged afterwards
+- The target is the WBS task ID or ledger ID. For a once-a-day checkpoint, the date (YYYY-MM-DD). For `before-commit` it is the staged change: record after staging, and do not change what is staged afterwards
 - The record goes to `.tadori/checkpoint-log.tsv` (append only, committed). Each record keeps the ruleset version at that time (the last commit of the rule files), so a later defect can be told apart: a rule was missing, or a rule was not applied
 - `tadori checkpoint verify <folder> --at <checkpoint> [--target ID]` exits with 1 when the last record does not cover every rule that applies now (rules added later count), or has an `open` miss. Call it from git pre-commit (`--at before-commit`) or from an agent hook before posting. Installing hooks is up to the person who owns the setup
+- `tadori nudge <folder> --at <checkpoint> [--target ID] [--stale-waits] [--hook <event>]` answers whether a checkpoint is being passed without a record (call it from agent hooks or on a timer; tadori never starts by itself). It reports a shortfall when staged changes have no `before-commit` record, the target has no record, or a checkpoint without a target has no record that day. `--stale-waits` also looks at stale waiting lines in that day's daily progress
+- Without `--at`, it summarizes the day's records (count per checkpoint and the last time). Show it at the start or end of a session
+- `--hook` takes a Claude Code hook event (`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop` and so on) and prints JSON the hook reads as is when something is missing (nothing when all is in place; the exit code is always 0). Whether to block or only notify is set per checkpoint in the `nudge` column of `checkpoints.tsv` (`block` blocks; `notify` or empty only notifies)
+  - Notify: `hookSpecificOutput.additionalContext` (`systemMessage`, shown to the person, for `Stop`)
+  - Block: `permissionDecision: deny` for `PreToolUse`, `decision: block` with `reason` for `PostToolUse` and `Stop`. It never blocks `UserPromptSubmit` or `SessionStart`, so the person's message is not thrown away
+- Without `--hook` it answers in text and exits with 1 when something is missing
 
 This is the agent's own record, not a human approval. It never marks a gap as filled.
 

@@ -178,6 +178,7 @@ export const JA: Readonly<Record<string, string>> = {
   'Nothing is staged. Stage the change you are about to commit, then record': 'stage してある変更がありません。コミットする変更を stage してから記録してください',
   'Give the target: the WBS task ID or ledger ID this check is for': '対象（このチェックがどの WBS のタスクか、台帳のどの ID か）を渡してください',
   '{id} is not in the ledger or the WBS': '{id} は台帳にも WBS にもありません',
+  '{id} is not in the ledger or the WBS (for a once-a-day checkpoint, give the date as YYYY-MM-DD)': '{id} は台帳にも WBS にもありません（日に 1 回の節目なら、日付を YYYY-MM-DD で渡してください）',
   'No rule applies at the checkpoint {at}': '節目 {at} に効くルールがありません（ルールの at 列に書きます）',
   'Record checkpoint {at} for {target}': '節目 {at} の記録（{target}）',
 }

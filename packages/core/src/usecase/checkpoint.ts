@@ -101,6 +101,23 @@ export interface Coverage {
   readonly open: readonly string[]
 }
 
+/** 1 回の記録（まとめの行から読む） */
+export interface CheckpointRun {
+  readonly run: string
+  readonly when: string
+  readonly at: string
+  readonly target: string
+  /** まだ直していないミスが残った回か */
+  readonly open: boolean
+}
+
+/** その日（YYYY-MM-DD）の記録を、書いた順に返す。at を渡すとその節目だけ */
+export function runsOn(log: readonly CheckpointRow[], day: string, at?: string): CheckpointRun[] {
+  return log
+    .filter(r => r.rule === SUMMARY_RULE && r.when.startsWith(day) && (!at || r.at === at))
+    .map(r => ({ run: r.run, when: r.when, at: r.at, target: r.target, open: r.result === 'open' }))
+}
+
 /** この節目・この対象の最後の記録が、いま効くルールをすべて当てているか */
 export function coverageOf(rules: readonly Rule[], at: string, target: string, log: readonly CheckpointRow[]): Coverage {
   const expected = checklistOf(rules, at).map(c => c.rule)

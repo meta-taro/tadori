@@ -12,6 +12,7 @@ import { serveMcp } from './mcp.js'
 import { howTo } from './guide.js'
 import { runCheck } from './check-log.js'
 import { checklistText, checkpointListText, verifyCheckpoint } from './checkpoint.js'
+import { hookJson, nudge } from './nudge.js'
 import { isDay, loadDaily } from './daily.js'
 import { parentPidFromEnv, watchParent } from './parent-watch.js'
 
@@ -25,6 +26,7 @@ const usage = (): string => t(`Usage:
   tadori daily [project folder] [--who owner] [--date YYYY-MM-DD]
   tadori checkpoint [project folder] [--at checkpoint] [--target ID]
   tadori checkpoint verify [project folder] --at checkpoint [--target ID]
+  tadori nudge [project folder] [--at checkpoint] [--target ID] [--stale-waits] [--hook event]
   tadori how-to [topic]
   tadori mcp [project folder] [--screen http://127.0.0.1:4873]
 
@@ -36,6 +38,8 @@ const usage = (): string => t(`Usage:
   daily  Daily progress per person (Today, Next working day, Questions, Notes). --who filters by owner
   checkpoint  Show the checkpoints, or the check items at one checkpoint (--at). verify exits with 1 if the last record does not cover every applicable rule
               (call it from git pre-commit with --at before-commit, or from an agent hook before posting)
+  nudge  Tell an agent that it passed a checkpoint without a record (call it from agent hooks or on a timer). Without --at, today's records
+         --stale-waits also looks at stale waiting lines in today's daily progress. --hook prints JSON that Claude Code hooks read as is
   how-to Show how to use tadori (same content as MCP how_to). Topics: start, ledger, rules, check, daily, write, screen, links, sources, agent-rules
   mcp    Open the MCP server on standard input/output (how-to, glossary, remaining work, gaps, links, ledger search, the dedicated screen cursor)
          --screen is where the screen operated by the dedicated cursor lives (default: the desktop app at http://127.0.0.1:4873)
@@ -56,6 +60,8 @@ const { values, positionals } = parseArgs({
     lang: { type: 'string' },
     at: { type: 'string' },
     target: { type: 'string' },
+    'stale-waits': { type: 'boolean' },
+    hook: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
   },
 })
@@ -173,6 +179,23 @@ async function main(): Promise<void> {
     }
     process.stdout.write(`${at ? await checklistText(dir, request) : await checkpointListText(dir)}
 `)
+    return
+  }
+
+  if (command === 'nudge') {
+    const dir = resolve(rest[0] ?? '.')
+    const at = (values.at ?? '').trim()
+    const result = await nudge(dir, { today, ...(at ? { at } : {}), ...(values.target ? { target: values.target } : {}), ...(values['stale-waits'] ? { staleWaits: true } : {}) })
+    // フックから呼ぶときは、何も言うことが無ければ何も出さず、常に終了コード 0（止めるかどうかは JSON で伝える）
+    if (values.hook !== undefined) {
+      const json = hookJson(result, values.hook.trim(), !at)
+      if (json) process.stdout.write(`${json}
+`)
+      return
+    }
+    ;(result.ok ? process.stdout : process.stderr).write(`${result.text}
+`)
+    process.exitCode = result.ok ? 0 : 1
     return
   }
 

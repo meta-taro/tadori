@@ -408,7 +408,7 @@ export async function loadProject(dir: string): Promise<Project> {
     links: toLinks(linkRows, problems),
     sources: toSources(sourceRows, problems),
     ruleGroups: toRuleGroups(ruleGroupRows, problems),
-    ...(checkpointRows.length ? { checkpoints: checkpointRows.map(r => ({ id: (r.id ?? '').trim(), name: (r.name ?? '').trim() || (r.id ?? '').trim() })) } : {}),
+    ...(checkpointRows.length ? { checkpoints: checkpointRows.map(r => ({ id: (r.id ?? '').trim(), name: (r.name ?? '').trim() || (r.id ?? '').trim(), ...((r.nudge ?? '').trim() === 'block' ? { nudge: 'block' as const } : {}) })) } : {}),
   }
   problems.push(...unknownCheckpointProblems(project))
   if (problems.length) throw new ProjectLoadError(problems)
