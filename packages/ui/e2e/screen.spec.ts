@@ -233,6 +233,8 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     await expect(row).toHaveClass(/stale/)
     await expect(row.locator('.daily-stale')).toHaveText('3 時間以上 更新なし')
     await expect(page.locator('.daily-stale-note')).toContainText('待ちの行のうち 1 件が 3 時間以上 更新されていません')
+    // 描き直しの読み込みが試験の終わりをまたいで差し替えに入らないよう、外してから終える
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
   })
 })
 
