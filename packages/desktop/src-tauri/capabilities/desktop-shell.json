@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "desktop-shell",
-  "description": "tadori serve が配る画面（自分で起こした 127.0.0.1 だけ）に、自作の上の帯のための窓の操作と、案件を開く 3 つの命令と、正本（http・https）を OS のブラウザで開く命令だけを許す。ファイルの読み書きなどは許さない",
+  "description": "tadori serve が配る画面（自分で起こした 127.0.0.1 だけ）に、自作の上の帯のための窓の操作と、案件を開く 3 つの命令と、正本（http・https）を OS のブラウザで開く命令と、新しい版に入れ替える命令だけを許す。ファイルの読み書きなどは許さない",
   "windows": ["main"],
   "remote": { "urls": ["http://127.0.0.1:*/*"] },
   "permissions": [
@@ -16,6 +16,7 @@
     "allow-pick-project",
     "allow-recent-projects",
     "allow-open-project",
-    "allow-open-external"
+    "allow-open-external",
+    "allow-install-update"
   ]
 }

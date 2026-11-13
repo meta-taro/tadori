@@ -46,5 +46,16 @@
     "macOS": {
       "minimumSystemVersion": "11.0"
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVBNjhBMjczMjBCQkQzMjIKUldRaTA3c2djNkpvV25hV3JqQzU4NU5XNVpsRFptZmJPWGhyWEZycUxxZWtKSXk4RTFyZDlQcUUK",
+      "endpoints": [
+        "https://github.com/meta-taro/tadori/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

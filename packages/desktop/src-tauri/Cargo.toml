@@ -20,6 +20,11 @@ tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 # OS の言語を読む（ダイアログとエラーの文を英語／日本語で出すため。MIT/Apache-2.0、依存が小さい）
 sys-locale = "0.3"
+# 新しい版を落とし、署名（公開鍵は tauri.conf.json）を確かめてから入れ替える（Tauri 公式プラグイン・MIT/Apache-2.0）。
+# 通信の暗号は OS のもの（native-tls）を使う。既定の rustls は ring を組むのに clang が要り、ARM の Windows で手元の検査が通らなくなるため
+tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy", "zip"] }
+# tauri.conf.json の plugins（updater の設定）を組み込むときに、generate_context! が使う
+serde_json = "1"
 
 [profile.release]
 opt-level = "s"

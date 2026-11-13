@@ -241,8 +241,28 @@ test.describe('バージョンと更新', () => {
     const panel = page.getByRole('dialog', { name: 'バージョンと更新' })
     await expect(panel).toContainText('新しい版 0.2.0 があります')
     await expect(panel.getByRole('link', { name: '配布のページを開く' })).toHaveAttribute('href', newer.downloadUrl)
+    // ブラウザで開いた画面には、入れ替えのボタンを出さない（入れ替えられるのはデスクトップアプリだけ）
+    await expect(panel.getByRole('button', { name: '更新して再起動' })).toHaveCount(0)
     await panel.getByRole('button', { name: '閉じる' }).click()
     await expect(panel).toHaveCount(0)
+  })
+
+  test('デスクトップアプリの窓なら、押すだけで新しい版に入れ替えて再起動するボタンを出す', async ({ page }) => {
+    // Tauri の窓の代わり：呼ばれた命令を覚えるだけ（窓の帯の部品は無いので、帯は作らない）
+    await page.addInitScript(() => {
+      const w = window as unknown as { __invoked: string[], __TAURI__: unknown }
+      w.__invoked = []
+      w.__TAURI__ = { core: { invoke: (command: string) => { w.__invoked.push(command); return new Promise(() => {}) } } }
+    })
+    await page.route('**/api/update', route => route.fulfill({ json: newer }))
+    await page.goto('/#phases')
+    await page.locator('.update-chip').click()
+    const panel = page.getByRole('dialog', { name: 'バージョンと更新' })
+    const install = panel.getByRole('button', { name: '更新して再起動' })
+    await install.click()
+    await expect(panel).toContainText('新しい版を入れています')
+    await expect(install).toBeDisabled()
+    expect(await page.evaluate(() => (window as unknown as { __invoked: string[] }).__invoked)).toEqual(['install_update'])
   })
 
   test('最新なら札を出さず、確かめられないときは理由を出す（「最新」と決めつけない）', async ({ page }) => {

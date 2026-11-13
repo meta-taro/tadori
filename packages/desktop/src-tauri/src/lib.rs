@@ -1,7 +1,7 @@
 //! tadori のデスクトップアプリ。
 //! 窓を出し、裏で `tadori serve` を起こして、その画面を窓に映す。判定は TypeScript の核のまま（CLI・CI と食い違わないように）。
 //!
-//! 画面（127.0.0.1 のページ）から呼べるのは、自作の上の帯のための窓の操作と、ここにある 4 つの命令だけ
+//! 画面（127.0.0.1 のページ）から呼べるのは、自作の上の帯のための窓の操作と、ここにある 5 つの命令だけ
 //! （capabilities/desktop-shell.json）。ファイルの読み書きなどは呼ばせない。
 
 mod lang;
@@ -30,8 +30,9 @@ pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Sidecar(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![pick_project, recent_projects, open_project, open_external])
+        .invoke_handler(tauri::generate_handler![pick_project, recent_projects, open_project, open_external, install_update])
         .setup(|app| {
             let handle = app.handle().clone();
             let _ = APP.set(handle.clone());
@@ -89,6 +90,23 @@ fn open_external(handle: AppHandle, url: String) -> Result<(), String> {
     }
     use tauri_plugin_opener::OpenerExt;
     handle.opener().open_url(parsed.as_str(), None::<&str>).map_err(|e| format!("{}{e}", tr("Could not open the browser: ", "ブラウザで開けませんでした：")))
+}
+
+/// ヘルプ › バージョンと更新：新しい版を落とし、署名を確かめてから入れ替えて、立ち上がり直す。
+/// 見に行くのは tauri.conf.json の endpoints（GitHub の公開リリースの latest.json）だけ。署名が合わなければ入れ替えない
+#[tauri::command]
+async fn install_update(handle: AppHandle) -> Result<(), String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let failed = |e: tauri_plugin_updater::Error| format!("{}{e}", tr("Could not update: ", "入れ替えられませんでした："));
+    let update = handle.updater().map_err(failed)?.check().await.map_err(failed)?;
+    let Some(update) = update else {
+        return Err(tr("No newer version was found for this app.", "このアプリに入れられる新しい版は見つかりませんでした。").into());
+    };
+    let bytes = update.download(|_, _| {}, || {}).await.map_err(failed)?;
+    // 入れ替える前に裏の serve を止める（Windows では動いているファイルを置き換えられないため）
+    stop_sidecar(&handle);
+    update.install(bytes).map_err(failed)?;
+    handle.restart()
 }
 
 // ---- 起動と切り替え ----

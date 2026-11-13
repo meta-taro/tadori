@@ -117,6 +117,29 @@ jobs:
             echo "APPLE_API_ISSUER=$API_ISSUER"
           } >> "$GITHUB_ENV"
 
+      # 自動アップデートの材料。updater の秘密鍵の Secret があるときだけ、更新用のファイル（.sig 付き）と latest.json を作る。
+      # 無ければ、これまでどおりインストーラーだけを作る（アプリは「配布のページを開く」で入れ直す形のまま）
+      - name: 自動アップデートの署名を用意する（updater の鍵の Secret があるときだけ）
+        shell: bash
+        env:
+          UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          UPDATER_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$UPDATER_KEY" ]; then
+            echo "updater の鍵の Secret（TAURI_SIGNING_PRIVATE_KEY）が無いので、自動アップデートの材料は作りません"
+            exit 0
+          fi
+          if [ -z "$UPDATER_PASSWORD" ]; then
+            echo "::error::updater の鍵はあるのに、TAURI_SIGNING_PRIVATE_KEY_PASSWORD の Secret がありません"
+            exit 1
+          fi
+          # 鍵は 1 行の文字なので、そのまま渡せる（Secret の値はログでは伏せ字になる）
+          {
+            echo "TAURI_SIGNING_PRIVATE_KEY=$UPDATER_KEY"
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$UPDATER_PASSWORD"
+            echo "UPDATER_ARGS=--config src-tauri/tauri.updater.conf.json"
+          } >> "$GITHUB_ENV"
+
       - name: インストーラーを作り、下書きのリリースに付ける
         uses: tauri-apps/tauri-action@v0
         env:
@@ -124,7 +147,7 @@ jobs:
         with:
           projectPath: packages/desktop
           tauriScript: pnpm tauri
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} ${{ env.UPDATER_ARGS }}
           tagName: ${{ github.ref_name }}
           releaseName: tadori ${{ github.ref_name }}
           releaseBody: |

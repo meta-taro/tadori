@@ -1,6 +1,7 @@
 // ヘルプの「バージョンと更新」と、起動したときの新しい版の確認。
 // 見に行くのは GitHub の公開リリースの「最新」だけ（サーバーの /api/update が代わりに見る）。案件の中身は送らない。
-// 入れ替えはしない。新しい版があれば、配布のページを OS のブラウザで開けるようにする。
+// ブラウザで開いた画面では入れ替えない（配布のページを開けるようにするだけ）。
+// デスクトップアプリの窓では、押すと Rust 側（install_update）が新しい版を落とし、署名を確かめてから入れ替えて再起動する。
 import { t } from './i18n.js'
 import { api, esc, messageOf } from './util.js'
 
@@ -9,6 +10,37 @@ const CHECK_EVERY_MS = 24 * 60 * 60 * 1000
 
 /** @param {string} url @param {string} label */
 const outLink = (url, label) => `<a class="btn-primary update-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external>${esc(label)}</a>`
+
+/** デスクトップアプリの窓か（Rust の命令を呼べるか） */
+const desktopInvoke = () => /** @type {any} */ (window).__TAURI__?.core?.invoke
+
+const installButton = () => `<button type="button" class="btn-primary" data-install>${esc(t('Update and restart'))}</button>`
+
+/**
+ * 押すと、新しい版を落として入れ替え、再起動する（デスクトップアプリだけ）。
+ * 終わればアプリごと立ち上がり直すので、ここへ戻るのは失敗したときだけ
+ * @param {HTMLElement} panel
+ */
+function wireInstall(panel) {
+  const button = panel.querySelector('[data-install]')
+  if (!(button instanceof HTMLButtonElement)) return
+  button.addEventListener('click', async () => {
+    const invoke = desktopInvoke()
+    if (!invoke) return
+    button.disabled = true
+    const note = document.createElement('p')
+    note.className = 'cond'
+    note.setAttribute('role', 'status')
+    note.textContent = t('Installing the new version. tadori restarts when it is done…')
+    button.closest('.update-card')?.insertBefore(note, button.parentElement)
+    try {
+      await invoke('install_update')
+    } catch (error) {
+      note.textContent = t('Could not update: {reason}. Use the download page instead.', { reason: messageOf(error) })
+      button.disabled = false
+    }
+  })
+}
 
 /** 画面の真ん中に出す小さな窓（alert は使わない。押すまで画面を止めない） */
 function openPanel() {
@@ -57,7 +89,9 @@ export async function showUpdatePanel() {
         : `<p>${esc(t('tadori {v} is up to date.', { v: info.current }))}</p>`
     fill(panel, status + builtNote)
     const actions = panel.querySelector('[data-actions]')
-    if (actions) actions.innerHTML = info.isNewer ? `${outLink(info.downloadUrl, t('Open the download page'))}${outLink(info.releaseUrl, t('What changed'))}` : outLink(info.releaseUrl, t('Release page'))
+    const install = info.isNewer && desktopInvoke() ? installButton() : ''
+    if (actions) actions.innerHTML = info.isNewer ? `${install}${outLink(info.downloadUrl, t('Open the download page'))}${outLink(info.releaseUrl, t('What changed'))}` : outLink(info.releaseUrl, t('Release page'))
+    wireInstall(panel)
   } catch (error) {
     fill(panel, `<p>tadori ${esc(version || t('(version unknown)'))}</p><p class="cond">${esc(messageOf(error))}</p>`)
   }
