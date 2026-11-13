@@ -210,6 +210,10 @@ function buildProjectTools(options: McpOptions): Tool[] {
 }
 
 /** 1 日の進行の道具の入力の形（説明はそのときの言語で） */
+/** 行を最後に直した時刻（その日なら時刻だけ、別の日なら日付も） */
+const updatedNote = (updated: string | undefined, date: string): string =>
+  updated ? t(' (updated {time})', { time: updated.startsWith(date) ? updated.slice(11) : updated.replace('T', ' ') }) : ''
+
 function dailySchemas() {
   const SECTION = { type: 'string', enum: ['today', 'next', 'consult', 'upkeep', 'summary'], description: t('today = Today / next = Next working day / consult = Questions / upkeep = Ledger upkeep (not work on deliverables) / summary = a short summary per issue to read out (needs issue, one per issue per day: what happened, which phase it is in, whether it finishes today, what comes next)') }
   const DATE = { type: 'string', description: t('Date (YYYY-MM-DD). Empty for today') }
@@ -276,9 +280,12 @@ function dailyTools(options: McpOptions): Tool[] {
       inputSchema: { type: 'object', properties: { who: { type: 'string', description: t('Owner. Empty for everyone') }, date: DATE, read: { type: 'boolean', description: t('true for the text to read out: an issue with a summary shows the summary instead of its detailed lines for Today') } }, additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
         const daily = await loadDaily(dir, date, str(args.who).trim() || undefined, { read: args.read === true })
-        const rows = daily.entries.map(e => `- [${e.id}] ${e.section} · ${e.who || t('no owner')} · ${e.text}${e.origin === 'auto' ? '' : e.origin === 'manual' ? t(' (added line)') : t(' (edited line)')}`)
+        const stale = new Set(daily.stale.ids)
+        const rows = daily.entries.map(e => `- [${e.id}] ${e.section} · ${e.who || t('no owner')} · ${e.text}${e.origin === 'auto' ? '' : e.origin === 'manual' ? t(' (added line)') : t(' (edited line)')}${updatedNote(e.updated, daily.date)}${stale.has(e.id) ? t(' (stale wait)') : ''}`)
         const where = daily.saved ? t('saved in the file') : t('a draft not saved yet; save it with daily_generate')
-        return text(t('{text}\n\nLines ({where}):\n{rows}', { text: daily.text, where, rows: rows.join('\n') }))
+        // 古いままの待ちの行は、会の前に直せるよう最後に件数と ID を出す
+        const warn = stale.size ? `\n\n${t('{n} waiting lines have not been edited for {hours} hours or more: {ids}. Update them before the meeting.', { n: stale.size, hours: daily.stale.hours, ids: daily.stale.ids.join(', ') })}` : ''
+        return text(`${t('{text}\n\nLines ({where}):\n{rows}', { text: daily.text, where, rows: rows.join('\n') })}${warn}`)
       }),
     },
     {

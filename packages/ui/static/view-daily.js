@@ -19,6 +19,19 @@ const SECTIONS = [['today', 'Today'], ['next', 'Next working day'], ['consult', 
 /** 読み上げ（課題ごとの要約だけ）か、詳しく（今までどおりの細かい行）か。夕会で読む・聞かれたら引く、を切り替える */
 let readMode = false
 
+/** 古いままの待ちの行（server が案件の stale_hours・wait_words で選んだもの）の ID と、何時間で古いとするか */
+let stale = { ids: /** @type {Set<string>} */ (new Set()), hours: 0 }
+
+/**
+ * 行を最後に直した時刻（その日なら時刻だけ、別の日なら月日も）。自動の行など、時刻の無い行は出さない
+ * @param {string | undefined} updated
+ */
+function updatedText(updated) {
+  if (!updated) return ''
+  const time = updated.startsWith(date) ? updated.slice(11) : `${Number(updated.slice(5, 7))}/${Number(updated.slice(8, 10))} ${updated.slice(11)}`
+  return t('Updated {time}', { time })
+}
+
 /**
  * 読み上げ：要約のある課題は、今日の細かい行の代わりに要約を今日の先頭に出す（server の readAloud と同じ決まり）
  * @param {readonly DailyEntry[]} entries
@@ -78,7 +91,11 @@ function entryRow(entry, no, origins = {}, isAll = true, isSummary = entry.secti
   const origin = originLink(entry.issue ? origins[entry.issue] : undefined)
   // 行のバッジ（人かエージェントが書いた札）。本文とは別に、tone の色で出す
   const badges = (entry.badges ?? []).map(b => `<span class="chip ${esc(b.tone)}"><span class="dot"></span>${esc(b.text)}</span>`).join('')
-  return `<li class="daily-entry">
+  // 古いままの待ちの行は、会の前に直す行と一目で分かるよう、要注意の札と枠で出す
+  const isStale = stale.ids.has(entry.id)
+  const staleChip = isStale ? `<span class="chip hole daily-stale"><span class="dot"></span>${esc(t('Not updated for {hours}h+', { hours: stale.hours }))}</span>` : ''
+  const updated = updatedText(entry.updated)
+  return `<li class="daily-entry${isStale ? ' stale' : ''}">
     <span class="daily-no">${no}.</span>
     ${tagSelect(entry)}
     ${isAll ? `<span class="daily-who" title="${esc(t('Owner of this row'))}">${esc(entry.who || t('No owner'))}</span>` : ''}
@@ -86,7 +103,8 @@ function entryRow(entry, no, origins = {}, isAll = true, isSummary = entry.secti
       // 要約は長くなりやすいので、折り返して全文を見せる（読み上げる文なので、途中で切らない）
       ? `<textarea class="inline-input daily-text daily-summary-text" data-entry="${esc(entry.id)}" rows="${Math.min(4, Math.max(2, Math.ceil(entry.text.length / 45)))}" aria-label="${esc(t('Text of row {n}', { n: no }))}" maxlength="500">${esc(entry.text)}</textarea>`
       : `<input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${esc(t('Text of row {n}', { n: no }))}" maxlength="500">`}
-    <span class="daily-badges">${badges}</span>
+    <span class="daily-badges">${badges}${staleChip}</span>
+    ${updated ? `<span class="daily-updated cond mono" title="${esc(t('When this row was last added or edited'))}">${esc(updated)}</span>` : ''}
     <span class="daily-links">${origin}${entryLinks(entry)}</span>
     <span class="daily-meta">${badge}${issue}${wbs}</span>
     <button type="button" class="btn-ghost" data-remove="${esc(entry.id)}" aria-label="${esc(t('Remove row {n}', { n: no }))}">${esc(t('Remove'))}</button>
@@ -150,6 +168,7 @@ export async function renderDaily(view, state) {
     view.innerHTML = `<h1>${esc(t('Daily progress'))}</h1><div class="note">${ICON_INFO}<span>${esc(messageOf(error))}</span></div>`
     return
   }
+  stale = { ids: new Set(daily.stale?.ids ?? []), hours: daily.stale?.hours ?? 0 }
   const base = `/api/daily/${encodeURIComponent(date)}`
   view.innerHTML = `
     <h1>${esc(t('Daily progress'))}</h1>
@@ -163,6 +182,7 @@ export async function renderDaily(view, state) {
         <button type="button" data-read="0" aria-pressed="${!readMode}" class="${readMode ? '' : 'on'}">${esc(t('Details'))}</button>
       </div>
     </div>
+    ${stale.ids.size ? `<div class="note daily-stale-note" role="status">${ICON_INFO}<span>${esc(t('{n} waiting rows have not been updated for {hours} hours or more. Update them before the meeting.', { n: stale.ids.size, hours: stale.hours }))}</span></div>` : ''}
     ${daily.saved ? '' : `<div class="note">${ICON_INFO}<span>${esc(t('This draft is not saved to the daily file yet. It is saved as soon as you edit or add a row.'))}</span></div>`}
     <div class="panel daily-sheet">
       ${sectionsHtml(daily.entries, state.origins ?? {})}

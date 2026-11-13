@@ -1,9 +1,9 @@
 import './i18n.js'
 import {
   BADGE_TONES, buildDaily, carriedOver, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
-  readAloud, readStatusChanges, t, withoutSummaries, writeDaily, type BadgeTone, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
+  readAloud, readStatusChanges, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
-import { dailyFormatOf, formatEntries, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
+import { dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
 
 /**
@@ -30,7 +30,17 @@ export interface Daily {
   readonly tags: readonly string[]
   /** 担当で絞っていないときに、行の頭に付く担当名の書き方（例：設計担当：）。画面が札の見た目にする。絞っているときは空 */
   readonly whoMarks: readonly string[]
+  /**
+   * 古いままの待ちの行（朝会・夕会の前に直す行）。ids＝行の ID、hours＝何時間直していなければ古いとするか（案件の stale_hours）。
+   * 待ちと読むのは、tone が wait のバッジか、案件が wait_words に書いた語を含む行だけ
+   */
+  readonly stale: { readonly ids: readonly string[]; readonly hours: number }
 }
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+/** 行を直した時刻（その PC の時刻で YYYY-MM-DDTHH:MM。分まで） */
+export const localStamp = (now: Date = new Date()): string =>
+  `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}T${pad2(now.getHours())}:${pad2(now.getMinutes())}`
 
 /** 行がつながる WBS と課題の、文の中の書き方 → 画面の飛び先（WBS はプロダクトのその行、課題はつながりを辿る） */
 export function linksOf(entries: readonly DailyEntry[], format: DailyFormat): Daily['links'] {
@@ -80,6 +90,8 @@ const mine = (who?: string) => (e: DailyEntry) => !who || ownersOf(e.who).includ
 /** read：読み上げの文（課題ごとの要約があれば、その課題の今日の細かい行の代わりに要約を出す）。既定は詳しく（今までどおり） */
 export interface DailyView {
   readonly read?: boolean
+  /** 古い待ちの行を数えるときの「いま」（試験で時刻を決めるため。省けば今の時刻） */
+  readonly now?: Date
 }
 
 export async function loadDaily(dir: string, date: string, who?: string, view: DailyView = {}): Promise<Daily> {
@@ -91,7 +103,8 @@ export async function loadDaily(dir: string, date: string, who?: string, view: D
   const format = await formatOf(dir)
   const spoken = view.read ? readAloud(shown) : withoutSummaries(shown)
   return { date, text: formatEntries(spoken, project, date, format, { showWho: !who }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
-    whoMarks: who ? [] : [...new Set(shown.map(e => whoMark(e.who, format)).filter(Boolean))] }
+    whoMarks: who ? [] : [...new Set(shown.map(e => whoMark(e.who, format)).filter(Boolean))],
+    stale: { ids: staleWaits(shown, view.now ?? new Date(), staleRuleOf(format)).map(e => e.id), hours: staleRuleOf(format).hours } }
 }
 
 /** 下書きを作って（作り直して）置く。直した行・足した行・消した行は残る */
@@ -245,6 +258,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     ...(links?.length ? { links } : {}),
     ...(badges?.length ? { badges } : {}),
     origin: 'manual',
+    updated: localStamp(),
   })
   const commit = await writeDaily(dir, date, [...entries, entry], t('Add a line to daily progress ({date})', { date }))
   return { entry, commit, warnings: anchorWarnings(entry) }
@@ -284,7 +298,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
   }
   const changed = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
   // 本文か課題を変えたときだけ、課題番号と短い件名を頭に付け直す
-  const filled: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited' }
+  const filled: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited', updated: localStamp() }
   // 空にした欄は、行から外す（日ごとのファイルにも空で書く）
   const { issue, note, tag: entryTag, links, badges, ...rest } = filled
   const merged: DailyEntry = {

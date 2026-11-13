@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { carriedOver, entriesFromSheet, memberOf, mergeDaily, readAloud, withoutSummaries, type DailyEntry } from '../src/usecase/daily-entries.js'
+import { carriedOver, entriesFromSheet, memberOf, mergeDaily, readAloud, staleWaits, withoutSummaries, type DailyEntry } from '../src/usecase/daily-entries.js'
 import { buildDaily, type StatusChange } from '../src/usecase/daily.js'
 import type { Project, Task } from '../src/domain/model.js'
 
@@ -155,5 +155,27 @@ describe('課題ごとの要約（読み上げ用）', () => {
 
   test('詳しく（今の表示）の文には、要約の行を入れない', () => {
     expect(withoutSummaries(entries).map(e => e.id)).toEqual(['m1', 'm2', 'm3', 'm4', 'm6'])
+  })
+})
+
+describe('staleWaits（古いままの待ちの行）', () => {
+  const row = (id: string, over: Partial<DailyEntry>): DailyEntry => ({ id, who: 'A', section: 'today', text: '', wbs: [], origin: 'manual', ...over })
+  const now = new Date(2026, 10, 13, 16, 0)
+  const rule = { hours: 3, words: ['確認中'] }
+
+  test('wait のバッジか決めた語のある行で、3 時間以上直していないものだけを返す', () => {
+    const entries = [
+      row('m1', { badges: [{ text: '待ち', tone: 'wait' }], updated: '2026-11-13T10:12' }),
+      row('m2', { text: '上長に確認中', updated: '2026-11-13T12:59' }),
+      row('m3', { text: '上長に確認中', updated: '2026-11-13T13:30' }),
+      row('m4', { badges: [{ text: '遅延', tone: 'hole' }], updated: '2026-11-13T08:00' }),
+      row('m5', { text: '確認中', origin: 'removed', updated: '2026-11-13T08:00' }),
+      row('a1', { text: '確認中', origin: 'auto' }),
+    ]
+    expect(staleWaits(entries, now, rule).map(e => e.id)).toEqual(['m1', 'm2'])
+  })
+
+  test('hours が 0 なら何も返さない', () => {
+    expect(staleWaits([row('m1', { text: '確認中', updated: '2026-11-01T00:00' })], now, { ...rule, hours: 0 })).toEqual([])
   })
 })

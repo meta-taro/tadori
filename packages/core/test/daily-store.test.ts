@@ -26,7 +26,7 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     ]
     const commit = await writeDaily(dir, '2026-11-09', entries, '1 日の進行を直した')
     expect(commit.committed).toBe(false) // git の外なので commit しない
-    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\n/)
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\tupdated\n/)
     const back = await readDaily(dir, '2026-11-09')
     expect(back[0]).toEqual({ ...entries[0], text: '画面の設計 を直した' })
     expect(back[1]).toEqual(entries[1])

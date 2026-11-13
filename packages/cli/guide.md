@@ -172,6 +172,8 @@ The day a status changed is read from the WBS git history (the content of each c
 | `tag_format` | `[{tag}] ` | how the mark is written |
 | `who_format` | `{who}: ` | how the owner name is written at the start of a line in text not filtered by owner (everyone's). Empty means it is not added |
 | `badge_format` | ` <{badge}>` | how a line badge is written after the text (once per badge). Empty means badges are left out of the text (the screen still shows them) |
+| `stale_hours` | `3` | after how many hours since its last edit a waiting line is marked as a stale wait. 0 turns it off. Only lines with a badge of tone wait, or whose text contains one of `wait_words`, count as waiting |
+| `wait_words` | (empty) | words that make a line count as waiting when its text contains them (e.g. `checking,waiting for reply`). Empty means only badges are looked at |
 | `intro` | (empty) | explanation shown at the top of the "Daily progress" screen (empty means tadori's default explanation) |
 | `group_after` | `3` | on a day when more ledger rows of the same kind than this were added or edited, they are merged per kind into one line, "added N rows of …" (the IDs go to the notes) |
 

@@ -215,6 +215,25 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     // 文の形では、補足の「QA表：URL」も「QA表 ↗」のリンクにする
     await expect(page.locator('.daily-preview a', { hasText: 'QA表 ↗' })).toHaveAttribute('href', 'https://sheets.example.com/qa#row=12')
   })
+
+  test('足した行には最後に直した時刻を「HH:MM 更新」で出し、古いままの待ちの行には印と件数の知らせを出す', async ({ page }) => {
+    const res = await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: '上長に確認', badges: [{ text: '確認中', tone: 'wait' }] },
+    })
+    const { entry } = await res.json() as { entry: { id: string } }
+    // 古さは時刻で決まるので、server の答えに「古い待ち」を足して画面の出し方だけを見る
+    await page.route('**/api/daily?*', async route => {
+      const body = await (await route.fetch()).json() as Record<string, unknown>
+      await route.fulfill({ json: { ...body, stale: { ids: [entry.id], hours: 3 } } })
+    })
+    await openDaily(page)
+    const row = page.locator('.daily-entry').filter({ has: page.locator(`[data-entry="${entry.id}"]`) })
+    await expect(row.locator('.daily-updated')).toHaveText(/^(\d{1,2}\/\d{1,2} )?\d{2}:\d{2} 更新$/)
+    await expect(row).toHaveClass(/stale/)
+    await expect(row.locator('.daily-stale')).toHaveText('3 時間以上 更新なし')
+    await expect(page.locator('.daily-stale-note')).toContainText('待ちの行のうち 1 件が 3 時間以上 更新されていません')
+  })
 })
 
 test.describe('1 日の進行の文の形の担当', () => {

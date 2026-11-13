@@ -577,6 +577,9 @@
   .daily-links { display:flex; gap:8px; flex:none; white-space:nowrap; }
   .daily-badges { display:flex; gap:6px; flex:none; white-space:nowrap; }
   .daily-badges:empty { display:none; }
+  .daily-updated { flex:none; font-size:11px; white-space:nowrap; }
+  /* 古いままの待ちの行：会の前に直す行と一目で分かるよう、左に要注意の色の線を引く */
+  .daily-entry.stale { box-shadow:inset 3px 0 0 var(--hole); padding-left:8px; background:var(--hole-soft); border-radius:4px; }
   .daily-link { font-size:12px; color:var(--accent); text-decoration:none; }
   .daily-link:hover { text-decoration:underline; }
   .daily-link.stale { color:var(--hole); font-weight:600; }

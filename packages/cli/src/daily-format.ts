@@ -1,5 +1,5 @@
 import './i18n.js'
-import { entriesFromSheet, nextWorkday, originOf, t, type DailyEntry, type DailySheet, type Project } from '@tadori/core'
+import { entriesFromSheet, nextWorkday, originOf, t, type DailyEntry, type DailySheet, type Project, type StaleRule } from '@tadori/core'
 import { originText } from './format.js'
 import { joinWords, listJoin, noteJoin } from './i18n.js'
 
@@ -48,6 +48,10 @@ export interface DailyFormat {
   readonly who_format: string
   /** 行のバッジの書き方（{badge}＝バッジの文字）。本文のうしろに、バッジの数だけ並べる。空なら文に出さない */
   readonly badge_format: string
+  /** 待ちの行を、最後に直してから何時間で「古い」と出すか（0 なら出さない） */
+  readonly stale_hours: string
+  /** 本文にあれば待ちと読む語（「・」か「,」で区切る。空なら tone が wait のバッジだけを待ちと読む） */
+  readonly wait_words: string
 }
 
 /**
@@ -77,6 +81,14 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   get tag_format() { return t('[{tag}] ') },
   get who_format() { return t('{who}: ') },
   get badge_format() { return t(' <{badge}>') },
+  stale_hours: '3',
+  wait_words: '',
+}
+
+/** 古い待ちの行の決まり（案件の stale_hours・wait_words から） */
+export function staleRuleOf(format: DailyFormat): StaleRule {
+  const hours = Number(format.stale_hours)
+  return { hours: Number.isFinite(hours) && hours > 0 ? hours : 0, words: format.wait_words.split(/[・,、]/).map(w => w.trim()).filter(Boolean) }
 }
 
 /** 行の頭に付ける印（言葉が空なら付けない） */

@@ -11,8 +11,8 @@ export const DAILY_DIR = '.tadori/daily'
 const MEMBERS = '.tadori/members.tsv'
 /** 1 日の進行の文の形（見出しの言葉など）。案件ごとに決める。書かなければ tadori の既定の形 */
 const DAILY_FORMAT = '.tadori/daily-format.tsv'
-// tag・links は後から足した列なので最後に置く（前の版で書いたファイルも、そのまま読める）
-const COLUMNS = ['id', 'who', 'section', 'text', 'wbs', 'issue', 'note', 'origin', 'key', 'tag', 'links', 'badges'] as const
+// tag・links・badges・updated は後から足した列なので最後に置く（前の版で書いたファイルも、そのまま読める）
+const COLUMNS = ['id', 'who', 'section', 'text', 'wbs', 'issue', 'note', 'origin', 'key', 'tag', 'links', 'badges', 'updated'] as const
 
 /** 行のリンクは「表示名 URL | 表示名 URL」の 1 セルに書く（人が TSV を開いても読める。URL に空白は入らないので、最後の空白で分けられる） */
 const LINK_SEPARATOR = ' | '
@@ -78,6 +78,7 @@ function toEntry(row: Record<string, string>, path: string): DailyEntry {
     ...(row.tag ? { tag: row.tag } : {}),
     ...(row.links ? { links: linksFromCell(row.links) } : {}),
     ...(row.badges ? { badges: badgesFromCell(row.badges) } : {}),
+    ...(row.updated ? { updated: row.updated } : {}),
   }
 }
 
@@ -108,7 +109,7 @@ export async function previousDailyDate(dir: string, date: string): Promise<stri
 export async function writeDaily(dir: string, date: string, entries: readonly DailyEntry[], message: string): Promise<CommitResult> {
   const path = dailyPath(date)
   await mkdir(dirname(join(dir, path)), { recursive: true })
-  const rows = entries.map(e => ({ ...e, wbs: e.wbs.join(','), issue: e.issue ?? '', note: e.note ?? '', key: e.key ?? '', tag: e.tag ?? '', links: linksToCell(e.links), badges: badgesToCell(e.badges) }))
+  const rows = entries.map(e => ({ ...e, wbs: e.wbs.join(','), issue: e.issue ?? '', note: e.note ?? '', key: e.key ?? '', tag: e.tag ?? '', links: linksToCell(e.links), badges: badgesToCell(e.badges), updated: e.updated ?? '' }))
   await writeFile(join(dir, path), toTsv(COLUMNS, rows as unknown as Record<string, string>[]), 'utf8')
   return commitFiles(dir, [path], message)
 }

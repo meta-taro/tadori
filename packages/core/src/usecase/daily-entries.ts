@@ -64,6 +64,11 @@ export interface DailyEntry {
   readonly links?: readonly DailyLink[]
   /** 行の札（文字と tone）。画面では本文とは別に色で出し、文では本文のうしろに出す */
   readonly badges?: readonly DailyBadge[]
+  /**
+   * 人かエージェントが最後にこの行を足した・直した時刻（その PC の時刻で YYYY-MM-DDTHH:MM）。
+   * 自動の行と、この列ができる前に書いた行には無い
+   */
+  readonly updated?: string
 }
 
 /** 行のリンク。表示名は人が読む名前（例：QA表・設計書 3.2.5）。URL は http・https だけ */
@@ -181,4 +186,32 @@ export function readAloud(entries: readonly DailyEntry[]): DailyEntry[] {
   const summarized = new Set(summaries.map(e => e.issue))
   const rest = entries.filter(e => e.section !== 'summary' && !(e.section === 'today' && e.issue && summarized.has(e.issue)))
   return [...summaries.map(e => ({ ...e, section: 'today' as const })), ...rest]
+}
+
+/** 古い待ちの行の決まり。hours＝この時間より長く直していなければ古い（0 なら見ない）/ words＝本文にあれば待ちと読む語 */
+export interface StaleRule {
+  readonly hours: number
+  readonly words: readonly string[]
+}
+
+const HOUR_MS = 60 * 60 * 1000
+
+/**
+ * 待ちの行か。待ちと読むのは、人かエージェントが付けた印だけ：tone が wait のバッジか、案件が決めた語（daily-format.tsv の wait_words）を本文に含むか。
+ * tadori は本文の意味を推し量らない（語を決めていない案件では、バッジだけを見る）
+ */
+export const isWaiting = (entry: DailyEntry, words: readonly string[]): boolean =>
+  (entry.badges ?? []).some(b => b.tone === 'wait') || words.some(w => w && entry.text.includes(w))
+
+/**
+ * 古いままの待ちの行（朝会・夕会の前に直す行）。待ちの行のうち、最後に直してから hours 以上たったもの。
+ * 直した時刻の無い行（自動の行・前の版で書いた行）は、古さが分からないので入れない。消した行も入れない
+ */
+export function staleWaits(entries: readonly DailyEntry[], now: Date, rule: StaleRule): DailyEntry[] {
+  if (!(rule.hours > 0)) return []
+  return entries.filter(e => {
+    if (e.origin === 'removed' || !e.updated || !isWaiting(e, rule.words)) return false
+    const at = new Date(e.updated).getTime()
+    return !Number.isNaN(at) && now.getTime() - at >= rule.hours * HOUR_MS
+  })
 }
