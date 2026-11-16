@@ -110,10 +110,10 @@ R2	bd	approval					レビュー担当	基本設計書をレビュー担当が承
 - ルールを節目に効かせるには、ルールの `at` 列に節目を書き、`check` 列に項目の文を書く
 - 節目では `checkpoint`（MCP。`at` と `target`）か `tadori checkpoint <フォルダ> --at <節目>` で項目を読む
 - 1 つずつ実物を見て確かめ、`checkpoint_record` で記録する。項目ごとに結果（`ok` 確かめた／`na` 該当なし／`fixed` ミスを見つけて直した／`open` ミスを見つけたが未対応）と、確かめた場所（ファイル:行か台帳の ID）を書く。`fixed` と `open` には、何が抜けていて何をしたかを `note` に書く。1 つでも欠けていれば何も書かない
-- 対象は WBS のタスク ID か台帳の ID。日に 1 回の節目では、その日の日付（YYYY-MM-DD）。`before-commit` では stage してある変更が対象。stage してから記録し、そのあと stage の中身を替えない
+- 対象は WBS のタスク ID か台帳の ID。日に 1 回の節目では、その日の日付（YYYY-MM-DD）。朝と夕のように 1 日に分けて付けるなら、日付に枠を付ける（`2026-11-16-am`・`2026-11-16-pm`）。`before-commit` では stage してある変更が対象。stage してから記録し、そのあと stage の中身を替えない
 - 記録は `.tadori/checkpoint-log.tsv` に足す（追記だけで commit する）。記録ごとに、その時点のルールセットの版（ルールのファイルの最後の commit）が残る。後で不具合が見つかったとき「ルールが無かった」のか「ルールを当てていなかった」のかを切り分けられる
 - `tadori checkpoint verify <フォルダ> --at <節目> [--target ID]` は、最後の記録が、いま効くルール（あとから足したものも含む）を全部当てていないか、`open` のミスが残っていれば終了コード 1。git の pre-commit（`--at before-commit`）や、エージェントのフック（投稿の前）から呼ぶ。フックを入れるのは、その設定を持つ人
-- `tadori nudge <フォルダ> --at <節目> [--target ID] [--stale-waits] [--hook <フックの種類>]` は、記録の無いまま節目を過ぎようとしていないかを答える（エージェントのフックや定時の起動から呼ぶ。tadori は自分では動き出さない）。stage した変更に `before-commit` の記録が無い・対象の記録が無い・対象を決めない節目でその日の記録が無い、のどれかなら足りないと返す。`--stale-waits` を付けると、その日の 1 日の進行の古い待ちの行も見る
+- `tadori nudge <フォルダ> --at <節目> [--target ID] [--stale-waits] [--hook <フックの種類>]` は、記録の無いまま節目を過ぎようとしていないかを答える（エージェントのフックや定時の起動から呼ぶ。tadori は自分では動き出さない）。stage した変更に `before-commit` の記録が無い・対象の記録が無い・対象を決めない節目でその日の記録が無い、のどれかなら足りないと返す。`--since HH:MM` を付けると、対象を決めない節目ではその時刻以降の記録だけを数える（朝会の記録で夕会の前の nudge が「そろっている」にならないように）。`--stale-waits` を付けると、その日の 1 日の進行の古い待ちの行も見る
 - `--at` を付けなければ、その日の記録のまとめ（節目ごとの回数と最後の時刻）。セッションの始まりや終わりに出す
 - `--hook` には Claude Code のフックの種類（`SessionStart`・`UserPromptSubmit`・`PreToolUse`・`PostToolUse`・`Stop` など）を渡す。足りなければ、そのまま読める JSON を出す（足りていれば何も出さない。終了コードは常に 0）。止めるか知らせるだけかは、`checkpoints.tsv` の `nudge` 列で節目ごとに決める（`block`＝止める／`notify`・空＝知らせるだけ）
   - 知らせるだけ：`hookSpecificOutput.additionalContext`（`Stop` では人の画面に出る `systemMessage`）

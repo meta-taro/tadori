@@ -18,6 +18,8 @@ export interface NudgeRequest {
   readonly staleWaits?: boolean
   /** その日（YYYY-MM-DD） */
   readonly today: string
+  /** 対象を決めない節目で、この時刻（HH:MM）以降の記録だけを数える（朝会と夕会を分けるなど）。省けばその日のすべて */
+  readonly since?: string
   /** いまの時刻（試験で決めるため。省けば今） */
   readonly now?: Date
 }
@@ -76,8 +78,13 @@ async function checkpointShortfall(dir: string, checkpoint: Checkpoint, request:
     const short = shortfallOf(coverage)
     return short ? then(short, howTo) : ''
   }
-  // 対象を決めない節目（朝会・夕会の前・外へ投稿する前など）は、その日に 1 回でも記録したかを見る
-  return runsOn(log, request.today, checkpoint.id).length ? '' : then(t('There is no {at} record today ({date}).', { at: checkpoint.id, date: request.today }), howTo)
+  // 対象を決めない節目（朝会・夕会の前・外へ投稿する前など）は、その日に（since があればその時刻以降に）1 回でも記録したかを見る
+  const since = (request.since ?? '').trim()
+  const runs = runsOn(log, request.today, checkpoint.id).filter(r => !since || timeOf(r.when) >= since)
+  if (runs.length) return ''
+  return then(since
+    ? t('There is no {at} record today ({date}) since {since}.', { at: checkpoint.id, date: request.today, since })
+    : t('There is no {at} record today ({date}).', { at: checkpoint.id, date: request.today }), howTo)
 }
 
 /** その日の 1 日の進行の、古いままの待ちの行 */

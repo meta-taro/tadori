@@ -101,3 +101,19 @@ describe('Claude Code の hooks に渡す JSON', () => {
     expect(parse(hookJson(blocking, 'SessionStart'))).toEqual({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: '記録がありません' } })
   })
 })
+
+describe('朝会と夕会を分ける（日付に枠を付けた対象・--since）', () => {
+  test('日付に枠を付けた対象（YYYY-MM-DD-am）で記録でき、--since より前の記録は数えない', async () => {
+    const day = new Date()
+    const realToday = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
+    await appendCheckpoint(dir, { at: 'before-standup', target: `${realToday}-am`, who: 'エージェント', answers })
+    expect((await nudge(dir, { at: 'before-standup', today: realToday, since: '00:00', now })).ok).toBe(true)
+    const later = await nudge(dir, { at: 'before-standup', today: realToday, since: '23:59', now })
+    expect(later.ok).toBe(false)
+    expect(later.text).toContain('23:59 以降の before-standup の記録がありません')
+  })
+
+  test('枠の形が違う対象は断る', async () => {
+    await expect(appendCheckpoint(dir, { at: 'before-standup', target: '2026-11-16-午前', who: 'エージェント', answers })).rejects.toThrow(/YYYY-MM-DD-am/)
+  })
+})

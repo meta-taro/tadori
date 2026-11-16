@@ -304,7 +304,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   tadori daily [project folder] [--who owner] [--date YYYY-MM-DD]
   tadori checkpoint [project folder] [--at checkpoint] [--target ID]
   tadori checkpoint verify [project folder] --at checkpoint [--target ID]
-  tadori nudge [project folder] [--at checkpoint] [--target ID] [--stale-waits] [--hook event]
+  tadori nudge [project folder] [--at checkpoint] [--target ID] [--since HH:MM] [--stale-waits] [--hook event]
   tadori how-to [topic]
   tadori mcp [project folder] [--screen http://127.0.0.1:4873]
 
@@ -317,7 +317,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   checkpoint  Show the checkpoints, or the check items at one checkpoint (--at). verify exits with 1 if the last record does not cover every applicable rule
               (call it from git pre-commit with --at before-commit, or from an agent hook before posting)
   nudge  Tell an agent that it passed a checkpoint without a record (call it from agent hooks or on a timer). Without --at, today's records
-         --stale-waits also looks at stale waiting lines in today's daily progress. --hook prints JSON that Claude Code hooks read as is
+         --since counts only records from that time on (to tell a morning and an evening meeting apart). --stale-waits also looks at stale waiting lines in today's daily progress. --hook prints JSON that Claude Code hooks read as is
   how-to Show how to use tadori (same content as MCP how_to). Topics: start, ledger, rules, check, daily, write, screen, links, sources, agent-rules
   mcp    Open the MCP server on standard input/output (how-to, glossary, remaining work, gaps, links, ledger search, the dedicated screen cursor)
          --screen is where the screen operated by the dedicated cursor lives (default: the desktop app at http://127.0.0.1:4873)
@@ -330,7 +330,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   tadori daily [案件のフォルダ] [--who 担当] [--date YYYY-MM-DD]
   tadori checkpoint [案件のフォルダ] [--at 節目] [--target ID]
   tadori checkpoint verify [案件のフォルダ] --at 節目 [--target ID]
-  tadori nudge [案件のフォルダ] [--at 節目] [--target ID] [--stale-waits] [--hook フックの種類]
+  tadori nudge [案件のフォルダ] [--at 節目] [--target ID] [--since HH:MM] [--stale-waits] [--hook フックの種類]
   tadori how-to [話題]
   tadori mcp [案件のフォルダ] [--screen http://127.0.0.1:4873]
 
@@ -343,7 +343,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   checkpoint  節目の一覧か、1 つの節目（--at）で確かめる項目を出す。verify は、最後の記録が効くルールを全部当てていなければ終了コード 1
               （git の pre-commit から --at before-commit で、エージェントのフックから投稿の前に呼ぶ）
   nudge  記録の無いまま節目を過ぎようとしていることをエージェントに知らせる（エージェントのフックや定時の起動から呼ぶ）。--at が無ければ今日の記録のまとめ
-         --stale-waits で今日の 1 日の進行の古い待ちの行も見る。--hook で Claude Code の hooks がそのまま読める JSON を出す
+         --since でその時刻以降の記録だけを数える（朝会と夕会を分ける）。--stale-waits で今日の 1 日の進行の古い待ちの行も見る。--hook で Claude Code の hooks がそのまま読める JSON を出す
   how-to 使い方を出す（MCP の how_to と同じ中身）。話題：start・ledger・rules・check・daily・write・screen・links・sources・agent-rules
   mcp    MCP の口を標準入出力で開く（使い方・用語・残課題・漏れ・つながり・台帳の行を探す・画面の専用カーソル）
          --screen は専用カーソルで操作する画面の場所（既定はデスクトップアプリの http://127.0.0.1:4873）
@@ -400,6 +400,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'There is no {at} record for {target} yet.': '{target} の {at} の記録がまだありません。',
   'There is no {at} record today ({date}).': '今日（{date}）の {at} の記録がありません。',
   "{n} waiting lines in today's daily progress have not been edited for {hours} hours or more: {ids}. Check whether the answer came, then update them": "今日の 1 日の進行で、待ちの行のうち {n} 件が {hours} 時間以上直されていません：{ids}。返事が来たかを確かめて、直してください",
+  'There is no {at} record today ({date}) since {since}.': '今日（{date}）の {since} 以降の {at} の記録がありません。',
+  'Write --since as HH:MM: {value}': '--since は HH:MM で書いてください：{value}',
   '{at}: records are in place ({time})': '{at}：記録はそろっています（{time}）',
   'There is a record that checked every applicable rule': '効くルールをすべて当てた記録があります',
   'The checkpoint "{at}" is not defined ({allowed})': '節目「{at}」はありません（{allowed}）',

@@ -70,7 +70,8 @@ export interface CheckpointWritten {
   readonly commit: CommitResult
 }
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/
+/** 日に 1 回（か、日に何回かの枠）の節目の対象：その日の日付か、日付に枠を付けたもの（2026-11-16-am など） */
+const DAY = /^\d{4}-\d{2}-\d{2}(-[a-z0-9]{1,12})?$/i
 const pad = (n: number) => String(n).padStart(2, '0')
 const stamp = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 
@@ -82,9 +83,9 @@ async function targetOf(dir: string, input: CheckpointInput, ids: ReadonlySet<st
   }
   const target = (input.target ?? '').trim()
   if (!target) return { target, problems: [t('Give the target: the WBS task ID or ledger ID this check is for')] }
-  // 日に 1 回の節目（朝会・夕会の前など）は、その日の日付を対象にしてよい
+  // 日に 1 回の節目（朝会・夕会の前など）は、その日の日付を対象にしてよい。朝と夕のように分けるなら、日付に枠を付ける（-am・-pm）
   if (DAY.test(target)) return { target, problems: [] }
-  return ids.has(target) ? { target, problems: [] } : { target, problems: [t('{id} is not in the ledger or the WBS (for a once-a-day checkpoint, give the date as YYYY-MM-DD)', { id: target })] }
+  return ids.has(target) ? { target, problems: [] } : { target, problems: [t('{id} is not in the ledger or the WBS (for a once-a-day checkpoint, give the date as YYYY-MM-DD, or with a slot such as YYYY-MM-DD-am)', { id: target })] }
 }
 
 /**
