@@ -122,6 +122,28 @@ R2	bd	approval					レビュー担当	基本設計書をレビュー担当が承
   - 止める：`PreToolUse` は `permissionDecision: deny`、`PostToolUse`・`Stop` は `decision: block` と `reason`。利用者の発言を消さないよう、`UserPromptSubmit` と `SessionStart` では止めない
 - `--hook` を付けなければ文で返し、足りなければ終了コード 1
 
+**フックの見本。**入れるかどうか・どこまで止めるかは、その設定を持つ人が決めます（tadori もエージェントも勝手に入れません）。`<tadori>` は tadori を置いた場所、`<案件>` は案件のフォルダです。
+
+- git の pre-commit（`.git/hooks/pre-commit`）：stage した変更に `before-commit` の記録が無い・ルールが足りない・`open` のミスが残っていれば、commit を止めます
+
+  ```sh
+  #!/bin/sh
+  node <tadori>/packages/cli/dist/main.js checkpoint verify <案件> --at before-commit
+  ```
+
+- Claude Code の hooks（`.claude/settings.json`）：セッションの始まりにその日の記録のまとめを出し、ターンの終わりに会議の前の節目の記録が無ければ知らせます（会議の前の節目を `before-meeting` にした例。16:00 以降の記録だけを数え、古い待ちの行も見る）
+
+  ```json
+  {
+    "hooks": {
+      "SessionStart": [{ "hooks": [{ "type": "command", "command": "node <tadori>/packages/cli/dist/main.js nudge <案件> --hook SessionStart" }] }],
+      "Stop": [{ "hooks": [{ "type": "command", "command": "node <tadori>/packages/cli/dist/main.js nudge <案件> --at before-meeting --since 16:00 --stale-waits --hook Stop" }] }]
+    }
+  }
+  ```
+
+- `before-commit` を Claude Code の `PreToolUse` で止めることもできますが、道具の名前でしか絞れないため、stage したまま別のコマンドを打つと、それも止まります。コミットの前は git の pre-commit で止めるほうが確かです
+
 これはエージェント自身の記録で、人の承認ではありません。漏れを埋めたとは判定しません。
 
 ## daily 人単位の 1 日の進行

@@ -122,6 +122,28 @@ Written agreements are easy to forget at the moment they matter. A checkpoint pu
   - Block: `permissionDecision: deny` for `PreToolUse`, `decision: block` with `reason` for `PostToolUse` and `Stop`. It never blocks `UserPromptSubmit` or `SessionStart`, so the person's message is not thrown away
 - Without `--hook` it answers in text and exits with 1 when something is missing
 
+**Hook examples.** Whether to install them, and how much to block, is up to the person who owns those settings (neither tadori nor the agent installs them on its own). `<tadori>` is where tadori lives and `<project>` is the project folder.
+
+- git pre-commit (`.git/hooks/pre-commit`): blocks the commit when the staged change has no `before-commit` record, misses a rule, or still has an `open` miss
+
+  ```sh
+  #!/bin/sh
+  node <tadori>/packages/cli/dist/main.js checkpoint verify <project> --at before-commit
+  ```
+
+- Claude Code hooks (`.claude/settings.json`): show the day's records at session start, and at the end of a turn say so when the before-the-meeting checkpoint has no record (an example where that checkpoint is `before-meeting`; it counts only records from 16:00 on and also looks at stale waiting lines)
+
+  ```json
+  {
+    "hooks": {
+      "SessionStart": [{ "hooks": [{ "type": "command", "command": "node <tadori>/packages/cli/dist/main.js nudge <project> --hook SessionStart" }] }],
+      "Stop": [{ "hooks": [{ "type": "command", "command": "node <tadori>/packages/cli/dist/main.js nudge <project> --at before-meeting --since 16:00 --stale-waits --hook Stop" }] }]
+    }
+  }
+  ```
+
+- You can also block `before-commit` with Claude Code's `PreToolUse`, but it can only match by tool name, so any other command run while changes are staged is blocked too. The git pre-commit hook is the surer place to stop a commit
+
 This is the agent's own record, not a human approval. It never marks a gap as filled.
 
 ## daily Daily progress per person
