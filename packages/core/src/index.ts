@@ -22,6 +22,6 @@ export { DAILY_DIR, dailyPath, previousDailyDate, readDaily, readDailyFormat, re
 export { loadProject, ProjectLoadError, PATHS } from './infrastructure/repository.js'
 export { saveSettings, saveTaskStatus, appendChecks, readChecks, CHECK_COLUMNS, type CheckRecord, type SettingsChange } from './infrastructure/settings-store.js'
 export { initProject, type InitResult } from './infrastructure/scaffold.js'
-export { commitFiles, lastCommits, repositoryPrefix, type CommitResult } from './infrastructure/git.js'
+export { commitFiles, lastCommits, repositoryPrefix, ruleAddedDates, type CommitResult } from './infrastructure/git.js'
 export { parseTsv, toTsv, updateCell } from './infrastructure/tsv.js'
 export { addJapanese, currentLang, detectLang, joinList, LANGS, langOf, setLang, t, withLang, type Lang } from './i18n.js'

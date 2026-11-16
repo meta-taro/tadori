@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { unknownTaskStatuses, type UnknownTaskStatus, approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readCheckpointLog, checkpointsOf, missesByRule, type RuleMisses, type Checkpoint, type CheckpointRow, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
+import { unknownTaskStatuses, type UnknownTaskStatus, approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readCheckpointLog, checkpointsOf, missesByRule, type RuleMisses, type Checkpoint, type CheckpointRow, readMembers, repositoryPrefix, resolvedItems, ruleAddedDates, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 漏れに「md-business で開く」の URL を付けたもの（雛形が .tadori/links.tsv にあるとき） */
 export type LeakWithLink = Leak & {
@@ -32,6 +32,8 @@ export interface ProjectState {
   readonly checkpointLog: readonly CheckpointRow[]
   /** ルールごとの、この 30 日に節目でミスを見つけた回数と最後の日（ミスの無いルールは入らない。事実だけで、割合にはしない） */
   readonly ruleMisses: Readonly<Record<string, RuleMisses>>
+  /** ルールごとの、ルールセットに最初に入った commit の日（git の履歴から読む。commit していないルールは入らない） */
+  readonly ruleAdded: Readonly<Record<string, string>>
   /** 節目の並び（案件が決めたものか、既定の 4 つ） */
   readonly checkpoints: readonly Checkpoint[]
   /** 前のチェックでは漏れだったが、いまは漏れの無い行（チェックの記録から読むだけ） */
@@ -67,6 +69,7 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     checks,
     checkpointLog,
     ruleMisses: Object.fromEntries(missesByRule(checkpointLog, daysBefore(today, MISS_DAYS))),
+    ruleAdded: await ruleAddedDates(dir),
     checkpoints: checkpointsOf(project),
     resolved: resolvedItems(checks, leaks),
     members,

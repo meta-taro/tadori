@@ -592,6 +592,22 @@ test.describe('節目の確かめの記録', () => {
     await page.locator('#cp-target').selectOption('')
     await expect(page.locator('.cp-run')).toHaveCount(3)
   })
+
+  test('期間で絞ると、報告用のまとめに期間中に足したルールと、その元になった失敗を並べる（足した日は server が git から読む）', async ({ page }) => {
+    await page.route('**/api/state*', async route => {
+      const body = await (await route.fetch()).json() as { today: string; rules: Array<Record<string, unknown>> }
+      const rules = [...body.rules, { ...body.rules[0], id: 'N97', kind: 'note', check: '', label: '期待結果は画面の言葉で書く（試験用）', source: 'F-02' }]
+      await route.fulfill({ json: { ...body, rules, ruleAdded: { N1: '2000-01-01', N97: body.today } } })
+    })
+    await page.goto('/#log')
+    const report = page.locator('#cp-report')
+    await expect(report).not.toHaveValue(/足したルール/) // すべての期間では出さない（全部のルールになるため）
+    await page.locator('#cp-period').selectOption('7')
+    await expect(report).toHaveValue(/この期間に足したルール 1 件/)
+    await expect(report).toHaveValue(/- \d{4}-\d{2}-\d{2} N97 期待結果は画面の言葉で書く（試験用）（F-02 から）/)
+    await expect(report).not.toHaveValue(/ N1 /)
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+  })
 })
 
 test.describe('ルールの分類の色と範囲', () => {

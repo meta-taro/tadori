@@ -89,8 +89,30 @@ function runRow(state, run) {
 /**
  * 報告用のまとめ（事実だけ：何回・何件当てた・何が抜けた・どうした。評価や点数は付けない）
  * @param {ProjectState} state @param {readonly Run[]} runs
+ * @param {string} [from] 期間の始まり（YYYY-MM-DD）。あれば、期間中に足したルールも並べる
  */
-export function reportOf(state, runs) {
+export function reportOf(state, runs, from = '') {
+  return [checkReport(state, runs), addedRulesReport(state, from)].filter(Boolean).join('\n\n')
+}
+
+/**
+ * 期間中に足したルールと、その元になった失敗（足した日は server が git の履歴から読む）。
+ * すべての期間では出さない（全部のルールが並ぶだけになるため）
+ * @param {ProjectState} state @param {string} from
+ */
+function addedRulesReport(state, from) {
+  if (!from) return ''
+  const added = state.ruleAdded ?? {}
+  const rules = state.rules.filter(r => (added[r.id] ?? '') >= from).sort((a, b) => (added[a.id] ?? '').localeCompare(added[b.id] ?? '') || a.id.localeCompare(b.id))
+  if (!rules.length) return ''
+  const lines = rules.map(r => t('- {date} {id} {label}{source}', {
+    date: added[r.id] ?? '', id: r.id, label: r.check || r.label, source: r.source ? t(' (from {id})', { id: r.source }) : '',
+  }))
+  return [t('Rules added in this period: {n}', { n: rules.length }), ...lines].join('\n')
+}
+
+/** 節目の確かめのまとめ @param {ProjectState} state @param {readonly Run[]} runs */
+function checkReport(state, runs) {
   if (!runs.length) return ''
   const days = runs.map(r => r.when.slice(0, 10)).sort()
   const range = days[0] === days.at(-1) ? days[0] : `${days[0]}〜${days.at(-1)}`
@@ -141,7 +163,7 @@ export function renderCheckpoints(holder, state, runId) {
     const list = /** @type {HTMLElement} */ (holder.querySelector('.cp-list'))
     list.innerHTML = runs.length ? runs.map(r => runRow(state, r)).join('') : `<p class="cond">${esc(t('No checkpoint checks in this range'))}</p>`
     const report = /** @type {HTMLTextAreaElement} */ (holder.querySelector('#cp-report'))
-    report.value = reportOf(state, runs)
+    report.value = reportOf(state, runs, from)
   }
   holder.innerHTML = `
     <h2>${esc(t('Checks at checkpoints'))}</h2>

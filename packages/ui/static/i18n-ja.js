@@ -456,5 +456,8 @@ export const JA = {
   'Missed {n} times in 30 days': '30 日で {n} 回ミス',
   'Last missed: {last}': '最後のミス：{last}',
   'Failures without a rule': 'ルールになっていない失敗',
+  'Rules added in this period: {n}': 'この期間に足したルール {n} 件',
+  '- {date} {id} {label}{source}': '- {date} {id} {label}{source}',
+  ' (from {id})': '（{id} から）',
   '{n} of {total} failure rows (kind FL) have no rule that grew from them. Whether each needs one is for a person to decide.': '失敗の行（FL）{total} 件のうち {n} 件に、生まれたルールがありません。ルールが要るかは人が決めます。',
 }

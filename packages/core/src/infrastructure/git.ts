@@ -56,6 +56,36 @@ export async function lastCommits(dir: string, files: readonly string[]): Promis
   return Object.fromEntries(entries.flat())
 }
 
+const RULESETS_DIR = '.tadori/rulesets'
+const DATE_MARK = '\u0001'
+const RULE_LOG_BUFFER = 64 * 1024 * 1024
+
+/**
+ * ルールごとに、ルールセット（.tadori/rulesets/*.tsv）にその ID の行が最初に入った commit の日（YYYY-MM-DD）。
+ * 古い commit から順に差分を読み、足された行の先頭の列（ID）を最初に見た日を取る。
+ * 直した・別のファイルへ移したルールも、最初に入った日のまま。commit していないルール（手元だけのルールセットなど）は入れない
+ */
+export async function ruleAddedDates(dir: string): Promise<Record<string, string>> {
+  let stdout = ''
+  try {
+    ({ stdout } = await run('git', ['log', '--reverse', '--no-renames', `--format=${DATE_MARK}%cs`, '-p', '--unified=0', '--', RULESETS_DIR], { cwd: dir, maxBuffer: RULE_LOG_BUFFER }))
+  } catch {
+    // git が無い・git 管理外：足した日は分からない
+    return {}
+  }
+  const added: Record<string, string> = {}
+  let date = ''
+  for (const line of stdout.split('\n')) {
+    if (line.startsWith(DATE_MARK)) { date = line.slice(1).trim(); continue }
+    if (!line.startsWith('+') || line.startsWith('+++')) continue
+    const id = line.slice(1).split('\t')[0]?.trim() ?? ''
+    // 説明の行（#）と見出しの行（id）はルールではない
+    if (!id || id.startsWith('#') || id === 'id' || added[id]) continue
+    added[id] = date
+  }
+  return added
+}
+
 /** 案件のフォルダが、それ自身の git リポジトリの最上位か */
 async function isOwnRepository(dir: string): Promise<boolean> {
   try {
