@@ -64,6 +64,16 @@ describe('MCP の書く道具', () => {
     expect(traced.content[0]?.text).toContain('この行から生まれたルール：V80')
   })
 
+  test('list_lessons：失敗の行ごとに生まれたルールを並べ、ルールの無い行を件数と一緒に出す', async () => {
+    const lessons = (await tool('list_lessons')).content[0]?.text ?? ''
+    expect(lessons).toContain('失敗の行 1 件（うちルールの無い行 0 件）')
+    expect(lessons).toContain('- FL-1 期待結果に関数名を書いた：N80、V80')
+    const findings = (await tool('list_lessons', { kind: 'F' })).content[0]?.text ?? ''
+    expect(findings).toMatch(/うちルールの無い行 1 件/)
+    expect(findings).toMatch(/- F-02 .*：ルールなし/)
+    expect((await tool('list_lessons', { kind: 'NOPE' })).content[0]?.text).toContain('NOPE の行は台帳にありません')
+  })
+
   test('正本から反映した記録：item_update に synced_by を付けるか item_synced で、日時とだれがを書く', async () => {
     expect((await tool('item_update', { id: 'DD-2.3', fields: { change: '変わる' }, synced_by: '設計担当' })).isError).toBeUndefined()
     expect((await tool('item_synced', { id: 'F-02', who: '検証担当' })).isError).toBeUndefined()

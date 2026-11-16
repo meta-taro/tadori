@@ -1,7 +1,7 @@
 import './i18n.js'
 import { readFile } from 'node:fs/promises'
 import { createInterface } from 'node:readline'
-import { currentLang, parseTsv, t, trace } from '@tadori/core'
+import { currentLang, FAILURE_KINDS, joinList, lessonsByFailure, parseTsv, t, trace } from '@tadori/core'
 import { fixText, formatCheck, formatTrace, originText } from './format.js'
 import { howTo } from './guide.js'
 import { committed, writeTools, type WriteContext } from './mcp-write.js'
@@ -192,6 +192,22 @@ function buildProjectTools(options: McpOptions): Tool[] {
       run: async args => withState(({ project, state }) => {
         const result = trace(project, str(args.id))
         return result ? text(formatTrace(result, state.origins)) : text(t('{id} is not in the ledger. Search with find_items', { id: str(args.id) }), true)
+      }),
+    },
+    {
+      name: 'list_lessons',
+      description: t('List failure rows (kind FL by default) with the rules that grew from each (rules whose source is that row), and count the rows that have no rule yet. '
+        + 'It only lists; whether a failure needs a rule is for a person to decide. Add one with lesson_add or rule_add with source.'),
+      inputSchema: { type: 'object', properties: { kind: { type: 'string', description: t('Kind of ledger row to treat as a failure (default FL, e.g. F for findings)') } }, additionalProperties: false },
+      run: async args => withState(({ project }) => {
+        const kind = str(args.kind).trim() || FAILURE_KINDS[0] || 'FL'
+        const rows = lessonsByFailure(project, [kind])
+        if (!rows.length) return text(t('There are no {kind} rows in the ledger', { kind }))
+        const without = rows.filter(r => !r.rules.length).length
+        const lines = rows.map(r => t('- {id} {title}: {rules}', {
+          id: r.item.id, title: r.item.title, rules: r.rules.length ? joinList(r.rules.map(x => x.id), '、') : t('no rule'),
+        }))
+        return text([t('{count} failure rows ({without} without a rule)', { count: rows.length, without }), ...lines].join('\n'))
       }),
     },
     {

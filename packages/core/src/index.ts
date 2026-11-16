@@ -8,6 +8,7 @@ export { approvalTargets, changedAfterApproval, sourceFile, type ChangeAfterAppr
 export { checklistOf, checkpointsOf, CHECKPOINT_RESULTS, coverageOf, refusalsOf, missesByRule, runsById, runsOn, summaryOf, SUMMARY_RULE, type CheckpointAnswer, type CheckpointResult, type CheckpointRow, type CheckpointRun, type ChecklistEntry, type Coverage, type RuleMisses } from './usecase/checkpoint.js'
 export { appendCheckpoint, CHECKPOINT_LOG, CHECKPOINT_LOG_COLUMNS, readCheckpointLog, rulesetVersion, stagedDigest, type CheckpointInput, type CheckpointWritten } from './infrastructure/checkpoint-log.js'
 export { trace, type TraceResult, type TraceStep } from './usecase/trace.js'
+export { lessonsByFailure, FAILURE_KINDS, type FailureLessons } from './usecase/lessons.js'
 export { validatePhases, validateStatuses } from './usecase/settings.js'
 export { resolvedItems, type ResolvedItem } from './usecase/history.js'
 export { buildDaily, nextWorkday, ownersOf, type DailyLine, type DailySheet, type StatusChange } from './usecase/daily.js'

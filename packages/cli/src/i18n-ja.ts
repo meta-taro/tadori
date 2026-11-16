@@ -447,4 +447,10 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Added lesson {id}': '失敗 {id} とルールを足しました',
   'Ledger row ID this rule was born from (e.g. a failure FL-3). Empty to remove': 'このルールが生まれた元の台帳の行の ID（例：失敗 FL-3）。空で外す',
   ' (missed {count} times in the last 30 days, last {last})': '（この 30 日で {count} 回ミス・最後 {last}）',
+  'List failure rows (kind FL by default) with the rules that grew from each (rules whose source is that row), and count the rows that have no rule yet. It only lists; whether a failure needs a rule is for a person to decide. Add one with lesson_add or rule_add with source.': '失敗の行（既定は種類 FL）ごとに、そこから生まれたルール（source 列がその行のルール）を並べ、まだルールの無い行を数える。並べるだけで、その失敗にルールが要るかは人が決める。足すときは lesson_add か、source を付けた rule_add。',
+  'Kind of ledger row to treat as a failure (default FL, e.g. F for findings)': '失敗として見る台帳の行の種類（既定は FL。例：指摘なら F）',
+  'There are no {kind} rows in the ledger': '{kind} の行は台帳にありません',
+  '- {id} {title}: {rules}': '- {id} {title}：{rules}',
+  'no rule': 'ルールなし',
+  '{count} failure rows ({without} without a rule)': '失敗の行 {count} 件（うちルールの無い行 {without} 件）',
 }
