@@ -413,6 +413,22 @@ test.describe('ルールを画面から足す・直す・消す', () => {
     await page.unrouteAll({ behavior: 'ignoreErrors' })
   })
 
+  test('失敗の行（FL）のうち、生まれたルールの無い行を、ルールの画面の下に件数とつながりを辿る入口で並べる', async ({ page }) => {
+    await page.route('**/api/state*', async route => {
+      const body = await (await route.fetch()).json() as { items: Array<Record<string, unknown>>; rules: Array<Record<string, unknown>> }
+      const fl = (id: string) => ({ id, kind: 'FL', title: `${id} の失敗（試験用）`, source: '', refs: [], fields: {} })
+      const rules = [...body.rules, { ...body.rules[0], id: 'N96', kind: 'note', source: 'FL-91' }]
+      await route.fulfill({ json: { ...body, items: [...body.items, fl('FL-91'), fl('FL-92')], rules } })
+    })
+    await page.goto('/#rules')
+    const section = page.locator('#rules-unruled')
+    await expect(section).toContainText('失敗の行（FL）2 件のうち 1 件に、生まれたルールがありません')
+    await expect(section.locator('li')).toHaveCount(1)
+    await section.getByRole('link', { name: 'FL-92' }).click()
+    await expect(page).toHaveURL(/#trace-FL-92$/)
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+  })
+
   test('知らない種類のルールなど、保存できないときは理由を出し、一覧は変えない', async ({ page }) => {
     await page.goto('/#rules')
     await page.getByRole('button', { name: 'ルールを足す' }).click()

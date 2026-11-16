@@ -241,6 +241,24 @@ function ruleBody(form, isEdit) {
 }
 
 /**
+ * ルールになっていない失敗：失敗の行（種類 FL）のうち、source でつながるルールが無いもの。
+ * 並べるだけ。その失敗にルールが要るかは人が決める
+ * @param {ProjectState} state
+ */
+function unruledFailuresHtml(state) {
+  const failures = state.items.filter(i => i.kind === 'FL')
+  if (!failures.length) return ''
+  const sources = new Set(state.rules.map(r => r.source).filter(Boolean))
+  const unruled = failures.filter(i => !sources.has(i.id))
+  const links = unruled.map(i => `<li><a href="#trace-${encodeURIComponent(i.id)}">${esc(i.id)}</a> ${esc(i.title)}</li>`).join('')
+  return `<section class="panel rules-unruled" id="rules-unruled">
+    <h2>${esc(t('Failures without a rule'))}</h2>
+    <p class="cond">${esc(t('{n} of {total} failure rows (kind FL) have no rule that grew from them. Whether each needs one is for a person to decide.', { n: unruled.length, total: failures.length }))}</p>
+    ${links ? `<ul>${links}</ul>` : ''}
+  </section>`
+}
+
+/**
  * @param {HTMLElement} view
  * @param {ProjectState} state
  * @param {() => Promise<void>} reload 保存したあとに案件を読み直す
@@ -268,7 +286,8 @@ export function renderRules(view, state, reload) {
       </div>
     </div>
     <div class="cond rules-total" id="rules-total"></div>
-    <div class="panel rules-list" id="rules-list"></div>`
+    <div class="panel rules-list" id="rules-list"></div>
+    ${unruledFailuresHtml(state)}`
 
   const list = within(view, '#rules-list')
   const total = within(view, '#rules-total')

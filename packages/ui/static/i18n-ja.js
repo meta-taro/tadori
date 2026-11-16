@@ -455,4 +455,6 @@ export const JA = {
   'at {at}': '節目 {at}',
   'Missed {n} times in 30 days': '30 日で {n} 回ミス',
   'Last missed: {last}': '最後のミス：{last}',
+  'Failures without a rule': 'ルールになっていない失敗',
+  '{n} of {total} failure rows (kind FL) have no rule that grew from them. Whether each needs one is for a person to decide.': '失敗の行（FL）{total} 件のうち {n} 件に、生まれたルールがありません。ルールが要るかは人が決めます。',
 }
