@@ -235,6 +235,7 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
       const phase = (row.phase ?? '').trim()
       const at = splitValues(row.at ?? '')
       const check = (row.check ?? '').trim()
+      const source = (row.source ?? '').trim()
       // 判定するルールは、どの工程のものかが無いと、工程の完了判定に入らず黙って抜ける
       if (kind !== 'note' && !phase) {
         problems.push(t('{file}, rule {id}: write the phase (only "note" rules may leave it empty)', { file: `${PATHS.rulesets}/${file}`, id: String(row.id) }))
@@ -268,6 +269,7 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
         ...(group ? { group } : {}),
         ...(at.length ? { at } : {}),
         ...(check ? { check } : {}),
+        ...(source ? { source } : {}),
       }]
     })
   }))

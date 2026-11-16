@@ -201,6 +201,7 @@ WBS（`ledger/wbs.tsv`）と台帳に、書かなくてもよい列がありま�
 - 正本から反映した記録：正本を見て手元の行を直したら `item_update` に `synced_by`（反映した人）を付ける。中身は変えずに「いまの正本どおり」と確かめただけなら `item_synced`（`id`・`who`）。日時は道具が入れる（`synced_at`・`synced_by` 列）
 - WBS：`task_add`・`task_update`（状態・日付・担当・課題。その場で commit するので、1 日の進行の「状態が変わった日」がずれない）
 - ルール：`rule_add`・`rule_update`・`rule_remove`
+- 失敗からルールを育てる：`lesson_add`（`failure` 失敗の行・`rule` 次から節目で突きつける約束・あれば `pattern` 書いてはいけない語）。失敗を台帳に足し（kind は既定 `FL`）、note ルールと、語で分かるなら forbidden ルールを 1 つの commit で足す。ルールの `source` 列に失敗の ID が入り、ルールの画面から失敗へ、つながりを辿る画面で失敗から「この行から生まれたルール」へ辿れる。`rule.at` は必須（節目で読まれない約束は効かないため）。今あるルールの生まれた元は `rule_update` の `source` で書ける（台帳にある行だけ）
 - 人の表：`member_set`・`member_remove`（人の役割 roles と git の作者名）
 - 工程：`phase_set`（使われている工程は消せない）
 - 確かめる：`run_check`（`log` を付けるとチェックの記録に 5W1H で足す）

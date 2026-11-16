@@ -3,7 +3,8 @@ import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { loadProject } from '../src/infrastructure/repository.js'
-import { removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveTask, WriteRefused } from '../src/infrastructure/project-writer.js'
+import { trace } from '../src/usecase/trace.js'
+import { addLesson, removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveTask, WriteRefused } from '../src/infrastructure/project-writer.js'
 
 // 架空の見本の案件を写して使う
 const EXAMPLE = resolve(import.meta.dirname, '../../../examples/lend-v12')
@@ -113,5 +114,41 @@ describe('人の表（saveMember・removeMember）', () => {
     expect(await readFile(join(dir, '.tadori/members.tsv'), 'utf8')).toContain('検証担当B\tkensho-b\t検証担当・PM')
     await removeMember(dir, '検証担当B')
     expect(await readFile(join(dir, '.tadori/members.tsv'), 'utf8')).not.toContain('検証担当B')
+  })
+})
+
+describe('失敗からルールを育てる（addLesson）', () => {
+  test('失敗の記録（台帳の行）・節目の約束（note ルール）・書いてはいけない語（forbidden ルール）を 1 回で足し、ルールから失敗へ辿れる', async () => {
+    await addLesson(dir, {
+      failure: { id: 'FL-1', title: '期待結果に関数名を書いて、確かめる人が読めなかった', refs: ['TC-04'] },
+      rule: { id: 'N90', label: '期待結果は画面で見える言葉で書く', at: 'cases-written', check: '期待結果に関数名や実装の語が無いか' },
+      pattern: { id: 'V90', phase: 'it', from: 'TC', field: 'title', words: 'saveLoan|colspan' },
+    })
+    const project = await loadProject(dir)
+    expect(project.items.find(i => i.id === 'FL-1')).toMatchObject({ kind: 'FL', refs: ['TC-04'] })
+    expect(project.rules.find(r => r.id === 'N90')).toMatchObject({ kind: 'note', source: 'FL-1', at: ['cases-written'], check: '期待結果に関数名や実装の語が無いか' })
+    expect(project.rules.find(r => r.id === 'V90')).toMatchObject({ kind: 'forbidden', source: 'FL-1', field: 'title', values: ['saveLoan', 'colspan'] })
+    expect(trace(project, 'FL-1')?.lessons.map(r => r.id)).toEqual(['N90', 'V90'])
+  })
+
+  test('ID が使われている・refs が台帳に無い・節目が無いときは断り、何も書かない', async () => {
+    const before = await readFile(join(dir, 'ledger/items.tsv'), 'utf8')
+    const base = { failure: { id: 'FL-2', title: '失敗' }, rule: { id: 'N91', label: '約束', at: 'cases-written' } }
+    await expect(addLesson(dir, { ...base, failure: { ...base.failure, refs: ['NOPE-1'] } })).rejects.toThrow(WriteRefused)
+    await expect(addLesson(dir, { ...base, rule: { ...base.rule, at: '' } })).rejects.toThrow(WriteRefused)
+    await expect(addLesson(dir, { ...base, rule: { ...base.rule, at: 'before-lunch' } })).rejects.toThrow(WriteRefused)
+    await expect(addLesson(dir, { ...base, failure: { ...base.failure, id: 'TC-04' } })).rejects.toThrow(WriteRefused)
+    expect(await readFile(join(dir, 'ledger/items.tsv'), 'utf8')).toBe(before)
+    expect((await loadProject(dir)).rules.some(r => r.id === 'N91')).toBe(false)
+  })
+})
+
+describe('ルールの生まれた元（source）', () => {
+  test('台帳にある行なら source に書けて、空で外せる。台帳に無い ID は断る', async () => {
+    await saveRule(dir, { id: 'N93', kind: 'note', label: '約束', source: 'F-02' }, { create: true })
+    expect((await loadProject(dir)).rules.find(r => r.id === 'N93')?.source).toBe('F-02')
+    await saveRule(dir, { id: 'N93', source: '' }, { create: false })
+    expect((await loadProject(dir)).rules.find(r => r.id === 'N93')).not.toHaveProperty('source')
+    await expect(saveRule(dir, { id: 'N93', source: 'FL-99' }, { create: false })).rejects.toThrow(/FL-99/)
   })
 })

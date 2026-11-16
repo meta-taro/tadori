@@ -54,18 +54,38 @@ async function readOr(path: string, fallback: string): Promise<string> {
 
 /** 書いて、案件を読み直す。読めなければ元に戻して断る。読めれば commit する */
 async function writeChecked(dir: string, path: string, next: string, original: string | null, message: string): Promise<CommitResult> {
-  await mkdir(dirname(join(dir, path)), { recursive: true })
-  await writeFile(join(dir, path), next, 'utf8')
+  return writeCheckedFiles(dir, [{ path, next, original }], message)
+}
+
+/** 書き換える 1 つのファイル。original が null なら、断っても戻さない（今までの writeChecked と同じ） */
+interface FileChange {
+  readonly path: string
+  readonly next: string
+  readonly original: string | null
+}
+
+/**
+ * 何枚かのファイルをまとめて書き、案件を読み直す。読めなければ全部を元に戻して断る。読めれば 1 回で commit する
+ * （台帳の行とルールのように、片方だけ残ると辿れなくなるものを、いっしょに書くため）
+ */
+async function writeCheckedFiles(dir: string, changes: readonly FileChange[], message: string): Promise<CommitResult> {
+  for (const change of changes) {
+    await mkdir(dirname(join(dir, change.path)), { recursive: true })
+    await writeFile(join(dir, change.path), change.next, 'utf8')
+  }
   try {
     await loadProject(dir)
   } catch (error: unknown) {
-    if (original !== null) await writeFile(join(dir, path), original, 'utf8')
+    for (const change of changes) {
+      if (change.original !== null) await writeFile(join(dir, change.path), change.original, 'utf8')
+    }
     if (error instanceof ProjectLoadError) throw new WriteRefused(error.problems)
     throw error
   }
   // ローカルのルールのファイルは commit しない（git に入れない約束）
-  if (path.endsWith('.local.tsv')) return { committed: false, reason: t('Not committed: local rules stay on this PC') }
-  return commitFiles(dir, [path], message)
+  const shared = changes.map(c => c.path).filter(p => !p.endsWith(LOCAL_SUFFIX))
+  if (!shared.length) return { committed: false, reason: t('Not committed: local rules stay on this PC') }
+  return commitFiles(dir, shared, message)
 }
 
 /** ID を確かめる対象（言語ごとに文の形が違うので、対象ごとに 1 つの文にする） */
@@ -208,6 +228,8 @@ export interface RuleInput {
   readonly at?: string
   /** 節目で突きつけるチェック項目の文 */
   readonly check?: string
+  /** このルールが生まれた元（台帳の行の ID。失敗の記録など）。空で外す */
+  readonly source?: string
 }
 
 const RULE_HEADER = 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\tgroup\towner\tlabel\n'
@@ -235,6 +257,8 @@ export async function saveRule(dir: string, input: RuleInput, { create }: { crea
   if (input.phase && !project.phases.some(p => p.id === input.phase)) throw new WriteRefused([t('The phase "{phase}" is not in the settings', { phase: input.phase })])
   if (input.phase === '' && !phaseOptional) throw new WriteRefused([t('A rule that checks needs a phase (only "note" rules may leave it empty)')])
   if (create && ((!input.phase && !phaseOptional) || !input.kind || !input.label)) throw new WriteRefused([t('A new rule needs phase, kind and label (a "note" rule needs only kind and label)')])
+  // 生まれた元は台帳にある行だけ（推し量ってつながない）
+  if (input.source && !project.items.some(i => i.id === input.source)) throw new WriteRefused([t('source {id} is not in the ledger (add the failure row first, or use lesson_add)', { id: input.source })])
 
   // 範囲が local の分類のルールは、git に入れないファイルに書く（その人とエージェントの間の約束は、チームの履歴に残さない）
   const isLocal = project.ruleGroups?.find(g => g.id === input.group)?.scope === 'local'
@@ -252,6 +276,62 @@ export async function removeRule(dir: string, rawId: string): Promise<CommitResu
   if (!path) throw new WriteRefused([t('Rule {id} does not exist', { id })])
   const original = await readFile(join(dir, path), 'utf8')
   return writeChecked(dir, path, removeRow(original, 'id', id) as string, original, t('Remove rule {id}', { id }))
+}
+
+// ---- 失敗からルールを育てる ----
+
+export interface LessonInput {
+  /** 失敗の記録（台帳の行）。kind は既定 FL */
+  readonly failure: { readonly id: string; readonly title: string; readonly kind?: string; readonly source?: string; readonly refs?: readonly string[] }
+  /** 次から節目で突きつける約束（note ルール）。at は必須（節目で読まれないと効かないため） */
+  readonly rule: { readonly id: string; readonly label: string; readonly at: string; readonly check?: string; readonly group?: string; readonly owner?: string }
+  /** 語で分かる失敗なら、機械で当てるルール（forbidden）も足す */
+  readonly pattern?: { readonly id: string; readonly phase: string; readonly from: string; readonly field: string; readonly words: string; readonly label?: string }
+}
+
+/**
+ * 失敗の記録と、そこから生まれたルールを 1 回で足す（1 つの commit）。
+ * ルールの source 列に失敗の ID を書くので、ルールから失敗へ、失敗からルールへ辿れる。
+ * 書けるかは、書いてから案件を読み直して確かめる（読めなければ全部を戻す）
+ */
+export async function addLesson(dir: string, input: LessonInput): Promise<CommitResult> {
+  const failureId = checkId(input.failure.id, 'item')
+  const ruleIds = [checkId(input.rule.id, 'rule'), ...(input.pattern ? [checkId(input.pattern.id, 'rule')] : [])]
+  const project = await loadProject(dir)
+  const problems: string[] = []
+  if (project.items.some(i => i.id === failureId)) problems.push(t('{id} is already in the ledger (use update to change it)', { id: failureId }))
+  if (!input.failure.title.trim()) problems.push(t('Write what failed in failure.title'))
+  for (const id of ruleIds) if (project.rules.some(r => r.id === id)) problems.push(t('Rule {id} already exists', { id }))
+  if (new Set(ruleIds).size < ruleIds.length) problems.push(t('rule.id and pattern.id must be different'))
+  const known = new Set(project.items.map(i => i.id))
+  const missing = (input.failure.refs ?? []).filter(r => !known.has(r))
+  if (missing.length) problems.push(t('refs contains IDs that are not in the ledger: {ids} (do not link by guesswork; add those rows first)', { ids: joinList(missing) }))
+  if (!input.rule.at.trim()) problems.push(t('rule.at is required: a lesson that is not read at a checkpoint does not take effect'))
+  if (problems.length) throw new WriteRefused(problems)
+
+  const itemsOriginal = await readFile(join(dir, PATHS.items), 'utf8')
+  const items = upsertRow(itemsOriginal, 'id', failureId, {
+    kind: input.failure.kind?.trim() || 'FL',
+    title: input.failure.title.trim(),
+    ...(input.failure.source ? { source: input.failure.source } : {}),
+    ...(input.failure.refs?.length ? { refs: input.failure.refs.join('、') } : {}),
+  })
+  const isLocal = project.ruleGroups?.find(g => g.id === input.rule.group)?.scope === 'local'
+  const rulesPath = `${RULESETS}/${isLocal ? LOCAL_RULESET : DEFAULT_RULESET}`
+  if (isLocal) await ensureLocalIgnored(dir)
+  const rulesOriginal = await readOr(join(dir, rulesPath), RULE_HEADER)
+  const { rule, pattern } = input
+  const withNote = upsertRow(rulesOriginal, 'id', rule.id, {
+    phase: '', kind: 'note', label: rule.label, at: rule.at, source: failureId,
+    ...(rule.check ? { check: rule.check } : {}), ...(rule.group ? { group: rule.group } : {}), ...(rule.owner ? { owner: rule.owner } : {}),
+  })
+  const rules = pattern
+    ? upsertRow(withNote, 'id', pattern.id, { phase: pattern.phase, kind: 'forbidden', from: pattern.from, field: pattern.field, values: pattern.words, label: pattern.label || rule.label, source: failureId, ...(rule.owner ? { owner: rule.owner } : {}) })
+    : withNote
+  return writeCheckedFiles(dir, [
+    { path: PATHS.items, next: items, original: itemsOriginal },
+    { path: rulesPath, next: rules, original: rulesOriginal },
+  ], t('Add lesson {id} and the rules it gave ({rules})', { id: failureId, rules: ruleIds.join(', ') }))
 }
 
 // ---- 人の表 ----

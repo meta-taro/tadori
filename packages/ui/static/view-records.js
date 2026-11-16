@@ -195,6 +195,17 @@ function traceSummary(result, resolved) {
 }
 
 /**
+ * この行から生まれたルール（失敗の記録から育てたルールなど。ルールの source 列がこの行）
+ * @param {TraceResult} result
+ */
+function lessonsHtml(result) {
+  const lessons = result.lessons ?? []
+  if (!lessons.length) return ''
+  const items = lessons.map(r => `<li><span class="mono">${esc(r.id)}</span> ${esc(r.label)}${r.at?.length ? ` <span class="cond">${esc(t('at {at}', { at: r.at.join(' / ') }))}</span>` : ''}</li>`).join('')
+  return `<div class="note trace-lessons">${ICON_INFO}<div><strong>${esc(t('Rules born from this row: {n}', { n: lessons.length }))}</strong><ul>${items}</ul></div></div>`
+}
+
+/**
  * @param {HTMLElement} view
  * @param {ProjectState} state
  * @param {string} startId
@@ -209,6 +220,7 @@ export async function renderTrace(view, state, startId) {
       <section aria-label="${esc(t('Trace result'))}">
         <div class="trace-head"><h2>${start ? esc(t('Traced from {id} “{title}”', { title: start.title })).replace('{id}', () => `<span class="big-id">${esc(start.id)}</span>`) : esc(t('Trace result'))}</h2>${start ? `<button type="button" class="btn-ghost" id="copy-link" title="${esc(t('A link that opens this result (to share in a meeting)'))}">${ICON_LINK}<span>${esc(t('Copy link'))}</span></button>` : ''}</div>
         <div id="trace-summary"></div>
+        <div id="trace-lessons"></div>
         <div class="story-path" id="story" role="list"><div class="cond">${esc(startId ? t('Loading…') : t('Choose the row to start from on the left'))}</div></div>
         <div class="verdict"><span>${esc(t('A person decides where on this line the gap was. Once you have checked, record it in the check log as a human row.'))}</span></div>
       </section>
@@ -229,6 +241,7 @@ export async function renderTrace(view, state, startId) {
     const result = await api(`/api/trace/${encodeURIComponent(startId)}`)
     within(view, '#story').innerHTML = storyPath(result, state.resolved ?? [], state.origins ?? {})
     within(view, '#trace-summary').innerHTML = traceSummary(result, state.resolved ?? [])
+    within(view, '#trace-lessons').innerHTML = lessonsHtml(result)
   } catch (error) {
     within(view, '#story').innerHTML = `<div class="note">${ICON_INFO}<span>${esc(messageOf(error))}</span></div>`
   }

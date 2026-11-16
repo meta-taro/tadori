@@ -61,7 +61,9 @@ export function formatCheck(state: ProjectState): string {
 export function formatTrace(result: TraceResult, origins: Readonly<Record<string, Origin>> = {}): string {
   // 切れ目として出す漏れは、行の下に重ねて出さない
   const shownAsGap = new Set(result.steps.flatMap(s => (s.type === 'missing' ? [`${s.rule}:${s.after ?? s.before}`] : [])))
-  return result.steps.flatMap(step => {
+  // この行から生まれたルール（失敗の記録から育てたルールなど）は、最後に並べる
+  const lessons = (result.lessons ?? []).map(r => t('  Rule born from this row: {id} {label}', { id: r.id, label: r.label }))
+  return [...result.steps.flatMap(step => {
     if (step.type === 'missing') {
       const vars = { kind: step.kind, rule: step.rule }
       return [step.before ? t('    ✗ No upstream {kind} ({rule})  ← broken here', vars) : t('    ✗ No {kind} ({rule})  ← broken here', vars)]
@@ -74,7 +76,7 @@ export function formatTrace(result: TraceResult, origins: Readonly<Record<string
       ...other.map(l => t('      Gap {rule}: {message}', { rule: l.rule, message: l.message })),
       ...(origins[step.item.id] ? [`      ${originText(origins[step.item.id] as Origin)}`] : []),
     ]
-  }).join('\n')
+  }), ...lessons].join('\n')
 }
 
 /** 正本の URL と、正本から手元へ反映した記録を 1 行で（例：正本：https://…（反映 2026-11-08 09:00 検証担当）） */

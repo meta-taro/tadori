@@ -16,7 +16,7 @@ export { BADGE_TONES, carriedOver, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet,
 export { isFor, type Member } from './domain/people.js'
 export { isStale, originOf, sourceLinkOf, type Origin, type SourceDef, type SourceLink } from './domain/sources.js'
 export { readActivity, type ActivityOptions } from './infrastructure/activity.js'
-export { removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveTask, WriteRefused, type ItemInput, type MemberInput, type RuleInput, type TaskInput } from './infrastructure/project-writer.js'
+export { addLesson, removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveTask, WriteRefused, type ItemInput, type LessonInput, type MemberInput, type RuleInput, type TaskInput } from './infrastructure/project-writer.js'
 export { DAILY_DIR, dailyPath, previousDailyDate, readDaily, readDailyFormat, readMembers, writeDaily } from './infrastructure/daily-store.js'
 export { loadProject, ProjectLoadError, PATHS } from './infrastructure/repository.js'
 export { saveSettings, saveTaskStatus, appendChecks, readChecks, CHECK_COLUMNS, type CheckRecord, type SettingsChange } from './infrastructure/settings-store.js'

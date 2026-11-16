@@ -137,6 +137,8 @@ function ruleRow(state, r) {
     r.group ? `<span class="rule-group ${esc(groupColor(state, r.group))}">${esc(groupName(state, r.group))}</span>` : '',
     what ? `<span class="pair">${esc(what)}</span>` : '',
     r.only ? `<span class="cond">${esc(onlyText(r.only))}</span>` : '',
+    // 生まれた元（失敗の記録など）へは、つながりを辿る画面で飛べる
+    r.source ? `<a class="cond rule-source" href="#trace-${encodeURIComponent(r.source)}" title="${esc(t('Trace from {id}', { id: r.source }))}">${esc(t('From {id}', { id: r.source }))}</a>` : '',
   ].filter(Boolean).join('')
   return `<tr>
     <td class="rule-id fit">${esc(r.id)}</td>

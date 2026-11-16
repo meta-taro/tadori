@@ -51,6 +51,19 @@ describe('MCP の書く道具', () => {
     expect(await readFile(join(dir, 'ledger/wbs.tsv'), 'utf8')).toMatch(/W-09\t.*\tdoing/)
   })
 
+  test('lesson_add：失敗とルールを 1 回で足し、trace でその失敗から生まれたルールが出る', async () => {
+    const result = await tool('lesson_add', {
+      failure: { id: 'FL-1', title: '期待結果に関数名を書いた', refs: ['TC-04'] },
+      rule: { id: 'N80', label: '期待結果は画面で見える言葉で書く', at: 'cases-written' },
+      pattern: { id: 'V80', phase: 'it', from: 'TC', field: 'title', words: 'saveLoan' },
+    })
+    expect(result.isError).toBeUndefined()
+    expect(result.content[0]?.text).toContain('FL-1')
+    const traced = await tool('trace', { id: 'FL-1' })
+    expect(traced.content[0]?.text).toContain('この行から生まれたルール：N80')
+    expect(traced.content[0]?.text).toContain('この行から生まれたルール：V80')
+  })
+
   test('正本から反映した記録：item_update に synced_by を付けるか item_synced で、日時とだれがを書く', async () => {
     expect((await tool('item_update', { id: 'DD-2.3', fields: { change: '変わる' }, synced_by: '設計担当' })).isError).toBeUndefined()
     expect((await tool('item_synced', { id: 'F-02', who: '検証担当' })).isError).toBeUndefined()

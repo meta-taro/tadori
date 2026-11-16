@@ -3,8 +3,8 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import './i18n.js'
 import {
-  loadProject, removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveSettings, saveTask, t,
-  validatePhases, WriteRefused, type CommitResult,
+  addLesson, loadProject, removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveSettings, saveTask, t,
+  validatePhases, WriteRefused, type CommitResult, type LessonInput,
 } from '@tadori/core'
 import { runCheck } from './check-log.js'
 import { localToday } from './state.js'
@@ -79,11 +79,12 @@ const taskSchema = () => ({
   id: S(t('Task ID (starts with W)')), phase: S(t('Phase ID')), name: S(t('Task name')), start: S(t('Start date YYYY-MM-DD')), end: S(t('End date YYYY-MM-DD')),
   status: S(t('Status (one from the settings)')), owner: S(t('Owner (for two or more, "A・B")')), issue: S(t('Issue ID (a ledger row)')),
 })
-const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'group', 'owner', 'label', 'at', 'check'] as const
+const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'group', 'owner', 'label', 'at', 'check', 'source'] as const
 const ruleSchema = () => ({
   id: S(t('Rule ID')), phase: S(t('Phase ID')), kind: S(t('covered, refers, filled, allowed, forbidden or approval, or note (a written agreement that is not checked)')), from: S(t('Source kind')), to: S(t('Target kind')),
   field: S(t('Column that filled, allowed and forbidden check')), only: S(t('Narrow the targets with "column=value", "column=a|b" (any of them) or "column!=value"')), values: S(t('For allowed: the values the column may hold, separated by | (e.g. OK|NG). For forbidden: the words the column must not contain, separated by | (case-insensitive; /.../ is a regular expression)')), group: S(t('Category ID from .tadori/rule-groups.tsv (empty to remove)')), owner: S(t('Owner who fixes it (a role)')), label: S(t('One sentence for people to read')),
   at: S(t('Checkpoints where this rule is put to the agent as a check item, separated by | (e.g. cases-written|before-judge). Empty to remove')), check: S(t('The check item to put at those checkpoints (a question that can be answered by looking). Empty to use label')),
+  source: S(t('Ledger row ID this rule was born from (e.g. a failure FL-3). Empty to remove')),
 })
 
 /** デスクトップアプリが覚えている最近の案件（OS ごとの置き場所） */
@@ -164,6 +165,20 @@ export function writeTools(ctx: WriteContext): Tool[] {
       description: t('Remove a rule.'),
       inputSchema: { type: 'object', properties: { id: RULE.id }, required: ['id'], additionalProperties: false },
       run: async a => writing(ctx, t('Removed rule {id}', { id: str(a.id) ?? '' }), dir => removeRule(dir, str(a.id) ?? '')),
+    },
+    {
+      name: 'lesson_add',
+      description: t('Turn a failure into rules in one step (one commit): add the failure to the ledger (kind FL by default), a note rule that is put to the agent at a checkpoint from now on, and, if the failure can be spotted by words, a forbidden rule. The rules get the failure ID in their source column, so you can trace between them. tadori does not judge whether the failure is now covered.'),
+      inputSchema: {
+        type: 'object',
+        properties: {
+          failure: { type: 'object', properties: { id: S(t('Ledger row ID for the failure (e.g. FL-3)')), title: S(t('What failed, in one sentence')), kind: S(t('Kind (default FL)')), source: S(t('Where it happened (a file, a ticket)')), refs: { type: 'array', items: { type: 'string' }, description: t('Ledger rows the failure was about (only IDs in the ledger)') } }, required: ['id', 'title'], additionalProperties: false },
+          rule: { type: 'object', properties: { id: S(t('Rule ID')), label: S(t('The agreement, one sentence for people to read')), at: S(t('Checkpoints where it is put to the agent, separated by | (required)')), check: S(t('The check item to put at those checkpoints (a question that can be answered by looking). Empty to use label')), group: S(t('Category ID from .tadori/rule-groups.tsv (empty to remove)')), owner: S(t('Owner who fixes it (a role)')) }, required: ['id', 'label', 'at'], additionalProperties: false },
+          pattern: { type: 'object', properties: { id: S(t('Rule ID')), phase: S(t('Phase ID')), from: S(t('Source kind')), field: S(t('Column to look at (title for the row name)')), words: S(t('Words the column must not contain, separated by | (case-insensitive; /.../ is a regular expression)')), label: S(t('One sentence for people to read')) }, required: ['id', 'phase', 'from', 'field', 'words'], additionalProperties: false },
+        },
+        required: ['failure', 'rule'], additionalProperties: false,
+      },
+      run: async a => writing(ctx, t('Added lesson {id}', { id: str((a.failure as Record<string, unknown> | undefined)?.id) ?? '' }), dir => addLesson(dir, a as unknown as LessonInput)),
     },
     {
       name: 'member_set',

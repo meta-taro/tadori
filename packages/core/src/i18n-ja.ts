@@ -185,4 +185,9 @@ export const JA: Readonly<Record<string, string>> = {
   '{file}, rule {id}: cannot read the regular expression {list}': '{file} のルール {id}：正規表現 {list} を読めません',
   '{id} "{title}" has "{word}" in {column}: suspected ({rule})': '{id}「{title}」の{column}に「{word}」が入っている（疑い・{rule}）',
   'Review the "{column}" column of {row}. If it is fine as it is, record "na" with the reason at the checkpoint': '{row}の「{column}」列を見直す。そのままでよいなら、節目の記録で「該当なし（na）」と理由を書く',
+  'Write what failed in failure.title': 'failure.title に、何が失敗したかを書いてください',
+  'rule.id and pattern.id must be different': 'rule.id と pattern.id は別の ID にしてください',
+  'rule.at is required: a lesson that is not read at a checkpoint does not take effect': 'rule.at が要ります（節目で読まれない約束は効かないため）',
+  'Add lesson {id} and the rules it gave ({rules})': '失敗 {id} と、そこから生まれたルール（{rules}）を足す',
+  'source {id} is not in the ledger (add the failure row first, or use lesson_add)': 'source の {id} は台帳にありません（先に失敗の行を足すか、lesson_add を使ってください）',
 }

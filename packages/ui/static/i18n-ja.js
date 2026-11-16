@@ -450,4 +450,7 @@ export const JA = {
   ' · none of {values}': '・{values} を含まない',
   'Values or words': '値か語',
   'Allowed values (e.g. OK|NG) / forbidden words (e.g. colspan|/^TODO/)': '書いてよい値（例：OK|NG）／書いてはいけない語（例：colspan|/^TODO/）',
+  'From {id}': '{id} から生まれた',
+  'Rules born from this row: {n}': 'この行から生まれたルール：{n} 件',
+  'at {at}': '節目 {at}',
 }

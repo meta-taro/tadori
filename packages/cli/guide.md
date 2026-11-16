@@ -201,6 +201,7 @@ Do not edit the ledger or setting TSVs directly; write with the tools below. Eac
 - Record of syncing from the source of truth: after checking the source of truth and fixing the local row, add `synced_by` (who synced) to `item_update`. If you only confirmed "it matches the current source of truth" without changing anything, use `item_synced` (`id`, `who`). The tool fills in the time (`synced_at` and `synced_by` columns)
 - WBS: `task_add`, `task_update` (status, dates, owner, issue. It commits right away, so "the day a status changed" in daily progress does not drift)
 - Rules: `rule_add`, `rule_update`, `rule_remove`
+- Grow rules from a failure: `lesson_add` (`failure`, the failure row; `rule`, the agreement put to the agent at a checkpoint from now on; optionally `pattern`, words that must not be written). It adds the failure to the ledger (kind `FL` by default), a note rule and, when words can spot it, a forbidden rule, all in one commit. The rules get the failure ID in their `source` column, so the rules screen links to the failure and the trace screen lists the rules born from it. `rule.at` is required (an agreement that is not read at a checkpoint does not take effect). Set where an existing rule came from with `source` on `rule_update` (only rows in the ledger)
 - People table: `member_set`, `member_remove` (each person's roles and git author name)
 - Phases: `phase_set` (a phase in use cannot be removed)
 - Check: `run_check` (with `log`, adds to the check log in 5W1H)

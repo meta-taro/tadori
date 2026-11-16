@@ -386,6 +386,20 @@ test.describe('ルールを画面から足す・直す・消す', () => {
     await expect(page.locator('tr', { hasText: id })).toHaveCount(0)
   })
 
+  test('生まれた元（source）のあるルールは、一覧から元の行へ辿れ、辿る画面にその行から生まれたルールが出る', async ({ page }) => {
+    const headers = { 'x-tadori': '1', 'content-type': 'application/json' }
+    const res = await page.request.post('/api/rules', { headers, data: { id: 'N95', kind: 'note', label: '指摘を閉じる前に再現の手順を残す（試験用）', source: 'F-02' } })
+    expect(res.ok()).toBe(true)
+    await page.goto('/#rules')
+    const link = page.locator('tr', { hasText: 'N95' }).locator('.rule-source')
+    await expect(link).toHaveText('F-02 から生まれた')
+    await link.click()
+    await expect(page).toHaveURL(/#trace-F-02$/)
+    await expect(page.locator('.trace-lessons')).toContainText('この行から生まれたルール：1 件')
+    await expect(page.locator('.trace-lessons')).toContainText('N95')
+    await page.request.delete('/api/rules/N95', { headers })
+  })
+
   test('知らない種類のルールなど、保存できないときは理由を出し、一覧は変えない', async ({ page }) => {
     await page.goto('/#rules')
     await page.getByRole('button', { name: 'ルールを足す' }).click()

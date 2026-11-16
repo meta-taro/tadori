@@ -110,6 +110,8 @@ export interface Rule {
   readonly at?: readonly string[]
   /** 節目で突きつけるチェック項目の文（rulesets の check 列）。無ければ label を使う */
   readonly check?: string
+  /** このルールが生まれた元（失敗の記録など、台帳の行の ID。rulesets の source 列）。行からルールへ、ルールから行へ辿れる */
+  readonly source?: string
 }
 
 /**

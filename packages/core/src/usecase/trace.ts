@@ -1,4 +1,4 @@
-import { isRuleTarget, type Item, type Leak, type Project } from '../domain/model.js'
+import { isRuleTarget, type Item, type Leak, type Project, type Rule } from '../domain/model.js'
 import { runChecks } from './check.js'
 
 /**
@@ -12,6 +12,8 @@ export type TraceStep =
 export interface TraceResult {
   readonly start: Item
   readonly steps: readonly TraceStep[]
+  /** start から生まれたルール（source 列が start の ID。失敗の記録から育てたルールなど） */
+  readonly lessons: readonly Rule[]
 }
 
 /** start から上流（refs）と下流（その行を refs に持つ行）を辿り、start からの段を返す */
@@ -69,5 +71,5 @@ export function trace(project: Project, id: string): TraceResult | null {
     return [...before, { type: 'item', item, level, leaks: own }, ...after]
   })
 
-  return { start, steps }
+  return { start, steps, lessons: project.rules.filter(r => r.source === start.id) }
 }
