@@ -771,7 +771,8 @@
 
 /* 節目の確かめ（1 行 = 1 回） */
 .cp-section { display:flex; flex-direction:column; gap:10px; margin-bottom:28px; }
-.cp-filters { display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:var(--ink-muted); }
+.cp-filters { display:flex; gap:16px; flex-wrap:wrap; align-items:center; font-size:13px; color:var(--ink-muted); }
+.cp-filters label { display:inline-flex; align-items:center; gap:8px; }
 .cp-list { display:flex; flex-direction:column; gap:6px; }
 .cp-run { background:var(--surface-1); border:1px solid var(--hairline); border-left:3px solid var(--hairline-strong); border-radius:var(--r-md); }
 .cp-run.ok { border-left-color:var(--ok); }
@@ -787,8 +788,10 @@
 .cp-rules th { white-space:nowrap; font-weight:500; color:var(--ink-subtle); font-size:12px; }
 .cp-where { overflow-wrap:anywhere; }
 .cp-run > .cond { margin:0 14px 12px; font-size:12px; }
-.cp-report-box textarea { width:100%; font:inherit; font-size:13px; padding:8px 10px; border:1px solid var(--hairline); border-radius:var(--r-sm); background:var(--surface-1); color:var(--ink); resize:vertical; margin:6px 0; }
-.cp-report-box summary { cursor:pointer; font-size:13px; color:var(--ink-muted); }
+/* 報告用のまとめ：ほかの欄と同じ面（枠と角の丸み）に載せる */
+.cp-report-box { background:var(--surface-1); border:1px solid var(--hairline); border-radius:var(--r-md); padding:10px 14px 12px; }
+.cp-report-box summary { cursor:pointer; font-size:13px; font-weight:500; color:var(--ink-muted); }
+.cp-report-box textarea { box-sizing:border-box; width:100%; font:inherit; font-size:13px; line-height:1.6; padding:8px 10px; border:1px solid var(--hairline-strong); border-radius:var(--r-sm); background:var(--surface-2); color:var(--ink); resize:vertical; margin:8px 0; }
 @media (max-width: 760px) {
   .cp-run > summary { display:flex; flex-wrap:wrap; gap:6px 10px; }
   .cp-target { flex-basis:100%; }

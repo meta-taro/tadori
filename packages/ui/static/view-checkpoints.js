@@ -145,14 +145,14 @@ export function renderCheckpoints(holder, state) {
     <h2>${esc(t('Checks at checkpoints'))}</h2>
     <p class="lede">${esc(t('One row per check. At each checkpoint the agent checked every rule that applied, and wrote where it looked. Open a row to see the rules and the evidence.'))}</p>
     ${all.length ? `<div class="cp-filters">
-      <label>${esc(t('Period'))} <select id="cp-period">${PERIODS.map(([v, l]) => `<option value="${v}" ${filter.period === v ? 'selected' : ''}>${esc(t(l))}</option>`).join('')}</select></label>
-      <label>${esc(t('Task'))} <select id="cp-target"><option value="">${esc(t('All'))}</option>${targets.map(id => `<option value="${esc(id)}" ${filter.target === id ? 'selected' : ''}>${esc(id)}</option>`).join('')}</select></label>
+      <label>${esc(t('Period'))} <select id="cp-period" class="inline-select">${PERIODS.map(([v, l]) => `<option value="${v}" ${filter.period === v ? 'selected' : ''}>${esc(t(l))}</option>`).join('')}</select></label>
+      <label>${esc(t('Task'))} <select id="cp-target" class="inline-select"><option value="">${esc(t('All'))}</option>${targets.map(id => `<option value="${esc(id)}" ${filter.target === id ? 'selected' : ''}>${esc(id)}</option>`).join('')}</select></label>
     </div>
     <div class="cp-list"></div>
     <details class="cp-report-box" open>
       <summary>${esc(t('Summary for a report (facts only)'))}</summary>
       <textarea id="cp-report" readonly rows="5"></textarea>
-      <button type="button" class="btn" id="cp-copy">${esc(t('Copy'))}</button>
+      <button type="button" class="btn-ghost" id="cp-copy">${esc(t('Copy'))}</button>
     </details>` : `<p class="cond">${esc(t('No checkpoint checks yet. Give rules an "at" column, then agents record with checkpoint_record.'))}</p>`}`
   if (!all.length) return
   holder.querySelector('#cp-period')?.addEventListener('change', e => { filter.period = /** @type {HTMLSelectElement} */ (e.target).value; draw() })
