@@ -194,7 +194,7 @@ export function writeTools(ctx: WriteContext): Tool[] {
     {
       name: 'run_check',
       description: t('Run check. With log, add the results to the check records (.tadori/checks.tsv, 5W1H) and commit. who is the person who checked (an agent uses its own name); why is the reason.'),
-      inputSchema: { type: 'object', properties: { log: { type: 'boolean' }, who: S(t('Who checked')), why: S(t('Reason (e.g. before the evening meeting)')) }, additionalProperties: false },
+      inputSchema: { type: 'object', properties: { log: { type: 'boolean' }, who: S(t('Who checked')), why: S(t('Reason (e.g. before the regular meeting)')) }, additionalProperties: false },
       run: async a => {
         if (!ctx.projectDir) return reply(t('No project is open. Open one with open_project'), true)
         const run = await runCheck(ctx.projectDir, { today: ctx.today ?? localToday(), ...(a.log === true ? { log: true } : {}), ...(str(a.who) ? { who: str(a.who) as string } : {}), ...(str(a.why) ? { why: str(a.why) as string } : {}) })

@@ -31,7 +31,7 @@ export interface Daily {
   /** 担当で絞っていないときに、行の頭に付く担当名の書き方（例：設計担当：）。画面が札の見た目にする。絞っているときは空 */
   readonly whoMarks: readonly string[]
   /**
-   * 古いままの待ちの行（朝会・夕会の前に直す行）。ids＝行の ID、hours＝何時間直していなければ古いとするか（案件の stale_hours）。
+   * 古いままの待ちの行（会議の前に直す行）。ids＝行の ID、hours＝何時間直していなければ古いとするか（案件の stale_hours）。
    * 待ちと読むのは、tone が wait のバッジか、案件が wait_words に書いた語を含む行だけ
    */
   readonly stale: { readonly ids: readonly string[]; readonly hours: number }

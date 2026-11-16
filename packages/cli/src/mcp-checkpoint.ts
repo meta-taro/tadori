@@ -25,7 +25,7 @@ export function checkpointTools(options: { projectDir?: string }): Tool[] {
     return work(options.projectDir)
   }
   const AT = { type: 'string', description: t('Checkpoint ID (e.g. cases-written, before-judge, before-post, before-commit). Omit to list the checkpoints') }
-  const TARGET = { type: 'string', description: t('WBS task ID or ledger ID the check is for. For a once-a-day checkpoint (such as before a stand-up), the date as YYYY-MM-DD. Not used for before-commit (the staged change is the target)') }
+  const TARGET = { type: 'string', description: t('WBS task ID or ledger ID the check is for. For a checkpoint that comes once a day (such as before a regular meeting), the date as YYYY-MM-DD; if it comes more than once a day, the date with a slot such as YYYY-MM-DD-1. Not used for before-commit (the staged change is the target)') }
   return [
     {
       name: 'checkpoint',

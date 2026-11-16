@@ -13,12 +13,12 @@ const today = '2026-11-13'
 const now = new Date(2026, 10, 13, 17, 15)
 let dir = ''
 
-// 見本の案件を git にして、節目を 5 つ（コミット前は止める・朝会と夕会の前を足す）と、2 つの節目に効くルールを足す
+// 見本の案件を git にして、節目を 5 つ（コミット前は止める・定例の会議の前を足す）と、2 つの節目に効くルールを足す
 beforeAll(async () => {
   dir = await mkdtemp(join(tmpdir(), 'tadori-nudge-'))
   await cp(EXAMPLE, dir, { recursive: true })
-  await writeFile(join(dir, '.tadori/checkpoints.tsv'), 'id\tname\tnudge\ncases-written\t試験ケースを書き終えた\t\nbefore-judge\t判定の前\t\nbefore-post\t投稿の前\t\nbefore-commit\tコミットの前\tblock\nbefore-standup\t朝会・夕会の前\tnotify\n', 'utf8')
-  await appendFile(join(dir, '.tadori/rulesets/agreements.tsv'), 'S1\t\tnote\t\t\t\t\t\t\t1 日の進行の行を、今の事実と突き合わせる\tbefore-standup|before-commit\t1 行ずつ今の事実と突き合わせたか\n', 'utf8')
+  await writeFile(join(dir, '.tadori/checkpoints.tsv'), 'id\tname\tnudge\ncases-written\t試験ケースを書き終えた\t\nbefore-judge\t判定の前\t\nbefore-post\t投稿の前\t\nbefore-commit\tコミットの前\tblock\nbefore-meeting\t定例の会議の前\tnotify\n', 'utf8')
+  await appendFile(join(dir, '.tadori/rulesets/agreements.tsv'), 'S1\t\tnote\t\t\t\t\t\t\t1 日の進行の行を、今の事実と突き合わせる\tbefore-meeting|before-commit\t1 行ずつ今の事実と突き合わせたか\n', 'utf8')
   await run('git', ['init', '-q'], { cwd: dir })
   await run('git', ['config', 'user.email', 'test@example.invalid'], { cwd: dir })
   await run('git', ['config', 'user.name', 'test'], { cwd: dir })
@@ -37,9 +37,9 @@ describe('tadori nudge（節目の呼び忘れを知らせる）', () => {
   })
 
   test('日に 1 回の節目は、その日の記録が無ければ足りないと返す。nudge が notify なら止めない', async () => {
-    const result = await nudge(dir, { at: 'before-standup', today, now })
+    const result = await nudge(dir, { at: 'before-meeting', today, now })
     expect(result).toMatchObject({ ok: false, block: false })
-    expect(result.text).toContain('今日（2026-11-13）の before-standup の記録がありません')
+    expect(result.text).toContain('今日（2026-11-13）の before-meeting の記録がありません')
   })
 
   test('stage した変更に before-commit の記録が無ければ足りない。nudge が block なら止める。stage が空なら足りている', async () => {
@@ -54,20 +54,20 @@ describe('tadori nudge（節目の呼び忘れを知らせる）', () => {
   })
 
   test('日付を対象に記録すると足りる。まとめに回数と最後の時刻が出る', async () => {
-    await appendCheckpoint(dir, { at: 'before-standup', target: today, who: 'エージェント', answers })
+    await appendCheckpoint(dir, { at: 'before-meeting', target: today, who: 'エージェント', answers })
     // 記録の時刻は実際の今日なので、その日付で見る
     const day = new Date()
     const realToday = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
-    expect((await nudge(dir, { at: 'before-standup', today: realToday, now })).ok).toBe(true)
+    expect((await nudge(dir, { at: 'before-meeting', today: realToday, now })).ok).toBe(true)
     const summary = await nudge(dir, { today: realToday, now })
-    expect(summary.text).toMatch(/節目の記録：2 回（before-commit 1・before-standup 1）。最後の記録は \d{2}:\d{2}/)
+    expect(summary.text).toMatch(/節目の記録：2 回（before-commit 1・before-meeting 1）。最後の記録は \d{2}:\d{2}/)
   })
 
   test('--stale-waits で、その日の 1 日の進行の古い待ちの行も見る', async () => {
     await mkdir(join(dir, '.tadori/daily'), { recursive: true })
     await writeFile(join(dir, `.tadori/daily/${today}.tsv`), 'id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\tupdated\n'
       + 'm1\tA\ttoday\t上長に確認\t\t\t\tmanual\t\t\t\twait 確認中\t2026-11-13T10:12\n', 'utf8')
-    const result = await nudge(dir, { at: 'before-standup', target: '', today, now, staleWaits: true })
+    const result = await nudge(dir, { at: 'before-meeting', target: '', today, now, staleWaits: true })
     expect(result.ok).toBe(false)
     expect(result.text).toContain('m1')
   })
@@ -75,7 +75,7 @@ describe('tadori nudge（節目の呼び忘れを知らせる）', () => {
   test('節目が無ければ、何があるかを返す', async () => {
     const result = await nudge(dir, { at: 'before-lunch', today, now })
     expect(result.ok).toBe(false)
-    expect(result.text).toContain('before-standup')
+    expect(result.text).toContain('before-meeting')
   })
 })
 
@@ -102,18 +102,20 @@ describe('Claude Code の hooks に渡す JSON', () => {
   })
 })
 
-describe('朝会と夕会を分ける（日付に枠を付けた対象・--since）', () => {
-  test('日付に枠を付けた対象（YYYY-MM-DD-am）で記録でき、--since より前の記録は数えない', async () => {
+describe('1 日に何回かある節目を分ける（日付に枠を付けた対象・--since）', () => {
+  test('日付に枠を付けた対象（YYYY-MM-DD-1）で記録でき、--since より前の記録は数えない', async () => {
     const day = new Date()
     const realToday = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
-    await appendCheckpoint(dir, { at: 'before-standup', target: `${realToday}-am`, who: 'エージェント', answers })
-    expect((await nudge(dir, { at: 'before-standup', today: realToday, since: '00:00', now })).ok).toBe(true)
-    const later = await nudge(dir, { at: 'before-standup', today: realToday, since: '23:59', now })
+    await appendCheckpoint(dir, { at: 'before-meeting', target: `${realToday}-1`, who: 'エージェント', answers })
+    // 英字の枠（-am など）も受け付ける
+    await expect(appendCheckpoint(dir, { at: 'before-meeting', target: `${realToday}-am`, who: 'エージェント', answers })).resolves.toMatchObject({ target: `${realToday}-am` })
+    expect((await nudge(dir, { at: 'before-meeting', today: realToday, since: '00:00', now })).ok).toBe(true)
+    const later = await nudge(dir, { at: 'before-meeting', today: realToday, since: '23:59', now })
     expect(later.ok).toBe(false)
-    expect(later.text).toContain('23:59 以降の before-standup の記録がありません')
+    expect(later.text).toContain('23:59 以降の before-meeting の記録がありません')
   })
 
   test('枠の形が違う対象は断る', async () => {
-    await expect(appendCheckpoint(dir, { at: 'before-standup', target: '2026-11-16-午前', who: 'エージェント', answers })).rejects.toThrow(/YYYY-MM-DD-am/)
+    await expect(appendCheckpoint(dir, { at: 'before-meeting', target: '2026-11-16-午前', who: 'エージェント', answers })).rejects.toThrow(/YYYY-MM-DD-1/)
   })
 })

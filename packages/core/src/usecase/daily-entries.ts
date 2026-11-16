@@ -27,7 +27,7 @@ export interface DailyBadge {
 
 /**
  * upkeep＝台帳の整備（台帳の行を足した・直した。成果物の作業とは分けて出す）
- * summary＝課題ごとの要約（夕会で読み上げる一言〜三言。書くのはエージェントか人で、tadori は文を作らない）
+ * summary＝課題ごとの要約（会議で読み上げる一言〜三言。書くのはエージェントか人で、tadori は文を作らない）
  */
 export type DailySection = 'today' | 'next' | 'consult' | 'upkeep' | 'summary'
 export const DAILY_SECTIONS: readonly DailySection[] = ['today', 'next', 'consult', 'upkeep', 'summary']
@@ -204,7 +204,7 @@ export const isWaiting = (entry: DailyEntry, words: readonly string[]): boolean 
   (entry.badges ?? []).some(b => b.tone === 'wait') || words.some(w => w && entry.text.includes(w))
 
 /**
- * 古いままの待ちの行（朝会・夕会の前に直す行）。待ちの行のうち、最後に直してから hours 以上たったもの。
+ * 古いままの待ちの行（会議の前に直す行）。待ちの行のうち、最後に直してから hours 以上たったもの。
  * 直した時刻の無い行（自動の行・前の版で書いた行）は、古さが分からないので入れない。消した行も入れない
  */
 export function staleWaits(entries: readonly DailyEntry[], now: Date, rule: StaleRule): DailyEntry[] {

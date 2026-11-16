@@ -16,7 +16,7 @@ let date = ''
 /** @type {Array<[string, string]>} */
 const SECTIONS = [['today', 'Today'], ['next', 'Next working day'], ['consult', 'Questions'], ['upkeep', 'Ledger upkeep']]
 
-/** 読み上げ（課題ごとの要約だけ）か、詳しく（今までどおりの細かい行）か。夕会で読む・聞かれたら引く、を切り替える */
+/** 読み上げ（課題ごとの要約だけ）か、詳しく（今までどおりの細かい行）か。会議で読む・聞かれたら引く、を切り替える */
 let readMode = false
 
 /** 古いままの待ちの行（server が案件の stale_hours・wait_words で選んだもの）の ID と、何時間で古いとするか */
