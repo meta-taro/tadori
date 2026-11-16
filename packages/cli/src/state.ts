@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { unknownTaskStatuses, type UnknownTaskStatus, approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readCheckpointLog, checkpointsOf, type Checkpoint, type CheckpointRow, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
+import { unknownTaskStatuses, type UnknownTaskStatus, approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readCheckpointLog, checkpointsOf, missesByRule, type RuleMisses, type Checkpoint, type CheckpointRow, readMembers, repositoryPrefix, resolvedItems, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 漏れに「md-business で開く」の URL を付けたもの（雛形が .tadori/links.tsv にあるとき） */
 export type LeakWithLink = Leak & {
@@ -30,6 +30,8 @@ export interface ProjectState {
   readonly checks: Awaited<ReturnType<typeof readChecks>>
   /** 節目で確かめた記録（.tadori/checkpoint-log.tsv。書いた順） */
   readonly checkpointLog: readonly CheckpointRow[]
+  /** ルールごとの、この 30 日に節目でミスを見つけた回数と最後の日（ミスの無いルールは入らない。事実だけで、割合にはしない） */
+  readonly ruleMisses: Readonly<Record<string, RuleMisses>>
   /** 節目の並び（案件が決めたものか、既定の 4 つ） */
   readonly checkpoints: readonly Checkpoint[]
   /** 前のチェックでは漏れだったが、いまは漏れの無い行（チェックの記録から読むだけ） */
@@ -48,6 +50,7 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
   const checks = await readChecks(dir)
   const members = await readMembers(dir)
   const prefix = await repositoryPrefix(dir)
+  const checkpointLog = await readCheckpointLog(dir)
   const state: ProjectState = {
     today,
     project: { name: project.name, ...(project.scheduleLabel ? { scheduleLabel: project.scheduleLabel } : {}) },
@@ -62,7 +65,8 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     leaks: withOpenLinks(project, dir, prefix, leaks),
     gates: buildGates(project, leaks, today, await approvalChanges(dir, project)),
     checks,
-    checkpointLog: await readCheckpointLog(dir),
+    checkpointLog,
+    ruleMisses: Object.fromEntries(missesByRule(checkpointLog, daysBefore(today, MISS_DAYS))),
     checkpoints: checkpointsOf(project),
     resolved: resolvedItems(checks, leaks),
     members,
@@ -70,6 +74,16 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     unknownStatuses: unknownTaskStatuses(project),
   }
   return { project, state }
+}
+
+/** ルールの表に出す「止まった回数」を数える日数 */
+export const MISS_DAYS = 30
+
+/** day（YYYY-MM-DD）の n-1 日前（その日を含めて n 日の始まり） */
+function daysBefore(day: string, n: number): string {
+  const d = new Date(`${day}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - n + 1)
+  return d.toISOString().slice(0, 10)
 }
 
 /** 承認された承認のルールが見る文書の、最後の commit（承認のあとに変わったかを見るため） */

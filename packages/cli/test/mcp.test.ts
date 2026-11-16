@@ -36,6 +36,13 @@ describe('MCP の読む道具（案件を指定して起動したとき）', () 
     expect((await tool('list_rules', { kind: 'note' })).content.at(0)?.text).not.toContain('R8')
   })
 
+  test('list_rules：この 30 日に節目でミスを見つけたルールには、回数と最後の日を付ける（見本の記録：N1 は open、N2 は fixed が 1 回ずつ）', async () => {
+    const all = (await tool('list_rules')).content.at(0)?.text ?? ''
+    expect(all).toMatch(/- N1［.*（この 30 日で 1 回ミス・最後 2026-10-30）/)
+    expect(all).toMatch(/- N2［.*（この 30 日で 1 回ミス・最後 2026-10-29）/)
+    expect(all).not.toMatch(/- R8［.*回ミス/)
+  })
+
   test('list_leaks：工程で絞れる', async () => {
     const text = (await tool('list_leaks', { phase: 'dd' })).content.at(0)?.text ?? ''
     expect(text).toContain('R4')

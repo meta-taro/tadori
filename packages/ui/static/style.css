@@ -234,8 +234,8 @@
   .origin.stale .origin-sync, .origin-link.stale { color:var(--hole); font-weight:600; }
   .last-check { text-decoration:none; }
   .last-check:hover { border-color:var(--ink-muted); }
-  a.daily-mark { text-decoration:none; }
-  a.daily-mark:hover { border-color:var(--ink-muted); }
+  a.daily-mark, a.rule-misses { text-decoration:none; }
+  a.daily-mark:hover, a.rule-misses:hover { border-color:var(--ink-muted); }
   .sp-link { flex:0 0 52px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; }
   .sp-line { width:100%; height:0; border-top:1.5px solid var(--hairline-strong); position:relative; }
   .sp-line::after { content:''; position:absolute; right:-1px; top:-5px; border:4.5px solid transparent; border-left:7px solid var(--hairline-strong); }

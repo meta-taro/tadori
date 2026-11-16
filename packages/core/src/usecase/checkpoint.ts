@@ -127,6 +127,27 @@ export function runsOn(log: readonly CheckpointRow[], day: string, at?: string):
     .map(runOf)
 }
 
+/** ルールごとの、節目でミスを見つけた回数（fixed か open）と、最後に見つけた日（YYYY-MM-DD） */
+export interface RuleMisses {
+  readonly count: number
+  readonly last: string
+}
+
+/**
+ * from（YYYY-MM-DD）以降の記録で、ルールごとにミスを見つけた回数と最後の日を数える。
+ * 事実だけを返す（割合や点数にはしない）。ミスの無いルールは入れない
+ */
+export function missesByRule(log: readonly CheckpointRow[], from: string): ReadonlyMap<string, RuleMisses> {
+  const result = new Map<string, RuleMisses>()
+  for (const row of log) {
+    if (row.rule === SUMMARY_RULE || !NEEDS_NOTE.includes(row.result) || row.when.slice(0, 10) < from) continue
+    const day = row.when.slice(0, 10)
+    const current = result.get(row.rule)
+    result.set(row.rule, { count: (current?.count ?? 0) + 1, last: current && current.last > day ? current.last : day })
+  }
+  return result
+}
+
 /** この節目・この対象の最後の記録が、いま効くルールをすべて当てているか */
 export function coverageOf(rules: readonly Rule[], at: string, target: string, log: readonly CheckpointRow[]): Coverage {
   const expected = checklistOf(rules, at).map(c => c.rule)

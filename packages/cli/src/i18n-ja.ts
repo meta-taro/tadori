@@ -446,4 +446,5 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Words the column must not contain, separated by | (case-insensitive; /.../ is a regular expression)': '列に書いてはいけない語（| で分ける。大文字・小文字は問わない。/…/ は正規表現）',
   'Added lesson {id}': '失敗 {id} とルールを足しました',
   'Ledger row ID this rule was born from (e.g. a failure FL-3). Empty to remove': 'このルールが生まれた元の台帳の行の ID（例：失敗 FL-3）。空で外す',
+  ' (missed {count} times in the last 30 days, last {last})': '（この 30 日で {count} 回ミス・最後 {last}）',
 }

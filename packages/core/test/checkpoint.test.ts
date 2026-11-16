@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { loadProject, ProjectLoadError } from '../src/infrastructure/repository.js'
 import { appendCheckpoint, CHECKPOINT_LOG, readCheckpointLog, stagedDigest } from '../src/infrastructure/checkpoint-log.js'
-import { checklistOf, checkpointsOf, coverageOf, refusalsOf, runsById, type CheckpointRow } from '../src/usecase/checkpoint.js'
+import { checklistOf, checkpointsOf, coverageOf, missesByRule, refusalsOf, runsById, type CheckpointRow } from '../src/usecase/checkpoint.js'
 
 const run = promisify(execFile)
 
@@ -167,5 +167,22 @@ describe('runsById（記録の ID から 1 回の記録を引く）', () => {
     expect(runs.get('r1')).toMatchObject({ open: false, summary: 'before-commit：該当ルール 1 件すべて OK', target: 'W-01' })
     expect(runs.get('r2')?.open).toBe(true)
     expect(runs.has('r3')).toBe(false)
+  })
+})
+
+describe('missesByRule（ルールごとに、節目でミスを見つけた回数）', () => {
+  const row = (when: string, rule: string, result: string): CheckpointRow => ({ run: when, when, who: 'A', at: 'before-commit', target: 'W-01', ruleset: 'v', rule, result, where: 'x', note: '' })
+
+  test('fixed と open を数え、最後の日を返す。from より前・ok・na・まとめの行は数えない', () => {
+    const misses = missesByRule([
+      row('2026-10-01 10:00', 'R1', 'fixed'),
+      row('2026-11-02 10:00', 'R1', 'fixed'),
+      row('2026-11-10 09:00', 'R1', 'open'),
+      row('2026-11-10 09:00', 'R2', 'ok'),
+      row('2026-11-11 09:00', 'R3', 'na'),
+      row('2026-11-12 09:00', '*', 'open'),
+    ], '2026-10-18')
+    expect(misses.get('R1')).toEqual({ count: 2, last: '2026-11-10' })
+    expect([...misses.keys()]).toEqual(['R1'])
   })
 })

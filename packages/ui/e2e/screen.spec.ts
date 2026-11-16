@@ -400,6 +400,19 @@ test.describe('ルールを画面から足す・直す・消す', () => {
     await page.request.delete('/api/rules/N95', { headers })
   })
 
+  test('この 30 日に節目でミスを見つけたルールには、回数の札を出す（数えるのは server。日付で変わるので答えを差し替えて見る）', async ({ page }) => {
+    await page.route('**/api/state*', async route => {
+      const body = await (await route.fetch()).json() as Record<string, unknown>
+      await route.fulfill({ json: { ...body, ruleMisses: { N2: { count: 2, last: '2026-10-29' } } } })
+    })
+    await page.goto('/#rules')
+    const chip = page.locator('tr', { hasText: 'N2' }).locator('.rule-misses')
+    await expect(chip).toHaveText('30 日で 2 回ミス')
+    await expect(chip).toHaveAttribute('title', '最後のミス：2026-10-29')
+    await expect(page.locator('tr', { hasText: 'N1' }).locator('.rule-misses')).toHaveCount(0)
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+  })
+
   test('知らない種類のルールなど、保存できないときは理由を出し、一覧は変えない', async ({ page }) => {
     await page.goto('/#rules')
     await page.getByRole('button', { name: 'ルールを足す' }).click()

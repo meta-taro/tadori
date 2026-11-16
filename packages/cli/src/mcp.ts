@@ -173,9 +173,14 @@ function buildProjectTools(options: McpOptions): Tool[] {
           return group?.scope === 'local' ? t('{name} · local', { name: group.name }) : group?.name ?? id
         }
         const phaseName = (id: string) => state.phases.find(p => p.id === id)?.name ?? id
+        // 節目でミスを見つけた回数（この 30 日）は、よく抜けるルールを先に読めるよう、行の後ろに事実として出す
+        const missNote = (id: string) => {
+          const misses = state.ruleMisses[id]
+          return misses ? t(' (missed {count} times in the last 30 days, last {last})', { count: misses.count, last: misses.last }) : ''
+        }
         const lines = rules.map(r => t('- {id} [{group}] {kind}{phase}: {label}', {
           id: r.id, group: groupName(r.group), kind: r.kind, phase: r.phase ? ` · ${phaseName(r.phase)}` : '', label: r.label,
-        }))
+        }) + missNote(r.id))
         return text(lines.join('\n'))
       }),
     },

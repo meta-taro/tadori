@@ -137,6 +137,8 @@ function ruleRow(state, r) {
     r.group ? `<span class="rule-group ${esc(groupColor(state, r.group))}">${esc(groupName(state, r.group))}</span>` : '',
     what ? `<span class="pair">${esc(what)}</span>` : '',
     r.only ? `<span class="cond">${esc(onlyText(r.only))}</span>` : '',
+    // この 30 日に節目でミスを見つけた回数（事実だけ。割合にはしない）。押すとチェックの記録の画面へ
+    state.ruleMisses?.[r.id] ? `<a class="chip wait rule-misses" href="#log" title="${esc(t('Last missed: {last}', { last: state.ruleMisses[r.id]?.last ?? '' }))}"><span class="dot"></span>${esc(t('Missed {n} times in 30 days', { n: state.ruleMisses[r.id]?.count ?? 0 }))}</a>` : '',
     // 生まれた元（失敗の記録など）へは、つながりを辿る画面で飛べる
     r.source ? `<a class="cond rule-source" href="#trace-${encodeURIComponent(r.source)}" title="${esc(t('Trace from {id}', { id: r.source }))}">${esc(t('From {id}', { id: r.source }))}</a>` : '',
   ].filter(Boolean).join('')
