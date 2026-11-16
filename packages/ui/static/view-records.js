@@ -168,7 +168,7 @@ function storyPath(result, resolved = [], origins = {}) {
     const icon = { ng: ICON_NG, resolved: `<span class="sp-flip">${ICON_NG}<span>→</span>${ICON_OK}</span>`, ok: ICON_OK }[card]
     parts.push(`<div class="sp-card ${card === 'ng' && !other.length ? 'ng-gap' : card} ${isStart ? 'end' : ''}"><div class="sp-phase">${isStart ? esc(t('Starting point')) : ''}${badge}</div><div class="sp-icon">${icon}</div>
       <div class="sp-kind">${esc(kindLabel(s.item.kind))} <span class="mono">${esc(s.item.id)}</span></div>
-      <div class="sp-say">${esc(s.item.title)}</div>${leakHtml}${resolvedHtml}<div class="sp-src">${origins[s.item.id] ? originHtml(origins[s.item.id]) : esc(s.item.source)}</div></div>`)
+      <div class="sp-say">${esc(s.item.title)}</div>${leakHtml}${resolvedHtml}<div class="sp-src">${origins[s.item.id] ? originHtml(origins[s.item.id]) : esc(s.item.source)}${docLink(s.item)}</div></div>`)
   })
   return parts.join('')
 }
@@ -192,6 +192,16 @@ function traceSummary(result, resolved) {
     done.length ? `<span class="chip ok"><span class="dot"></span>${esc(t('Resolved: {n} ({ids})', { n: done.length, ids: done.join(t(', ')) }))}</span>` : '',
   ]
   return `<div class="trace-summary"><span class="cond">${esc(t('On this line:'))}</span>${parts.join('')}</div>`
+}
+
+/**
+ * 行の source が案件の中のファイルなら、資料の版と差分を開く入口（リンクや空なら出さない）
+ * @param {{ id: string, source: string }} item
+ */
+function docLink(item) {
+  const head = item.source.trim().split(/\s+/)[0] ?? ''
+  if (!head || /^[a-z][a-z0-9+.-]*:\/\//i.test(head) || !/[./]/.test(head)) return ''
+  return ` <a class="doc-link" href="#doc-${encodeURIComponent(item.id)}">${esc(t('Versions and diff'))}</a>`
 }
 
 /**

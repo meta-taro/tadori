@@ -12,6 +12,7 @@ import {
   type Lang, type Phase, type RuleInput, type StatusDef,
 } from '@tadori/core'
 import { loadState, localToday } from './state.js'
+import { docView, DocRefused } from './mcp-docs.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
 import { AgentActionError, parseAgentAction } from './agent.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
@@ -286,6 +287,16 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
 
   if (req.method === 'GET' && url.pathname === '/api/state') {
     return sendJson(res, 200, (await loadState(dir, today)).state)
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/doc') {
+    // 資料の版と差分。読むのは台帳の行の source にある文書だけ
+    try {
+      return sendJson(res, 200, await docView(dir, url.searchParams))
+    } catch (error: unknown) {
+      if (error instanceof DocRefused) throw new HttpError(400, error.message)
+      throw error
+    }
   }
 
   const traceMatch = url.pathname.match(/^\/api\/trace\/([^/]+)$/)

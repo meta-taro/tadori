@@ -226,6 +226,19 @@
   .sp-kind { font-size:12px; color:var(--ink-subtle); }
   .sp-say { color:var(--ink); font-weight:500; font-size:13px; line-height:1.45; }
   .sp-src { margin-top:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-tertiary); word-break:break-all; }
+  .doc-link { font-family:inherit; white-space:nowrap; }
+  /* 資料の版と差分 */
+  .doc-panel { padding:12px 16px; margin-top:12px; }
+  .doc-panel h2 { font-size:14px; margin:0 0 8px; }
+  .doc-versions { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; }
+  .doc-version { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:4px 6px; border-radius:var(--r-md); font-size:13px; }
+  .doc-version.is-from { background:var(--surface-2); }
+  .doc-date { color:var(--ink-tertiary); font-family:var(--mono); font-size:12px; }
+  .doc-from { font-size:12px; margin-left:auto; }
+  .doc-diff { margin:0; padding:10px; overflow-x:auto; background:var(--surface-2); border-radius:var(--r-md); font-family:var(--mono); font-size:12px; line-height:1.5; }
+  .doc-diff .diff-add { color:var(--ok); background:var(--ok-soft); display:inline-block; min-width:100%; }
+  .doc-diff .diff-del { color:var(--hole); background:var(--hole-soft); display:inline-block; min-width:100%; }
+  .doc-diff .diff-hunk, .doc-diff .diff-meta { color:var(--ink-tertiary); }
   /* 正本へのリンクと、正本から手元へ反映した記録。古いものは目立たせる（正本と見比べる合図） */
   .origin { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
   .origin-link { color:var(--accent, inherit); text-decoration:none; }

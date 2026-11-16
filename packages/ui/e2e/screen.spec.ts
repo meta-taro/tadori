@@ -552,6 +552,52 @@ test.describe('チェックの記録', () => {
   })
 })
 
+test.describe('資料の版と差分', () => {
+  // 画面のテストの案件は git の外なので、版と差分の答えは差し替えて見る（git から読む所は cli のテストで見る）
+  const DOC = {
+    file: 'docs/basic-design.md', items: ['BD-2', 'BD-3'],
+    approval: { rule: 'R90', when: '2026-10-10', commit: 'c1c1c1c' },
+    versions: [
+      { commit: 'c2c2c2c', date: '2026-10-15T09:00:00+09:00', subject: '貸出の上限を直す' },
+      { commit: 'c1c1c1c', date: '2026-10-01T09:00:00+09:00', subject: '基本設計の初版' },
+    ],
+    from: 'c1c1c1c', to: '', diff: '@@ -1,2 +1,2 @@\n ## 2 貸出\n-上限は 5 冊\n+上限は 10 冊',
+  }
+
+  test('つながりを辿る画面の行から開き、版を新しい順に、承認した版に印、承認した版からの差分を色分けして出す。別の版を選べばそこからの差分', async ({ page }) => {
+    const asked: string[] = []
+    await page.route('**/api/doc?*', async route => {
+      const url = new URL(route.request().url())
+      asked.push(url.search)
+      const from = url.searchParams.get('from')
+      await route.fulfill({ json: from ? { ...DOC, from, diff: '' } : DOC })
+    })
+    await page.goto('/#trace-BD-2')
+    await page.locator('.sp-card', { hasText: 'BD-2' }).locator('.doc-link').click()
+    await expect(page).toHaveURL(/#doc-BD-2$/)
+    await expect(page.locator('h1')).toHaveText('資料の版と差分')
+    await expect(page.locator('.lede')).toContainText('docs/basic-design.md')
+    const versions = page.locator('.doc-version')
+    await expect(versions).toHaveCount(2)
+    await expect(versions.nth(0)).toContainText('貸出の上限を直す')
+    await expect(versions.nth(1)).toContainText('承認した版')
+    await expect(page.locator('#doc-diff h2')).toHaveText('2026-10-10 に承認した版（R90）からの差分')
+    await expect(page.locator('.diff-del')).toHaveText('-上限は 5 冊')
+    await expect(page.locator('.diff-add')).toHaveText('+上限は 10 冊')
+
+    await versions.nth(0).getByRole('link', { name: 'この版からの差分' }).click()
+    await expect(page).toHaveURL(/#doc-BD-2~c2c2c2c$/)
+    await expect(page.locator('#doc-diff')).toContainText('変わりなし')
+    expect(asked.at(-1)).toContain('from=c2c2c2c')
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+  })
+
+  test('台帳に名前の無いファイルは server が断り、その理由を出す', async ({ page }) => {
+    await page.goto('/#doc-package.json')
+    await expect(page.locator('.form-problems')).toContainText('台帳に名前のある文書ではありません')
+  })
+})
+
 test.describe('節目の確かめの記録', () => {
   test('1 行 = 1 回の確かめで新しい順。結果を一言で出し、押すと当てたルールと根拠が開く', async ({ page }) => {
     await page.goto('/#log')
