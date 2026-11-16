@@ -1,9 +1,9 @@
 import './i18n.js'
 import {
-  BADGE_TONES, buildDaily, carriedOver, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
-  readAloud, readStatusChanges, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
+  BADGE_TONES, buildDaily, carriedOver, checkMarkOf, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
+  readAloud, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
-import { dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
+import { checkMarkText, checkTagsOf, dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
 
 /**
@@ -35,6 +35,28 @@ export interface Daily {
    * 待ちと読むのは、tone が wait のバッジか、案件が wait_words に書いた語を含む行だけ
    */
   readonly stale: { readonly ids: readonly string[]; readonly hours: number }
+  /**
+   * 行のしるし（つないだチェックの記録）。しるしの無い行（none）は入れない。
+   * mark＝ok / open / missing、text＝案件の言葉（文に出すのと同じ）、runs＝つないだ記録（画面がその記録へ飛ぶ）
+   */
+  readonly marks: readonly DailyMark[]
+}
+
+export interface DailyMark {
+  readonly id: string
+  readonly mark: CheckMark
+  readonly text: string
+  readonly runs: readonly CheckpointRun[]
+}
+
+/** 行ごとのしるし（none の行は除く） */
+export function marksOf(entries: readonly DailyEntry[], runs: ReadonlyMap<string, CheckpointRun>, format: DailyFormat): DailyMark[] {
+  const required = checkTagsOf(format)
+  return entries.flatMap(e => {
+    const mark = checkMarkOf(e, runs, required)
+    if (mark === 'none') return []
+    return [{ id: e.id, mark, text: checkMarkText(mark, format), runs: (e.checks ?? []).flatMap(id => runs.get(id) ?? []) }]
+  })
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -102,9 +124,12 @@ export async function loadDaily(dir: string, date: string, who?: string, view: D
   const owners = [...new Set([...project.tasks.flatMap(t => ownersOf(t.owner)), ...entries.flatMap(e => ownersOf(e.who))])]
   const format = await formatOf(dir)
   const spoken = view.read ? readAloud(shown) : withoutSummaries(shown)
-  return { date, text: formatEntries(spoken, project, date, format, { showWho: !who }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
+  const runs = runsById(await readCheckpointLog(dir))
+  const marks = marksOf(shown, runs, format)
+  const markById = new Map(marks.map(m => [m.id, m.mark]))
+  return { date, text: formatEntries(spoken, project, date, format, { showWho: !who, marks: markById, runs }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
     whoMarks: who ? [] : [...new Set(shown.map(e => whoMark(e.who, format)).filter(Boolean))],
-    stale: { ids: staleWaits(shown, view.now ?? new Date(), staleRuleOf(format)).map(e => e.id), hours: staleRuleOf(format).hours } }
+    stale: { ids: staleWaits(shown, view.now ?? new Date(), staleRuleOf(format)).map(e => e.id), hours: staleRuleOf(format).hours }, marks }
 }
 
 /** 下書きを作って（作り直して）置く。直した行・足した行・消した行は残る */
@@ -222,6 +247,24 @@ const wbsList = (body: Record<string, unknown>): string[] | undefined => {
   return list.map(v => String(v).trim()).filter(Boolean)
 }
 
+const MAX_CHECKS = 8
+
+/**
+ * 行にしるしとしてつなぐチェックの記録の ID（.tadori/checkpoint-log.tsv の run）。配列か「,」区切りで受ける。
+ * 記録に無い ID は断る（打ち間違いで、しるしが付いたように見えないように）。直すときは全部を渡し直す（空で外す）
+ */
+async function checkList(dir: string, body: Record<string, unknown>): Promise<string[] | undefined> {
+  const value = body.checks
+  if (value === undefined) return undefined
+  const list = [...new Set((Array.isArray(value) ? value : String(value).split(/[、,]/)).map(v => String(v).trim()).filter(Boolean))]
+  if (list.length > MAX_CHECKS) throw new DailyInputError(t('checks can have up to {max} items', { max: MAX_CHECKS }))
+  if (!list.length) return list
+  const runs = runsById(await readCheckpointLog(dir))
+  const unknown = list.filter(id => !runs.has(id))
+  if (unknown.length) throw new DailyInputError(t('No checkpoint record {ids}. Pass the record ID that checkpoint_record returned', { ids: unknown.join(', ') }))
+  return list
+}
+
 const asBody = (body: unknown): Record<string, unknown> => {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new DailyInputError(t('Send a JSON object'))
   return body as Record<string, unknown>
@@ -239,6 +282,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
   const chosenTag = tag(body)
   const links = linkList(body)
   const badges = badgeList(body)
+  const checks = await checkList(dir, body)
   const chosenSection = section(body, true) as DailySection
   // 課題ごとの要約は、課題を付けて 1 日 1 課題に 1 つ（2 つ目は今ある要約を直してもらう）
   if (chosenSection === 'summary') {
@@ -257,6 +301,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     ...(chosenTag ? { tag: chosenTag } : {}),
     ...(links?.length ? { links } : {}),
     ...(badges?.length ? { badges } : {}),
+    ...(checks?.length ? { checks } : {}),
     origin: 'manual',
     updated: localStamp(),
   })
@@ -295,12 +340,13 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     tag: isCleared('tag') ? '' : tag(body),
     links: isCleared('links') ? [] : linkList(body),
     badges: isCleared('badges') ? [] : badgeList(body),
+    checks: isCleared('checks') ? [] : await checkList(dir, body),
   }
   const changed = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
   // 本文か課題を変えたときだけ、課題番号と短い件名を頭に付け直す
   const filled: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited', updated: localStamp() }
   // 空にした欄は、行から外す（日ごとのファイルにも空で書く）
-  const { issue, note, tag: entryTag, links, badges, ...rest } = filled
+  const { issue, note, tag: entryTag, links, badges, checks, ...rest } = filled
   const merged: DailyEntry = {
     ...rest,
     ...(issue ? { issue } : {}),
@@ -308,6 +354,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     ...(entryTag ? { tag: entryTag } : {}),
     ...(links?.length ? { links } : {}),
     ...(badges?.length ? { badges } : {}),
+    ...(checks?.length ? { checks } : {}),
   }
   const entry = patch.text !== undefined || patch.issue !== undefined ? await withIssueHead(dir, merged) : merged
   const commit = await writeDaily(dir, date, entries.map(e => (e.id === id ? entry : e)), t('Edit daily progress line {id} ({date})', { id, date }))

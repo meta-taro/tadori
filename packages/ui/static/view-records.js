@@ -112,8 +112,9 @@ function logEntry(run) {
 /**
  * @param {HTMLElement} view
  * @param {ProjectState} state
+ * @param {string} [runId] 開いて見せる節目の記録（1 日の進行のしるしから来たとき）
  */
-export function renderLog(view, state) {
+export function renderLog(view, state, runId) {
   // 新しいものが上
   const entries = runsOf([...state.checks].reverse()).map(logEntry).join('')
   view.innerHTML = `
@@ -123,7 +124,7 @@ export function renderLog(view, state) {
     <p class="lede">${esc(t('Each time the rules are checked, one row is added in 5W1H form ({file}, managed in git). People write the rows for their own approvals.')).replace('{file}', () => '<span class="mono">.tadori/checks.tsv</span>')}</p>
     <div class="note">${ICON_INFO}<span>${esc(t('To add a row, use {command}.')).replace('{command}', () => `<span class="mono">${esc(t('tadori check --log --who NAME --why REASON'))}</span>`)}</span></div>
     <div class="log-list">${entries || `<p class="cond">${esc(t('No records yet'))}</p>`}</div>`
-  renderCheckpoints(/** @type {HTMLElement} */ (view.querySelector('.cp-section')), state)
+  renderCheckpoints(/** @type {HTMLElement} */ (view.querySelector('.cp-section')), state, runId)
   // 切った文は、押すと全部出る（もう一度押すと戻る）
   view.querySelectorAll('.log-clamp').forEach(el => el.addEventListener('click', () => {
     el.setAttribute('aria-expanded', String(el.getAttribute('aria-expanded') !== 'true'))

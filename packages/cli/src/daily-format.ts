@@ -1,5 +1,5 @@
 import './i18n.js'
-import { entriesFromSheet, nextWorkday, originOf, t, type DailyEntry, type DailySheet, type Project, type StaleRule } from '@tadori/core'
+import { entriesFromSheet, nextWorkday, originOf, t, type CheckMark, type CheckpointRun, type DailyEntry, type DailySheet, type Project, type StaleRule } from '@tadori/core'
 import { originText } from './format.js'
 import { joinWords, listJoin, noteJoin } from './i18n.js'
 
@@ -52,6 +52,14 @@ export interface DailyFormat {
   readonly stale_hours: string
   /** 本文にあれば待ちと読む語（「・」か「,」で区切る。空なら tone が wait のバッジだけを待ちと読む） */
   readonly wait_words: string
+  /** チェックの記録（しるし）を求める行の印（「・」か「,」で区切る。空なら、どの行にも求めない） */
+  readonly check_tags: string
+  /** しるしの言葉。ok＝つないだ記録がそろっている / open＝まだ直していないミスがある / missing＝求める行なのに記録が無い（空にすると、そのしるしは文に出さない） */
+  readonly check_ok: string
+  readonly check_open: string
+  readonly check_missing: string
+  /** しるしの書き方（{mark}＝しるしの言葉）。本文のうしろ（バッジのあと）に出す。空なら文に出さない */
+  readonly check_format: string
 }
 
 /**
@@ -83,6 +91,21 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   get badge_format() { return t(' <{badge}>') },
   stale_hours: '3',
   wait_words: '',
+  check_tags: 'done',
+  get check_ok() { return t('Check recorded') },
+  get check_open() { return t('Check has open misses') },
+  get check_missing() { return t('No check record') },
+  get check_format() { return t(' <{mark}>') },
+}
+
+/** しるしを求める行の印（案件の check_tags から） */
+export const checkTagsOf = (format: DailyFormat): string[] => format.check_tags.split(/[・,、]/).map(w => w.trim()).filter(Boolean)
+
+/** しるしの言葉（none か、言葉が空なら空） */
+export function checkMarkText(mark: CheckMark | undefined, format: DailyFormat): string {
+  if (!mark || mark === 'none') return ''
+  const word = { ok: format.check_ok, open: format.check_open, missing: format.check_missing }[mark]
+  return word && format.check_format ? fill(format.check_format, { mark: word }) : ''
 }
 
 /** 古い待ちの行の決まり（案件の stale_hours・wait_words から） */
@@ -139,7 +162,7 @@ function originNote(project: Project, item: Project['items'][number], date: stri
 }
 
 /** 補足の 1 行（正式な名前・WBS・場所）。補足するものが無ければ null */
-function noteLine(project: Project, entry: DailyEntry, no: number, format: DailyFormat, date: string): string | null {
+function noteLine(project: Project, entry: DailyEntry, no: number, format: DailyFormat, date: string, runs?: ReadonlyMap<string, CheckpointRun>): string | null {
   const phaseName = (id: string) => project.phases.find(p => p.id === id)?.name ?? id
   const issue = entry.issue ? project.items.find(i => i.id === entry.issue) : undefined
   const parts = [
@@ -155,6 +178,11 @@ function noteLine(project: Project, entry: DailyEntry, no: number, format: Daily
     ...(entry.note ? [entry.note] : []),
     // 行のリンクは読み上げる行には入れず、補足に「表示名：URL」で出す（聞かれたら開くもの）
     ...[...new Set((entry.links ?? []).map(l => t('{label}: {url}', { label: l.label, url: l.url })))], // 同じ表示名と URL は 1 回だけ
+    // つないだチェックの記録は、まとめの 1 文を補足に出す（聞かれたら「どう確かめたか」を答えられるように）
+    ...(entry.checks ?? []).flatMap(id => {
+      const run = runs?.get(id)
+      return run ? [t('Check record {run}: {summary}', { run: id, summary: run.summary })] : []
+    }),
   ]
   return parts.length ? `${no}. ${noteJoin(parts)}` : null
 }
@@ -167,6 +195,10 @@ export function whoMark(who: string, format: DailyFormat): string {
 /** showWho：担当で絞っていない（全員の分を並べる）ときは、読み上げる行に担当名を入れる */
 export interface FormatOptions {
   readonly showWho?: boolean
+  /** 行の ID → しるし（本文のうしろに出す） */
+  readonly marks?: ReadonlyMap<string, CheckMark>
+  /** 記録の ID → 1 回の記録（補足に、つないだ記録のまとめを出す） */
+  readonly runs?: ReadonlyMap<string, CheckpointRun>
 }
 
 export function formatEntries(entries: readonly DailyEntry[], project: Project, date: string, format: DailyFormat = DEFAULT_DAILY_FORMAT, options: FormatOptions = {}): string {
@@ -182,9 +214,9 @@ export function formatEntries(entries: readonly DailyEntry[], project: Project, 
   const perSection = format.numbering === 'per-section'
   let running = 0
   const numbered = sections.map(s => ({ ...s, items: s.list.map((entry, i) => ({ entry, no: perSection ? i + 1 : ++running })) }))
-  const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${tagText(entry.tag, format)}${whoText(entry.who)}${entry.text}${badgeText(entry, format)}${wbsTail(project, entry.wbs, format)}`)
+  const lines = (id: string) => (numbered.find(s => s.id === id)?.items ?? []).map(({ entry, no }) => `${no}. ${tagText(entry.tag, format)}${whoText(entry.who)}${entry.text}${badgeText(entry, format)}${checkMarkText(options.marks?.get(entry.id), format)}${wbsTail(project, entry.wbs, format)}`)
   const notes = numbered.flatMap(s => {
-    const rows = s.items.flatMap(({ entry, no }) => noteLine(project, entry, no, format, date) ?? [])
+    const rows = s.items.flatMap(({ entry, no }) => noteLine(project, entry, no, format, date, options.runs) ?? [])
     // 見出しごとに番号を振り直すときは、どの見出しの番号か分かるよう、補足を見出しの名前で分ける
     return perSection && rows.length ? [s.label, ...rows] : rows
   })

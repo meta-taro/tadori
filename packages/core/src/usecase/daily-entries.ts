@@ -69,6 +69,11 @@ export interface DailyEntry {
    * 自動の行と、この列ができる前に書いた行には無い
    */
   readonly updated?: string
+  /**
+   * この行の作業で付けたチェックの記録（.tadori/checkpoint-log.tsv の run の ID）。
+   * 「その作業がルールどおりに確かめられた」という行ごとのしるしになる。つなぐのは人かエージェント
+   */
+  readonly checks?: readonly string[]
 }
 
 /** 行のリンク。表示名は人が読む名前（例：QA表・設計書 3.2.5）。URL は http・https だけ */
@@ -156,7 +161,8 @@ export function carriedOver(previous: readonly DailyEntry[], previousDate: strin
   return previous
     .filter(e => e.section === 'next' && (e.origin === 'manual' || e.origin === 'edited'))
     .map(e => {
-      const { note, links, issue, ...rest } = e
+      // チェックの記録は前の日の作業のものなので持ち越さない（今日の作業のしるしと取り違えないように）
+      const { note, links, issue, checks: _checks, ...rest } = e
       return {
         ...rest,
         id: '',
@@ -214,4 +220,18 @@ export function staleWaits(entries: readonly DailyEntry[], now: Date, rule: Stal
     const at = new Date(e.updated).getTime()
     return !Number.isNaN(at) && now.getTime() - at >= rule.hours * HOUR_MS
   })
+}
+
+/**
+ * 行のしるし（チェックの記録とのつながり）。
+ * ok＝つないだ記録がそろっている / open＝つないだ記録に、まだ直していないミスがある /
+ * missing＝しるしを求める行（requiredTags の印の行）なのに、つないだ記録が無い / none＝しるしを求めない行で、記録も無い。
+ * tadori は作業の中身を見て判定しない。見るのは、人かエージェントがつないだ記録があるか・その記録の結果だけ
+ */
+export type CheckMark = 'ok' | 'open' | 'missing' | 'none'
+
+export function checkMarkOf(entry: DailyEntry, runs: ReadonlyMap<string, { readonly open: boolean }>, requiredTags: readonly string[]): CheckMark {
+  const linked = (entry.checks ?? []).flatMap(id => runs.get(id) ?? [])
+  if (linked.length) return linked.some(r => r.open) ? 'open' : 'ok'
+  return entry.tag && requiredTags.includes(entry.tag) ? 'missing' : 'none'
 }

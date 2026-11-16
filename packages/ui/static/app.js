@@ -32,7 +32,7 @@ const VIEWS = {
   phases: { label: 'Remaining work to release', render: phaseId => renderGates(view, state, id => { location.hash = `trace-${encodeURIComponent(id)}` }, phaseId) },
   daily: { label: 'Daily progress', render: () => renderDaily(view, state) },
   rules: { label: 'Rulesets', render: () => renderRules(view, state, reload) },
-  log: { label: 'Check log', render: () => renderLog(view, state) },
+  log: { label: 'Check log', render: id => renderLog(view, state, id) },
   trace: { label: 'Trace', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
   settings: { label: 'Settings', render: () => renderSettings(view, state, reload) },
   glossary: { label: 'Glossary', render: () => renderGlossary(view) },
@@ -120,8 +120,8 @@ function renderNavBadges(waits) {
 function route() {
   if (!state) return
   const hash = decodeURIComponent(location.hash.slice(1))
-  // #trace-F-02・#browse-W-03 のように、画面の名前のあとに ID を付けて、その行を開ける（会議で URL を渡せるように）
-  const withId = hash.match(/^(trace|browse|phases)-(.+)$/)
+  // #trace-F-02・#browse-W-03・#log-記録の ID のように、画面の名前のあとに ID を付けて、その行を開ける（会議で URL を渡せるように）
+  const withId = hash.match(/^(trace|browse|phases|log)-(.+)$/)
   const key = withId ? withId[1] : (VIEWS[hash] ? hash : 'phases')
   const id = withId ? withId[2] : undefined
   renderChrome(key)

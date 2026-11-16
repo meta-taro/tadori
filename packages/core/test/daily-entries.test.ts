@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { carriedOver, entriesFromSheet, memberOf, mergeDaily, readAloud, staleWaits, withoutSummaries, type DailyEntry } from '../src/usecase/daily-entries.js'
+import { carriedOver, checkMarkOf, entriesFromSheet, memberOf, mergeDaily, readAloud, staleWaits, withoutSummaries, type DailyEntry } from '../src/usecase/daily-entries.js'
 import { buildDaily, type StatusChange } from '../src/usecase/daily.js'
 import type { Project, Task } from '../src/domain/model.js'
 
@@ -177,5 +177,27 @@ describe('staleWaits（古いままの待ちの行）', () => {
 
   test('hours が 0 なら何も返さない', () => {
     expect(staleWaits([row('m1', { text: '確認中', updated: '2026-11-01T00:00' })], now, { ...rule, hours: 0 })).toEqual([])
+  })
+})
+
+describe('checkMarkOf（行のしるし：つないだチェックの記録）', () => {
+  const row = (over: Partial<DailyEntry>): DailyEntry => ({ id: 'm1', who: 'A', section: 'today', text: 'x', wbs: [], origin: 'manual', ...over })
+  const runs = new Map([['r-ok', { open: false }], ['r-open', { open: true }]])
+
+  test('つないだ記録がそろっていれば ok、まだ直していないミスのある記録があれば open', () => {
+    expect(checkMarkOf(row({ checks: ['r-ok'] }), runs, ['done'])).toBe('ok')
+    expect(checkMarkOf(row({ checks: ['r-ok', 'r-open'] }), runs, ['done'])).toBe('open')
+  })
+
+  test('しるしを求める印の行で記録が無ければ missing。求めない行は none。消えた記録の ID は無いのと同じ', () => {
+    expect(checkMarkOf(row({ tag: 'done' }), runs, ['done'])).toBe('missing')
+    expect(checkMarkOf(row({ tag: 'done', checks: ['r-gone'] }), runs, ['done'])).toBe('missing')
+    expect(checkMarkOf(row({ tag: 'plan' }), runs, ['done'])).toBe('none')
+    expect(checkMarkOf(row({}), runs, [])).toBe('none')
+  })
+
+  test('前の作業日から持ち越した行は、チェックの記録を持ち越さない', () => {
+    const carried = carriedOver([row({ section: 'next', checks: ['r-ok'] })], '2026-11-09')
+    expect(carried[0]?.checks).toBeUndefined()
   })
 })

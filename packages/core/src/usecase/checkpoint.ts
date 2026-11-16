@@ -109,13 +109,22 @@ export interface CheckpointRun {
   readonly target: string
   /** まだ直していないミスが残った回か */
   readonly open: boolean
+  /** まとめの 1 文（例：before-commit：該当ルール 3 件すべて OK） */
+  readonly summary: string
+}
+
+const runOf = (r: CheckpointRow): CheckpointRun => ({ run: r.run, when: r.when, at: r.at, target: r.target, open: r.result === 'open', summary: r.where })
+
+/** 記録の ID → 1 回の記録（1 日の進行の行から、つないだ記録を引くため） */
+export function runsById(log: readonly CheckpointRow[]): ReadonlyMap<string, CheckpointRun> {
+  return new Map(log.filter(r => r.rule === SUMMARY_RULE).map(r => [r.run, runOf(r)]))
 }
 
 /** その日（YYYY-MM-DD）の記録を、書いた順に返す。at を渡すとその節目だけ */
 export function runsOn(log: readonly CheckpointRow[], day: string, at?: string): CheckpointRun[] {
   return log
     .filter(r => r.rule === SUMMARY_RULE && r.when.startsWith(day) && (!at || r.at === at))
-    .map(r => ({ run: r.run, when: r.when, at: r.at, target: r.target, open: r.result === 'open' }))
+    .map(runOf)
 }
 
 /** この節目・この対象の最後の記録が、いま効くルールをすべて当てているか */

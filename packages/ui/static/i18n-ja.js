@@ -443,4 +443,8 @@ export const JA = {
   "Summary for a report (facts only)": "報告用のまとめ（事実だけ）",
   "Copy": "写す",
   "No checkpoint checks yet. Give rules an \"at\" column, then agents record with checkpoint_record.": "まだ節目の確かめはありません。ルールに at 列（効く節目）を書くと、エージェントが checkpoint_record で記録します。",
+  "Check recorded": "チェック済み",
+  "Check has open misses": "チェックで未修正あり",
+  "No check record": "チェックの記録なし",
+  "Record the checkpoint and link its record ID to this row (checks)": "節目を記録して、その記録の ID をこの行につなぐ（checks）",
 }

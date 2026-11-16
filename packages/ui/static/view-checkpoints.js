@@ -73,7 +73,7 @@ function rulesTable(state, run) {
 function runRow(state, run) {
   const result = resultOf(run)
   const target = targetOf(state, run)
-  return `<details class="cp-run ${result.tone}">
+  return `<details class="cp-run ${result.tone}" data-run="${esc(run.run)}">
     <summary>
       <span class="cp-when mono">${esc(run.when.slice(0, 16))}</span>
       <span class="cp-target">${target.id ? `<span class="mono">${esc(target.id)}</span> ` : ''}${esc(target.label)}</span>
@@ -129,8 +129,10 @@ const filter = { period: '', target: '' }
 /**
  * 節目の確かめの欄を描く（チェックの記録の画面の上に置く）
  * @param {HTMLElement} holder @param {ProjectState} state
+ * @param {string} [runId] 開いて見せる回（絞り込みを外して、その回を開き、見える所へ動かす）
  */
-export function renderCheckpoints(holder, state) {
+export function renderCheckpoints(holder, state, runId) {
+  if (runId) { filter.period = ''; filter.target = '' }
   const all = runsOf(state.checkpointLog ?? [])
   const targets = [...new Set(all.filter(r => r.at !== STAGED).map(r => r.target))].sort()
   const draw = () => {
@@ -167,4 +169,10 @@ export function renderCheckpoints(holder, state) {
     }
   })
   draw()
+  const opened = runId ? [...holder.querySelectorAll('.cp-run')].find(el => el.getAttribute('data-run') === runId) : undefined
+  if (opened instanceof HTMLDetailsElement) {
+    opened.open = true
+    opened.classList.add('cp-focus')
+    opened.scrollIntoView({ block: 'center' })
+  }
 }

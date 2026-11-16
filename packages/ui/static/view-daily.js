@@ -21,6 +21,26 @@ let readMode = false
 
 /** 古いままの待ちの行（server が案件の stale_hours・wait_words で選んだもの）の ID と、何時間で古いとするか */
 let stale = { ids: /** @type {Set<string>} */ (new Set()), hours: 0 }
+/** 行のしるし（server が、行につないだチェックの記録から決めたもの）。行の ID → しるし */
+let marks = /** @type {Map<string, import('./types').Daily['marks'][number]>} */ (new Map())
+
+const MARK_LOOK = /** @type {const} */ ({ ok: ['ok', 'Check recorded'], open: ['hole', 'Check has open misses'], missing: ['wait', 'No check record'] })
+
+/**
+ * 行のしるしの札。記録をつないだ行は、押すとチェックの記録の画面でその回を開く。記録の無い行は札だけ
+ * @param {string} id
+ */
+function markChip(id) {
+  const mark = marks.get(id)
+  if (!mark || mark.mark === 'none') return ''
+  const [tone, label] = MARK_LOOK[mark.mark]
+  const title = mark.runs.length ? mark.runs.map(r => `${r.run}: ${r.summary}`).join('\n') : t('Record the checkpoint and link its record ID to this row (checks)')
+  const body = `<span class="dot"></span>${esc(t(label))}`
+  const first = mark.runs[0]
+  return first
+    ? `<a class="chip ${tone} daily-mark" href="#log-${encodeURIComponent(first.run)}" title="${esc(title)}">${body}</a>`
+    : `<span class="chip ${tone} daily-mark" title="${esc(title)}">${body}</span>`
+}
 
 /**
  * 行を最後に直した時刻（その日なら時刻だけ、別の日なら月日も）。自動の行など、時刻の無い行は出さない
@@ -103,7 +123,7 @@ function entryRow(entry, no, origins = {}, isAll = true, isSummary = entry.secti
       // 要約は長くなりやすいので、折り返して全文を見せる（読み上げる文なので、途中で切らない）
       ? `<textarea class="inline-input daily-text daily-summary-text" data-entry="${esc(entry.id)}" rows="${Math.min(4, Math.max(2, Math.ceil(entry.text.length / 45)))}" aria-label="${esc(t('Text of row {n}', { n: no }))}" maxlength="500">${esc(entry.text)}</textarea>`
       : `<input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${esc(t('Text of row {n}', { n: no }))}" maxlength="500">`}
-    <span class="daily-badges">${badges}${staleChip}</span>
+    <span class="daily-badges">${badges}${markChip(entry.id)}${staleChip}</span>
     ${updated ? `<span class="daily-updated cond mono" title="${esc(t('When this row was last added or edited'))}">${esc(updated)}</span>` : ''}
     <span class="daily-links">${origin}${entryLinks(entry)}</span>
     <span class="daily-meta">${badge}${issue}${wbs}</span>
@@ -164,11 +184,14 @@ export async function renderDaily(view, state) {
   try {
     const who = getWho()
     daily = await api(`/api/daily?date=${encodeURIComponent(date)}${who ? `&who=${encodeURIComponent(who)}` : ''}${readMode ? '&read=1' : ''}`)
+    // 読み込みの間に別の画面へ移っていたら描かない（遅れて返った答えで、移った先の画面を上書きしないように）
+    if (location.hash !== '#daily') return
   } catch (error) {
     view.innerHTML = `<h1>${esc(t('Daily progress'))}</h1><div class="note">${ICON_INFO}<span>${esc(messageOf(error))}</span></div>`
     return
   }
   stale = { ids: new Set(daily.stale?.ids ?? []), hours: daily.stale?.hours ?? 0 }
+  marks = new Map((daily.marks ?? []).map(m => [m.id, m]))
   const base = `/api/daily/${encodeURIComponent(date)}`
   view.innerHTML = `
     <h1>${esc(t('Daily progress'))}</h1>

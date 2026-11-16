@@ -66,7 +66,7 @@ export function checkpointTools(options: { projectDir?: string }): Tool[] {
       run: async args => withDir(async dir => {
         try {
           const written = await recordCheckpoint(dir, { at: str(args.at), target: str(args.target), who: str(args.who), answers: answersOf(args.answers) })
-          return reply(t('Recorded ({target}): {summary}. {commit}', { target: written.target, summary: written.summary, commit: committed(written.commit) }))
+          return reply(t('Recorded ({target}, record ID {run}): {summary}. {commit}', { target: written.target, run: written.run, summary: written.summary, commit: committed(written.commit) }))
         } catch (error: unknown) {
           if (error instanceof WriteRefused) return reply(t('Nothing was written (the files are unchanged):\n- {problems}', { problems: error.problems.join('\n- ') }), true)
           throw error

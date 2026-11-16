@@ -236,6 +236,25 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     // 描き直しの読み込みが試験の終わりをまたいで差し替えに入らないよう、外してから終える
     await page.unrouteAll({ behavior: 'ignoreErrors' })
   })
+
+  test('チェックの記録をつないだ行にはしるしの札を出し、押すとチェックの記録の画面でその回を開く', async ({ page }) => {
+    const run = '20261028100000-1' // 見本の案件の節目の記録
+    const res = await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: '試験ケースを確かめた', tag: 'done', checks: [run] },
+    })
+    const { entry } = await res.json() as { entry: { id: string } }
+    await openDaily(page)
+    const row = page.locator('.daily-entry').filter({ has: page.locator(`[data-entry="${entry.id}"]`) })
+    const mark = row.locator('.daily-mark')
+    await expect(mark).toHaveText('チェック済み')
+    await expect(page.locator('.daily-preview')).toContainText('試験ケースを確かめた〈チェック済み〉')
+    await mark.click()
+    await expect(page).toHaveURL(new RegExp(`#log-${run}$`))
+    const opened = page.locator(`.cp-run[data-run="${run}"]`)
+    await expect(opened).toHaveAttribute('open', '')
+    await expect(opened).toHaveClass(/cp-focus/)
+  })
 })
 
 test.describe('1 日の進行の文の形の担当', () => {

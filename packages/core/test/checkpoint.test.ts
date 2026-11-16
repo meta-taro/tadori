@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { loadProject, ProjectLoadError } from '../src/infrastructure/repository.js'
 import { appendCheckpoint, CHECKPOINT_LOG, readCheckpointLog, stagedDigest } from '../src/infrastructure/checkpoint-log.js'
-import { checklistOf, checkpointsOf, coverageOf, refusalsOf } from '../src/usecase/checkpoint.js'
+import { checklistOf, checkpointsOf, coverageOf, refusalsOf, runsById, type CheckpointRow } from '../src/usecase/checkpoint.js'
 
 const run = promisify(execFile)
 
@@ -153,5 +153,19 @@ describe('コミット前の対象（いま stage してある変更）', () => 
   test('stage が空（記録のファイルだけ）なら null', async () => {
     await run('git', ['reset', '-q', '--', 'a.txt'], { cwd: dir })
     expect(await stagedDigest(dir)).toBeNull()
+  })
+})
+
+describe('runsById（記録の ID から 1 回の記録を引く）', () => {
+  const row = (run: string, rule: string, result: string, where = ''): CheckpointRow => ({ run, when: '2026-11-13 10:00', who: 'A', at: 'before-commit', target: 'W-01', ruleset: 'v', rule, result, where, note: '' })
+
+  test('まとめの行から、回ごとの結果（直していないミスが残ったか）とまとめの文を返す', () => {
+    const runs = runsById([
+      row('r1', 'R1', 'ok'), row('r1', '*', 'ok', 'before-commit：該当ルール 1 件すべて OK'),
+      row('r2', 'R1', 'open'), row('r2', '*', 'open', 'before-commit：1 件中 1 件ミス'),
+    ])
+    expect(runs.get('r1')).toMatchObject({ open: false, summary: 'before-commit：該当ルール 1 件すべて OK', target: 'W-01' })
+    expect(runs.get('r2')?.open).toBe(true)
+    expect(runs.has('r3')).toBe(false)
   })
 })

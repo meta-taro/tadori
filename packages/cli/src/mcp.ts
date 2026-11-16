@@ -6,7 +6,7 @@ import { fixText, formatCheck, formatTrace, originText } from './format.js'
 import { howTo } from './guide.js'
 import { committed, writeTools, type WriteContext } from './mcp-write.js'
 import { checkpointTools } from './mcp-checkpoint.js'
-import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
+import { addDaily, DailyInputError, type DailyMark, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 import { loadState, localToday } from './state.js'
 import { defaultLogDir, readServerErrors } from './error-log.js'
 import { dirname, resolve } from 'node:path'
@@ -214,6 +214,14 @@ function buildProjectTools(options: McpOptions): Tool[] {
 const updatedNote = (updated: string | undefined, date: string): string =>
   updated ? t(' (updated {time})', { time: updated.startsWith(date) ? updated.slice(11) : updated.replace('T', ' ') }) : ''
 
+/** 行のしるし（ok・open は、つないだ記録の ID も出す。エージェントが記録を引けるように） */
+const markNote = (mark: DailyMark | undefined): string => {
+  if (!mark) return ''
+  const ids = mark.runs.map(r => r.run).join(', ')
+  if (mark.mark === 'missing') return t(' (mark: no check record)')
+  return mark.mark === 'open' ? t(' (mark: check has open misses, {ids})', { ids }) : t(' (mark: checked, {ids})', { ids })
+}
+
 function dailySchemas() {
   const SECTION = { type: 'string', enum: ['today', 'next', 'consult', 'upkeep', 'summary'], description: t('today = Today / next = Next working day / consult = Questions / upkeep = Ledger upkeep (not work on deliverables) / summary = a short summary per issue to read out (needs issue, one per issue per day: what happened, which phase it is in, whether it finishes today, what comes next)') }
   const DATE = { type: 'string', description: t('Date (YYYY-MM-DD). Empty for today') }
@@ -246,6 +254,10 @@ function dailySchemas() {
         required: ['text'], additionalProperties: false,
       },
       description: t('Small badges for the line, shown apart from the text on the screen and after the text in the written daily progress. When editing, pass all of them again (an empty array clears them)'),
+    },
+    checks: {
+      type: 'array', maxItems: 8, items: { type: 'string' },
+      description: t('Checkpoint record IDs (the record ID that checkpoint_record returns) for the checks done on this work. They become the line\'s mark, showing the work was checked by the rules. When editing, pass all of them again (an empty array clears them)'),
     },
     issue: { type: 'string', description: t('Issue ID (a ledger row)') },
     note: { type: 'string', description: t('A short remark to add to the notes (read when asked)') },
@@ -281,11 +293,15 @@ function dailyTools(options: McpOptions): Tool[] {
       run: async args => withDay(args, async (dir, date) => {
         const daily = await loadDaily(dir, date, str(args.who).trim() || undefined, { read: args.read === true })
         const stale = new Set(daily.stale.ids)
-        const rows = daily.entries.map(e => `- [${e.id}] ${e.section} · ${e.who || t('no owner')} · ${e.text}${e.origin === 'auto' ? '' : e.origin === 'manual' ? t(' (added line)') : t(' (edited line)')}${updatedNote(e.updated, daily.date)}${stale.has(e.id) ? t(' (stale wait)') : ''}`)
+        const marks = new Map(daily.marks.map(m => [m.id, m]))
+        const rows = daily.entries.map(e => `- [${e.id}] ${e.section} · ${e.who || t('no owner')} · ${e.text}${e.origin === 'auto' ? '' : e.origin === 'manual' ? t(' (added line)') : t(' (edited line)')}${updatedNote(e.updated, daily.date)}${stale.has(e.id) ? t(' (stale wait)') : ''}${markNote(marks.get(e.id))}`)
         const where = daily.saved ? t('saved in the file') : t('a draft not saved yet; save it with daily_generate')
         // 古いままの待ちの行は、会の前に直せるよう最後に件数と ID を出す
         const warn = stale.size ? `\n\n${t('{n} waiting lines have not been edited for {hours} hours or more: {ids}. Update them before the meeting.', { n: stale.size, hours: daily.stale.hours, ids: daily.stale.ids.join(', ') })}` : ''
-        return text(`${t('{text}\n\nLines ({where}):\n{rows}', { text: daily.text, where, rows: rows.join('\n') })}${warn}`)
+        // しるしを求める行なのに記録をつないでいない行も、件数と ID を出す（つなぐのはエージェントか人）
+        const missing = daily.marks.filter(m => m.mark === 'missing').map(m => m.id)
+        const missingWarn = missing.length ? `\n\n${t('{n} lines have no check record linked: {ids}. Record the checkpoint and pass its record ID as checks with daily_update.', { n: missing.length, ids: missing.join(', ') })}` : ''
+        return text(`${t('{text}\n\nLines ({where}):\n{rows}', { text: daily.text, where, rows: rows.join('\n') })}${warn}${missingWarn}`)
       }),
     },
     {

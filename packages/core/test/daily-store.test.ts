@@ -26,7 +26,7 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     ]
     const commit = await writeDaily(dir, '2026-11-09', entries, '1 日の進行を直した')
     expect(commit.committed).toBe(false) // git の外なので commit しない
-    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\tupdated\n/)
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\tupdated\tchecks\n/)
     const back = await readDaily(dir, '2026-11-09')
     expect(back[0]).toEqual({ ...entries[0], text: '画面の設計 を直した' })
     expect(back[1]).toEqual(entries[1])
@@ -84,5 +84,18 @@ describe('行のリンクの語（anchor）', () => {
     await writeDaily(dir, '2026-11-09', [{ id: 'm1', who: '設計担当', section: 'today', text: 'x', wbs: [], origin: 'manual', links }], 'x')
     expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toContain('QA表 https://sheets.example.com/qa > QA の返事 #2 | MR https://git.example.com/mr/3 > MR | 設計書 https://docs.example.com/d')
     expect((await readDaily(dir, '2026-11-09'))[0]?.links).toEqual(links)
+  })
+})
+
+describe('行のしるし（チェックの記録の ID）', () => {
+  test('checks は「,」区切りの 1 セルに書き、読むと同じ並びに戻る。空なら持たない', async () => {
+    const dir = await dirOf()
+    await writeDaily(dir, '2026-11-09', [
+      { id: 'm1', who: 'A', section: 'today', text: 'x', wbs: [], origin: 'manual', checks: ['20261109-101500-ab12', '20261109-111500-cd34'] },
+      { id: 'm2', who: 'A', section: 'today', text: 'y', wbs: [], origin: 'manual' },
+    ], 'x')
+    const back = await readDaily(dir, '2026-11-09')
+    expect(back[0]?.checks).toEqual(['20261109-101500-ab12', '20261109-111500-cd34'])
+    expect(back[1]?.checks).toBeUndefined()
   })
 })
