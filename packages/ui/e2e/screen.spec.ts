@@ -362,6 +362,30 @@ test.describe('ルールを画面から足す・直す・消す', () => {
     await expect(page.locator('tr', { hasText: id })).toHaveCount(0)
   })
 
+  test('書いてはいけない語（forbidden）のルールを足すと、一覧に語が出て、当たった行が漏れに数えられる', async ({ page }) => {
+    await page.goto('/#rules')
+    const before = await page.locator('#summary').innerText()
+    await page.getByRole('button', { name: 'ルールを足す' }).click()
+    const form = page.locator('#rule-form')
+    const id = await form.locator('[name="id"]').inputValue()
+    await form.locator('[name="phase"]').selectOption('it')
+    await form.locator('[name="kind"]').selectOption('forbidden')
+    await form.locator('[name="from"]').fill('TC')
+    await form.locator('[name="field"]').fill('title')
+    await form.locator('[name="values"]').fill('/./')
+    await form.locator('[name="label"]').fill('試験ケースの名前に語を書かない（試験用）')
+    await form.getByRole('button', { name: '保存' }).click()
+    const row = page.locator('tr', { hasText: id })
+    await expect(row).toContainText('書いてはいけない語')
+    await expect(row).toContainText('/./ を含まない')
+    await expect(page.locator('#summary')).not.toHaveText(before)
+    // あとの試験の漏れの数を変えないよう、消して終える
+    await row.getByRole('button', { name: '消す' }).click()
+    await page.waitForTimeout(800)
+    await page.locator('tr', { hasText: id }).getByRole('button', { name: 'もう一度押すと消す' }).click()
+    await expect(page.locator('tr', { hasText: id })).toHaveCount(0)
+  })
+
   test('知らない種類のルールなど、保存できないときは理由を出し、一覧は変えない', async ({ page }) => {
     await page.goto('/#rules')
     await page.getByRole('button', { name: 'ルールを足す' }).click()

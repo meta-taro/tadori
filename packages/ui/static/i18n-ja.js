@@ -139,7 +139,6 @@ export const JA = {
   'Why: {why}': 'なぜ：{why}',
   ' · one of {values}': '・{values} のどれか',
   'Only rows where {field} is not {values}': '{field} が {values} でない行だけ',
-  'for "Allowed values" (e.g. OK|NG)': '書いてよい値のとき（例：OK|NG）',
   'e.g. change=yes, env!=local': '例：change=変わる、env!=local',
   'Human approval': '人の承認',
   'Pending approval': '承認待ち',
@@ -447,4 +446,8 @@ export const JA = {
   "Check has open misses": "チェックで未修正あり",
   "No check record": "チェックの記録なし",
   "Record the checkpoint and link its record ID to this row (checks)": "節目を記録して、その記録の ID をこの行につなぐ（checks）",
+  'Forbidden words': '書いてはいけない語',
+  ' · none of {values}': '・{values} を含まない',
+  'Values or words': '値か語',
+  'Allowed values (e.g. OK|NG) / forbidden words (e.g. colspan|/^TODO/)': '書いてよい値（例：OK|NG）／書いてはいけない語（例：colspan|/^TODO/）',
 }

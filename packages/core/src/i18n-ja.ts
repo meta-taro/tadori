@@ -181,4 +181,8 @@ export const JA: Readonly<Record<string, string>> = {
   '{id} is not in the ledger or the WBS (for a checkpoint that comes once a day, give the date as YYYY-MM-DD; if it comes more than once a day, add a slot such as YYYY-MM-DD-1)': '{id} は台帳にも WBS にもありません（1 日に 1 回の節目なら、日付を YYYY-MM-DD で。1 日に何回かある節目なら、YYYY-MM-DD-1 のように枠を付けて渡してください）',
   'No rule applies at the checkpoint {at}': '節目 {at} に効くルールがありません（ルールの at 列に書きます）',
   'Record checkpoint {at} for {target}': '節目 {at} の記録（{target}）',
+  '{file}, rule {id}: a "forbidden" rule needs a field and the words in the values column (e.g. colspan|/\\w+\\(\\)/)': '{file} のルール {id}：forbidden は、見る列（field）と、書いてはいけない語（values 列。例：colspan|/\\w+\\(\\)/）が要ります',
+  '{file}, rule {id}: cannot read the regular expression {list}': '{file} のルール {id}：正規表現 {list} を読めません',
+  '{id} "{title}" has "{word}" in {column}: suspected ({rule})': '{id}「{title}」の{column}に「{word}」が入っている（疑い・{rule}）',
+  'Review the "{column}" column of {row}. If it is fine as it is, record "na" with the reason at the checkpoint': '{row}の「{column}」列を見直す。そのままでよいなら、節目の記録で「該当なし（na）」と理由を書く',
 }

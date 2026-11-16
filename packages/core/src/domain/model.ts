@@ -48,16 +48,17 @@ export interface Task {
 }
 
 /**
- * ルール。判定の種類は 5 つと、判定しない文のルール（note）。
+ * ルール。判定の種類は 6 つと、判定しない文のルール（note）。
  * - covered : from の種類のどの行にも、それを refs に持つ to の種類の行が 1 つ以上ある（下流が出ている）
  * - refers  : from の種類のどの行も、to の種類の行を 1 つ以上 refs に持つ（上流を元にしている）
  * - filled  : from の種類のどの行にも、field 列の値が入っている
  * - allowed : from の種類のどの行も、field 列の値が values のどれか（空の行はここでは見ない。filled で見る）
+ * - forbidden: from の種類のどの行も、field 列に values の語（/…/ は正規表現）を含まない。当たりは疑いとして出すだけ（外れなら節目の記録で該当なしと理由を書く）
  * - approval: 人の承認が要る（判定は承認の記録を見るだけ。tadori は代わりに承認しない）
  * - note    : 判定しない。書くときの約束（カンペの書き方・人とエージェントの間の約束など）を label に書いて、読むだけ。
  *             漏れにも、工程の「ルールあり」の数にも入れない。工程は書かなくてよい
  */
-export type RuleKind = 'covered' | 'refers' | 'filled' | 'allowed' | 'approval' | 'note'
+export type RuleKind = 'covered' | 'refers' | 'filled' | 'allowed' | 'forbidden' | 'approval' | 'note'
 
 /** ルールの分類（.tadori/rule-groups.tsv。名前と数は案件ごとに決める。書かなくてもよい） */
 export interface RuleGroup {
@@ -99,7 +100,7 @@ export interface Rule {
   readonly label: string
   /** 対象の行を絞る（例：change 列が「変わる」の行だけ）。無ければ from の種類の全行 */
   readonly only?: RuleOnly
-  /** allowed で使う、列に書いてよい値（rulesets の values 列を「|」で分けたもの） */
+  /** allowed で使う、列に書いてよい値。forbidden では、列に書いてはいけない語（/…/ は正規表現）。rulesets の values 列を「|」で分けたもの */
   readonly values?: readonly string[]
   /** 分類の ID（rulesets の group 列。rule-groups.tsv の id。書かなくてもよい） */
   readonly group?: string

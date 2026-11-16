@@ -9,7 +9,7 @@ import { api, ApiError, esc, isApproved, ICON_INFO, isMine, kindLabel, messageOf
 
 const PAGE = 50
 /** @type {Readonly<Record<string, string>>} */
-const KIND_NAMES = { covered: 'Has downstream', refers: 'Based on upstream', filled: 'Column is filled', allowed: 'Allowed values', approval: 'Human approval', note: 'Written agreement (not checked)' }
+const KIND_NAMES = { covered: 'Has downstream', refers: 'Based on upstream', filled: 'Column is filled', allowed: 'Allowed values', forbidden: 'Forbidden words', approval: 'Human approval', note: 'Written agreement (not checked)' }
 
 // 画面を移っても、絞り込みと開け閉めは覚えておく
 /** @type {RuleFilters} */
@@ -70,7 +70,8 @@ const judgeOf = rule => (rule.kind === 'note' ? 'note' : rule.kind === 'approval
 function whatText(rule) {
   const from = rule.from ? kindLabel(rule.from) : ''
   const to = rule.to ? kindLabel(rule.to) : ''
-  const values = rule.values?.length ? t(' · one of {values}', { values: rule.values.join(' / ') }) : ''
+  // forbidden では「書いてはいけない語」、allowed では「書いてよい値」
+  const values = !rule.values?.length ? '' : rule.kind === 'forbidden' ? t(' · none of {values}', { values: rule.values.join(' / ') }) : t(' · one of {values}', { values: rule.values.join(' / ') })
   return `${from}${to ? ` → ${to}` : ''}${rule.field ? t(' · column {field}', { field: rule.field }) : ''}${values}`
 }
 
@@ -210,7 +211,7 @@ function ruleFormHtml(state, rule) {
     <label>${esc(t('From kind'))}<input name="from" value="${esc(r.from)}" list="rule-kinds" placeholder="${esc(t('e.g. TC'))}"></label>
     <label>${esc(t('To kind'))}<input name="to" value="${esc(r.to)}" list="rule-kinds" placeholder="${esc(t('e.g. RUN (for downstream / upstream)'))}"></label>
     <label>${esc(t('Column'))}<input name="field" value="${esc(r.field)}" list="rule-columns" placeholder="${esc(t('for "Column is filled"'))}"></label>
-    <label>${esc(t('Allowed values'))}<input name="values" value="${esc(values)}" placeholder="${esc(t('for "Allowed values" (e.g. OK|NG)'))}"></label>
+    <label>${esc(t('Values or words'))}<input name="values" value="${esc(values)}" placeholder="${esc(t('Allowed values (e.g. OK|NG) / forbidden words (e.g. colspan|/^TODO/)'))}"></label>
     <label>${esc(t('Only rows'))}<input name="only" value="${esc(only)}" placeholder="${esc(t('e.g. change=yes, env!=local'))}"></label>
     <label>${esc(t('Owner'))}<input name="owner" value="${esc(r.owner ?? '')}" list="rule-people" placeholder="${esc(t('Who fixes it (role)'))}"></label>
     <label class="grow">${esc(t('Condition text'))}<input name="label" value="${esc(r.label)}" required maxlength="200" placeholder="${esc(t('One sentence people read (e.g. Every test case has a test run)'))}"></label>

@@ -3,6 +3,7 @@ import { isAbsolute, join, normalize } from 'node:path'
 import { RULE_GROUP_COLORS, RULE_GROUP_SCOPES, type Approval, type ApprovalStatus, type Item, type Phase, type Project, type Rule, type RuleGroup, type RuleGroupColor, type RuleGroupScope, type RuleKind, type StatusDef, type Task } from '../domain/model.js'
 import { checkpointsOf } from '../usecase/checkpoint.js'
 import { validateLinkTemplate, type LinkTemplate } from '../domain/links.js'
+import { compileWord } from '../domain/forbidden.js'
 import type { SourceDef } from '../domain/sources.js'
 import { t } from '../i18n.js'
 import { parseTestSheet, type TestSheetRow } from './test-sheet.js'
@@ -57,7 +58,7 @@ export class ProjectLoadError extends Error {
   }
 }
 
-const RULE_KINDS: readonly RuleKind[] = ['covered', 'refers', 'filled', 'allowed', 'approval', 'note']
+const RULE_KINDS: readonly RuleKind[] = ['covered', 'refers', 'filled', 'allowed', 'forbidden', 'approval', 'note']
 const APPROVAL_STATUSES: readonly ApprovalStatus[] = ['承認', '差し戻し', '待ち']
 const TONES: readonly StatusDef['tone'][] = ['none', 'wait', 'hole', 'ok']
 const ITEM_BASE_COLUMNS = new Set(['id', 'kind', 'title', 'source', 'refs'])
@@ -243,6 +244,21 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
       if (kind === 'allowed' && (!values.length || !(row.field ?? '').trim())) {
         problems.push(t('{file}, rule {id}: an "allowed" rule needs a field and its allowed values in the values column (e.g. OK|NG)', { file: `${PATHS.rulesets}/${file}`, id: String(row.id) }))
         return []
+      }
+      // forbidden は、見る列と、書いてはいけない語（values 列）が要る。正規表現が読めなければ、黙って当たらないままにしない
+      if (kind === 'forbidden') {
+        if (!values.length || !(row.field ?? '').trim()) {
+          problems.push(t('{file}, rule {id}: a "forbidden" rule needs a field and the words in the values column (e.g. colspan|/\\w+\\(\\)/)', { file: `${PATHS.rulesets}/${file}`, id: String(row.id) }))
+          return []
+        }
+        const broken = values.flatMap(word => {
+          const compiled = compileWord(word)
+          return compiled instanceof RegExp ? [] : [`${word}（${compiled.error}）`]
+        })
+        if (broken.length) {
+          problems.push(t('{file}, rule {id}: cannot read the regular expression {list}', { file: `${PATHS.rulesets}/${file}`, id: String(row.id), list: broken.join(', ') }))
+          return []
+        }
       }
       return [{
         id: row.id ?? '', phase, kind, from: row.from ?? '', to: row.to ?? '', field: row.field ?? '', label: row.label ?? '',

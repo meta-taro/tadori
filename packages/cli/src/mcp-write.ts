@@ -81,8 +81,8 @@ const taskSchema = () => ({
 })
 const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'group', 'owner', 'label', 'at', 'check'] as const
 const ruleSchema = () => ({
-  id: S(t('Rule ID')), phase: S(t('Phase ID')), kind: S(t('covered, refers, filled, allowed or approval, or note (a written agreement that is not checked)')), from: S(t('Source kind')), to: S(t('Target kind')),
-  field: S(t('Column that filled and allowed check')), only: S(t('Narrow the targets with "column=value", "column=a|b" (any of them) or "column!=value"')), values: S(t('For allowed: the values the column may hold, separated by | (e.g. OK|NG)')), group: S(t('Category ID from .tadori/rule-groups.tsv (empty to remove)')), owner: S(t('Owner who fixes it (a role)')), label: S(t('One sentence for people to read')),
+  id: S(t('Rule ID')), phase: S(t('Phase ID')), kind: S(t('covered, refers, filled, allowed, forbidden or approval, or note (a written agreement that is not checked)')), from: S(t('Source kind')), to: S(t('Target kind')),
+  field: S(t('Column that filled, allowed and forbidden check')), only: S(t('Narrow the targets with "column=value", "column=a|b" (any of them) or "column!=value"')), values: S(t('For allowed: the values the column may hold, separated by | (e.g. OK|NG). For forbidden: the words the column must not contain, separated by | (case-insensitive; /.../ is a regular expression)')), group: S(t('Category ID from .tadori/rule-groups.tsv (empty to remove)')), owner: S(t('Owner who fixes it (a role)')), label: S(t('One sentence for people to read')),
   at: S(t('Checkpoints where this rule is put to the agent as a check item, separated by | (e.g. cases-written|before-judge). Empty to remove')), check: S(t('The check item to put at those checkpoints (a question that can be answered by looking). Empty to use label')),
 })
 
@@ -149,7 +149,7 @@ export function writeTools(ctx: WriteContext): Tool[] {
     },
     {
       name: 'rule_add',
-      description: t('Add a rule (.tadori/rulesets/rules.tsv). The check kinds are covered, refers, filled, allowed and approval. A note rule is a written agreement (how to write a briefing, a promise between people and agents) that is read, not checked; it needs no phase.'),
+      description: t('Add a rule (.tadori/rulesets/rules.tsv). The check kinds are covered, refers, filled, allowed, forbidden and approval. A note rule is a written agreement (how to write a briefing, a promise between people and agents) that is read, not checked; it needs no phase.'),
       inputSchema: { type: 'object', properties: RULE, required: ['id', 'kind', 'label'], additionalProperties: false },
       run: async a => writing(ctx, t('Added rule {id}', { id: str(a.id) ?? '' }), dir => saveRule(dir, { ...pick(a, RULE_KEYS), id: str(a.id) ?? '' }, { create: true })),
     },

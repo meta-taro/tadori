@@ -233,6 +233,16 @@ describe('値で判定するルールを読む', () => {
     await put('.tadori/rulesets/values.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\tlabel\nV3\tdd\tallowed\tDD\t\tchange\t\t\t値\n')
     await expect(loadProject(dir)).rejects.toThrow(/values/)
   })
+  test('forbidden は、見る列と語（values 列）が要る。正規表現が読めなければ問題にする', async () => {
+    await writeMinimalProject()
+    const head = 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\tlabel\n'
+    await put('.tadori/rulesets/values.tsv', `${head}V4\tdd\tforbidden\tDD\t\tchange\t\tcolspan|/\\w+\\(\\)/\t実装の語\n`)
+    expect((await loadProject(dir)).rules.find(r => r.id === 'V4')).toMatchObject({ kind: 'forbidden', field: 'change', values: ['colspan', '/\\w+\\(\\)/'] })
+    await put('.tadori/rulesets/values.tsv', `${head}V4\tdd\tforbidden\tDD\t\tchange\t\t\t実装の語\n`)
+    await expect(loadProject(dir)).rejects.toThrow(/values/)
+    await put('.tadori/rulesets/values.tsv', `${head}V4\tdd\tforbidden\tDD\t\tchange\t\t/(/\t実装の語\n`)
+    await expect(loadProject(dir)).rejects.toThrow('/(/')
+  })
 })
 
 describe('md-business の検証シートを台帳の行として読む（.tadori/sheets.tsv）', () => {

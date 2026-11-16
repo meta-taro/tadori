@@ -127,6 +127,24 @@ describe('値で判定するルール', () => {
     expect(leaks.map(l => l.itemId)).toEqual(['TC-4'])
     expect(leaks[0]?.message).toContain('pending')
   })
+  test('forbidden：列に決めた語が入っていたら、疑いとして漏れにする（語は大文字・小文字を問わない。/…/ は正規表現）', () => {
+    const steps = [
+      { id: 'TC-1', kind: 'TC', title: '上限', source: 'qa', refs: [], fields: { expect: '画面に上限と出る' } },
+      { id: 'TC-2', kind: 'TC', title: '一覧', source: 'qa', refs: [], fields: { expect: 'td の ColSpan が 2 になる' } },
+      { id: 'TC-3', kind: 'TC', title: '保存', source: 'qa', refs: [], fields: { expect: 'saveLoan() が呼ばれる' } },
+      { id: 'TC-4', kind: 'TC', title: '空', source: 'qa', refs: [], fields: { expect: '' } },
+    ]
+    const rule = { id: 'V4', phase: 'it', kind: 'forbidden', from: 'TC', to: '', field: 'expect', values: ['colspan', '/\\w+\\(\\)/'], label: '期待結果に実装の語を書かない' }
+    const leaks = runChecks({ ...sampleProject, items: steps, rules: [rule] } as typeof sampleProject).filter(l => l.rule === 'V4')
+    expect(leaks.map(l => l.itemId)).toEqual(['TC-2', 'TC-3'])
+    expect(leaks[0]?.message).toContain('ColSpan')
+    expect(leaks[1]?.message).toContain('saveLoan()')
+  })
+
+  test('forbidden：title 列も見られる', () => {
+    const rule = { id: 'V5', phase: 'it', kind: 'forbidden', from: 'TC', to: '', field: 'title', values: ['祝日'], label: '名前' }
+    expect(runChecks(project([rule])).filter(l => l.rule === 'V5').map(l => l.itemId)).toEqual(['TC-4'])
+  })
 })
 
 describe('検証シートから読んだ行の漏れ', () => {

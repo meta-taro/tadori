@@ -1,5 +1,6 @@
 import { DANGLING_RULE_ID, isRuleTarget, LEDGER_FILES, type Item, type Labels, type Leak, type Project, type Rule } from '../domain/model.js'
 import { joinList, t } from '../i18n.js'
+import { firstForbidden } from '../domain/forbidden.js'
 
 /** 種類・列の読み方（あれば）。読み方の有る無しで文の形が変わるので、文ごとに鍵を分ける */
 const nameOf = (names: Readonly<Record<string, string>> | undefined, code: string): string | undefined => names?.[code] || undefined
@@ -104,6 +105,30 @@ function checkAllowed(rule: Rule, items: readonly Item[], labels?: Labels): Leak
     })
 }
 
+/** 行の列の値（title は行の名前。ほかは台帳の列） */
+const valueOf = (item: Item, field: string): string => (field === 'title' ? item.title : item.fields[field] ?? '')
+
+/**
+ * forbidden：from の種類の各行で、field 列に書いてはいけない語が入っていないか。
+ * 当たりは「疑い」として出すだけ（語が入っていても誤りとは限らない。外れなら節目の記録で該当なしと理由を書く）
+ */
+function checkForbidden(rule: Rule, items: readonly Item[], labels?: Labels): Leak[] {
+  const columnName = nameOf(labels?.columns, rule.field)
+  const column = columnName ?? rule.field
+  return items.flatMap(i => {
+    const hit = isRuleTarget(rule, i) ? firstForbidden(valueOf(i, rule.field), rule.values ?? []) : undefined
+    if (hit === undefined) return []
+    const vars = { id: i.id, title: i.title, column, word: hit, rule: rule.label, row: rowOf(i) }
+    return [withOwner(rule, {
+      rule: rule.id,
+      itemId: i.id,
+      message: t('{id} "{title}" has "{word}" in {column}: suspected ({rule})', vars),
+      fix: t('Review the "{column}" column of {row}. If it is fine as it is, record "na" with the reason at the checkpoint', vars),
+      ...at(i),
+    })]
+  })
+}
+
 /** どのルールにも依らず、存在しない ID を指している行を出す */
 function checkDangling(items: readonly Item[]): Leak[] {
   const ids = new Set(items.map(i => i.id))
@@ -131,6 +156,7 @@ export function runChecks(project: Project): Leak[] {
     if (rule.kind === 'refers') return checkRefers(rule, project.items, project.labels)
     if (rule.kind === 'filled') return checkFilled(rule, project.items, project.labels)
     if (rule.kind === 'allowed') return checkAllowed(rule, project.items, project.labels)
+    if (rule.kind === 'forbidden') return checkForbidden(rule, project.items, project.labels)
     return []
   })
   return [...byRule, ...checkDangling(project.items)]
