@@ -98,6 +98,7 @@ R2	bd	approval					レビュー担当	基本設計書をレビュー担当が承
 - `tadori check <フォルダ>` 工程ごとの漏れと承認待ち。漏れがあれば終了コード 1（CI でも使える）
 - `tadori check <フォルダ> --log --who <名前> --why <理由>` 結果をチェックの記録（`.tadori/checks.tsv`・5W1H）に足し、案件が git リポジトリなら commit します。push は人
 - `tadori why <ID> <フォルダ>` 1 行から上下に辿り、線が切れている所を出す
+- `tadori projects [フォルダ...]` 案件ごとに、漏れ・承認待ち・遅れているタスク・今日が期日のタスクを並べる（案件をまたいだ朝の知らせに使う）
 - MCP の道具：`get_remaining`（残課題）・`list_leaks`（漏れと担当と直し方）・`trace`（辿る）・`find_items`（行を探す）・`list_rules`（ルールと書くときの約束）
 
 漏れごとに「担当」と「直し方（どのファイルの何行目の、どの列に何を書けば消えるか）」が出ます。
@@ -231,7 +232,7 @@ WBS（`ledger/wbs.tsv`）と台帳に、書かなくてもよい列がありま�
 - 人の表：`member_set`・`member_remove`（人の役割 roles と git の作者名）
 - 工程：`phase_set`（使われている工程は消せない）
 - 確かめる：`run_check`（`log` を付けるとチェックの記録に 5W1H で足す）
-- 案件：`list_projects`・`open_project`（この MCP の口で扱う案件を替える）
+- 案件：`list_projects`（`counts: true` で案件ごとの漏れ・承認待ち・遅れ・今日が期日も添える）・`open_project`（この MCP の口で扱う案件を替える）
 - 画面の裏の server の例外：`server_errors`（画面に「サーバーの中で問題が起きました」と出たとき、どこで何が落ちたかを新しい順に読む。記録は PC の手元にあり、案件のフォルダには置かない）
 - いま話している MCP の版：`version`（版・組んだ commit と日時・`pnpm build` して /mcp でつなぎ直す必要があるか）。直したはずのものが出ないときに見る。席が始めのあとに足された道具を見られないときのために、話題なしの `how_to` の 1 行目と、MCP がつなぐときに名乗る版にも、版と組んだ commit（例 `0.0.1+7a08b11`）を出す
 - 画面の担当の絞り込み：`screen` の `filter`

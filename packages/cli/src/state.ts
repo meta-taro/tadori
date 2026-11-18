@@ -90,7 +90,7 @@ function daysBefore(day: string, n: number): string {
 }
 
 /** 承認された承認のルールが見る文書の、最後の commit（承認のあとに変わったかを見るため） */
-async function approvalChanges(dir: string, project: Project): Promise<Awaited<ReturnType<typeof lastCommits>>> {
+export async function approvalChanges(dir: string, project: Project): Promise<Awaited<ReturnType<typeof lastCommits>>> {
   const approved = new Set(project.approvals.filter(a => a.status === '承認').map(a => a.rule))
   const files = [...new Set(project.rules.filter(r => approved.has(r.id)).flatMap(r => approvalTargets(project, r)))]
   return files.length ? lastCommits(dir, files) : {}

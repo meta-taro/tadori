@@ -102,6 +102,10 @@ describe('MCP の書く道具', () => {
     expect(await readFile(join(other, 'ledger/wbs.tsv'), 'utf8')).toMatch(/W-10\t.*\tdoing/)
     expect(await readFile(join(dir, 'ledger/wbs.tsv'), 'utf8')).not.toMatch(/W-10\t.*\tdoing/)
     expect((await tool('list_projects')).content[0]?.text).toContain('いま開いている')
+    // counts を付けると、案件ごとに件数の行が付く（点数や割合は出さない）
+    const counted = (await tool('list_projects', { counts: true })).content[0]?.text ?? ''
+    expect(counted).toMatch(/漏れ \d+ 件 \/ 承認待ち \d+ 件/)
+    expect(counted).not.toContain('%')
   })
 })
 

@@ -61,6 +61,7 @@ English and Japanese. The app's screens, messages, the CLI, the MCP tools and th
 | `tadori daily [project] [--who person] [--date date]` | Per-person daily progress (today, next working day, questions, notes). The wording is configurable per project. Same content as the *Daily* screen and the MCP tool `daily` |
 | `tadori how-to [topic]` | Usage guide (same as the MCP tool `how_to`). Topics: start, ledger, rules, check, daily, write, screen, links, sources, agent-rules |
 | `tadori why <ID> [project]` | Everything upstream and downstream of one item, and where the chain breaks |
+| `tadori projects [project...]` | For each project: gaps, pending approvals, late tasks (days, owner) and tasks due today. No totals or ranking. Without folders, the desktop app's recent projects |
 | `tadori serve [project]` | Opens the screen locally (127.0.0.1): remaining work to release (timeline / cards), WBS, rulesets, check log, trace, settings |
 | `tadori mcp [project]` | MCP server over stdio. Tools: usage (`how_to`), glossary, remaining work (`get_remaining`), gaps (`list_leaks`), trace, `find_items`, the in-app agent cursor (`screen`), daily progress, write tools (ledger, WBS, rules, people, phases, logged check, project switching — see `how_to write`), and `server_errors`. There is deliberately **no tool that records a human approval**. `--screen` changes which screen the cursor drives |
 

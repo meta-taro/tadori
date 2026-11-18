@@ -98,6 +98,7 @@ Agents read the rules with `list_rules` (filter with `group` or `kind`). Read th
 - `tadori check <folder>` gaps and pending approvals for each phase. Exit code 1 if there is a gap (works in CI too)
 - `tadori check <folder> --log --who <name> --why <reason>` adds the result to the check log (`.tadori/checks.tsv`, 5W1H) and commits if the project is a git repository. A person pushes
 - `tadori why <ID> <folder>` traces up and down from one row and shows where the line is broken
+- `tadori projects [folder...]` lists, per project, gaps, pending approvals, late tasks and tasks due today (for a morning notice across projects)
 - MCP tools: `get_remaining` (remaining work), `list_leaks` (gaps, owners and how to fix), `trace` (trace), `find_items` (find rows), `list_rules` (rules and written agreements)
 
 Each gap comes with an "owner" and "how to fix" (which column of which line in which file to write what, so the gap goes away).
@@ -231,7 +232,7 @@ Do not edit the ledger or setting TSVs directly; write with the tools below. Eac
 - People table: `member_set`, `member_remove` (each person's roles and git author name)
 - Phases: `phase_set` (a phase in use cannot be removed)
 - Check: `run_check` (with `log`, adds to the check log in 5W1H)
-- Project: `list_projects`, `open_project` (switch the project this MCP connection handles)
+- Project: `list_projects` (`counts: true` adds gaps, pending approvals, late tasks and tasks due today per project), `open_project` (switch the project this MCP connection handles)
 - Exceptions in the server behind the screen: `server_errors` (when the screen says "Something went wrong inside the server", read where and what failed, newest first. The record is kept locally on the PC, not in the project folder)
 - Which tadori this MCP is: `version` (the version, the commit it was built from and when, and whether it needs `pnpm build` and reconnecting with /mcp). Use it when a fix does not seem to show. The first line of `how_to` with no topic, and the version the MCP gives when it connects, also show the version and the commit (e.g. `0.0.1+7a08b11`), in case your session does not see tools added after it started
 - Owner filter on the screen: `filter` of `screen`

@@ -1,5 +1,3 @@
-import { readFile, stat } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import './i18n.js'
 import {
@@ -8,6 +6,7 @@ import {
 } from '@tadori/core'
 import { runCheck } from './check-log.js'
 import { localToday } from './state.js'
+import { isProject, projectsText, readRecentProjects } from './projects.js'
 
 /**
  * MCP の書く道具。エージェントが TSV を直に直さず、形と ID を確かめてから書けるようにする。
@@ -87,22 +86,6 @@ const ruleSchema = () => ({
   source: S(t('Ledger row ID this rule was born from (e.g. a failure FL-3). Empty to remove')),
 })
 
-/** デスクトップアプリが覚えている最近の案件（OS ごとの置き場所） */
-function recentFile(): string {
-  const app = 'io.github.meta-taro.tadori'
-  if (process.platform === 'win32') return join(process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'), app, 'recent-projects.txt')
-  if (process.platform === 'darwin') return join(homedir(), 'Library', 'Application Support', app, 'recent-projects.txt')
-  return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'), app, 'recent-projects.txt')
-}
-
-async function isProject(dir: string): Promise<boolean> {
-  try {
-    return (await stat(join(dir, '.tadori'))).isDirectory()
-  } catch {
-    // 無い・読めない場所は案件ではない
-    return false
-  }
-}
 
 export function writeTools(ctx: WriteContext): Tool[] {
   const ITEM = itemSchema()
@@ -218,16 +201,13 @@ export function writeTools(ctx: WriteContext): Tool[] {
     },
     {
       name: 'list_projects',
-      description: t("List the project open now and the desktop app's recent projects."),
-      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-      run: async () => {
-        let recent: string[] = []
-        try {
-          recent = (await readFile(recentFile(), 'utf8')).replace(/^﻿/, '').split(/\r?\n/).map(s => s.trim()).filter(Boolean)
-        } catch {
-          // デスクトップアプリを使っていない PC：最近の案件は無い
-        }
-        const lines = [...new Set([...(ctx.projectDir ? [ctx.projectDir] : []), ...recent])].map(p => `- ${p}${p === ctx.projectDir ? t(' (open now)') : ''}`)
+      description: t("List the project open now and the desktop app's recent projects. With counts: true, add each project's gaps, pending approvals, late tasks and tasks due today (facts only, no totals or ranking)."),
+      inputSchema: { type: 'object', properties: { counts: { type: 'boolean', description: t('Add gaps, pending approvals, late tasks and tasks due today for each project') } }, additionalProperties: false },
+      run: async a => {
+        const recent = await readRecentProjects()
+        const dirs = [...new Set([...(ctx.projectDir ? [ctx.projectDir] : []), ...recent])]
+        if (a.counts === true) return reply(await projectsText(dirs, ctx.today ?? localToday()))
+        const lines = dirs.map(p => `- ${p}${p === ctx.projectDir ? t(' (open now)') : ''}`)
         return reply(lines.length ? lines.join('\n') : t('No projects. Open one with open_project'))
       },
     },

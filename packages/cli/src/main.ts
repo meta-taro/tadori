@@ -15,6 +15,7 @@ import { checklistText, checkpointListText, verifyCheckpoint } from './checkpoin
 import { hookJson, nudge } from './nudge.js'
 import { isDay, loadDaily } from './daily.js'
 import { parentPidFromEnv, watchParent } from './parent-watch.js'
+import { projectsText, readRecentProjects } from './projects.js'
 
 const DEFAULT_PORT = 4870
 /** 使い方（いまの言語で。日本語の文は i18n-ja.ts） */
@@ -22,6 +23,7 @@ const usage = (): string => t(`Usage:
   tadori init [project folder] [--name project name]
   tadori check [project folder] [--log --who name --why reason] [--today YYYY-MM-DD]
   tadori why <ID> [project folder]
+  tadori projects [project folder...] [--today YYYY-MM-DD]
   tadori serve [project folder] [--port {port}] [--today YYYY-MM-DD]
   tadori daily [project folder] [--who owner] [--date YYYY-MM-DD]
   tadori checkpoint [project folder] [--at checkpoint] [--target ID]
@@ -34,6 +36,7 @@ const usage = (): string => t(`Usage:
   check  Show the gaps and pending approvals per phase. Exit code 1 if there are gaps (works in CI too)
          With --log, add the results to the check records (.tadori/checks.tsv) as 5W1H
   why    Follow links up and down from one row and show where they break
+  projects  For each project, show gaps, pending approvals, late tasks and tasks due today (no totals or ranking). Without folders, the desktop app's recent projects
   serve  Start the screen on this machine (127.0.0.1)
   daily  Daily progress per person (Today, Next working day, Questions, Notes). --who filters by owner
   checkpoint  Show the checkpoints, or the check items at one checkpoint (--at). verify exits with 1 if the last record does not cover every applicable rule
@@ -128,6 +131,12 @@ async function main(): Promise<void> {
     const result = trace(project, id)
     if (!result) fail(t('{id} is not in the ledger', { id }))
     process.stdout.write(`${formatTrace(result, state.origins)}\n`)
+    return
+  }
+
+  if (command === 'projects') {
+    const dirs = rest.length ? rest : await readRecentProjects()
+    process.stdout.write(`${await projectsText(dirs, today)}\n`)
     return
   }
 

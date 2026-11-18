@@ -197,7 +197,6 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Who checked': '確かめた人',
   'Reason (e.g. before the regular meeting)': '理由（例：定例の会議の前）',
   'Added the check records. {commit}': 'チェックの記録を足しました。{commit}',
-  "List the project open now and the desktop app's recent projects.": 'いま開いている案件と、デスクトップアプリの最近の案件を並べる。',
   ' (open now)': '（いま開いている）',
   'No projects. Open one with open_project': '案件がありません。open_project で開いてください',
   'Switch the project this MCP server works on (a folder that has .tadori). Later tools read and write that project.': 'この MCP の口で扱う案件を替える（.tadori のあるフォルダ）。以後の道具はその案件を読み書きする。',
@@ -300,6 +299,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   tadori init [project folder] [--name project name]
   tadori check [project folder] [--log --who name --why reason] [--today YYYY-MM-DD]
   tadori why <ID> [project folder]
+  tadori projects [project folder...] [--today YYYY-MM-DD]
   tadori serve [project folder] [--port {port}] [--today YYYY-MM-DD]
   tadori daily [project folder] [--who owner] [--date YYYY-MM-DD]
   tadori checkpoint [project folder] [--at checkpoint] [--target ID]
@@ -312,6 +312,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   check  Show the gaps and pending approvals per phase. Exit code 1 if there are gaps (works in CI too)
          With --log, add the results to the check records (.tadori/checks.tsv) as 5W1H
   why    Follow links up and down from one row and show where they break
+  projects  For each project, show gaps, pending approvals, late tasks and tasks due today (no totals or ranking). Without folders, the desktop app's recent projects
   serve  Start the screen on this machine (127.0.0.1)
   daily  Daily progress per person (Today, Next working day, Questions, Notes). --who filters by owner
   checkpoint  Show the checkpoints, or the check items at one checkpoint (--at). verify exits with 1 if the last record does not cover every applicable rule
@@ -326,6 +327,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   tadori init [案件のフォルダ] [--name 案件の名前]
   tadori check [案件のフォルダ] [--log --who 名前 --why 理由] [--today YYYY-MM-DD]
   tadori why <ID> [案件のフォルダ]
+  tadori projects [案件のフォルダ...] [--today YYYY-MM-DD]
   tadori serve [案件のフォルダ] [--port {port}] [--today YYYY-MM-DD]
   tadori daily [案件のフォルダ] [--who 担当] [--date YYYY-MM-DD]
   tadori checkpoint [案件のフォルダ] [--at 節目] [--target ID]
@@ -338,6 +340,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   check  工程ごとの漏れと承認待ちを出す。漏れがあれば終了コード 1（CI でも使える）
          --log を付けると、チェックの記録（.tadori/checks.tsv）に 5W1H で足す
   why    1 件から上下に辿り、線が切れている所を出す
+  projects  案件ごとに、漏れ・承認待ち・遅れているタスク・今日が期日のタスクを並べる（合計や順位は出さない）。フォルダを渡さなければ、デスクトップアプリの最近の案件
   serve  手元（127.0.0.1）で画面を立ち上げる
   daily  人単位の 1 日の進行（今日・次の作業日・相談・補足）。--who で担当を絞る
   checkpoint  節目の一覧か、1 つの節目（--at）で確かめる項目を出す。verify は、最後の記録が効くルールを全部当てていなければ終了コード 1
@@ -467,4 +470,12 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Diff {why}:': '差分（{why}）：',
   '(no change)': '（変わりなし）',
   'Could not read the diff: {message}': '差分を読めませんでした：{message}',
+  ' ({owner})': '（{owner}）',
+  'Late {days} days: {id} {name}{owner}': '{days} 日遅れ: {id} {name}{owner}',
+  'Due today: {id} {name}{owner}': '今日が期日: {id} {name}{owner}',
+  'No projects. Pass project folders, or open one in the desktop app first': '案件がありません。案件のフォルダを渡すか、先にデスクトップアプリで案件を開いてください',
+  'No .tadori here (skipped)': '.tadori が無いので飛ばしました',
+  'Could not read: {reason}': '読めませんでした: {reason}',
+  'List the project open now and the desktop app\'s recent projects. With counts: true, add each project\'s gaps, pending approvals, late tasks and tasks due today (facts only, no totals or ranking).': 'いま開いている案件と、デスクトップアプリの最近の案件を並べる。counts: true なら、案件ごとに漏れ・承認待ち・遅れているタスク・今日が期日のタスクも添える（事実だけ。合計や順位は出さない）。',
+  'Add gaps, pending approvals, late tasks and tasks due today for each project': '案件ごとに、漏れ・承認待ち・遅れているタスク・今日が期日のタスクを添える',
 }

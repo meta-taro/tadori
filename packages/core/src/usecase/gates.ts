@@ -34,7 +34,7 @@ export interface Gate {
 }
 
 /** ステータスの設定で tone が ok のものを「終わった」とみなす */
-function doneChecker(project: Project): (status: string) => boolean {
+export function doneChecker(project: Project): (status: string) => boolean {
   const done = new Set(project.statuses.filter(s => s.tone === 'ok').map(s => s.id))
   return status => done.has(status)
 }
