@@ -13,6 +13,7 @@ import {
 } from '@tadori/core'
 import { loadState, localToday } from './state.js'
 import { docView, DocRefused } from './mcp-docs.js'
+import { collectProjects, readRecentProjects } from './projects.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
 import { AgentActionError, parseAgentAction } from './agent.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
@@ -30,6 +31,8 @@ export interface ServerOptions {
   readonly checkUpdate?: (current: string) => Promise<UpdateInfo>
   /** server の中の例外を残す所。無ければ OS ごとの手元のログの場所 */
   readonly logDir?: string
+  /** 最近の案件の一覧のファイル（テストでは差し替える）。既定はデスクトップアプリが書く場所 */
+  readonly recentProjectsFile?: string
 }
 
 export interface RunningServer {
@@ -287,6 +290,12 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
 
   if (req.method === 'GET' && url.pathname === '/api/state') {
     return sendJson(res, 200, (await loadState(dir, today)).state)
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/projects') {
+    // 案件の一覧。読むのは、いま開いている案件と最近の案件の一覧にあるフォルダだけ（画面からフォルダを指定させない）
+    const recent = await readRecentProjects(options.recentProjectsFile)
+    return sendJson(res, 200, { projects: await collectProjects([dir, ...recent], today, dir) })
   }
 
   if (req.method === 'GET' && url.pathname === '/api/doc') {

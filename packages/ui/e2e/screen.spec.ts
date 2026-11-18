@@ -598,6 +598,43 @@ test.describe('資料の版と差分', () => {
   })
 })
 
+test.describe('案件の一覧', () => {
+  // 最近の案件はデスクトップアプリが書く PC ごとのファイルなので、答えは差し替えて見る（読む所は cli のテストで見る）
+  const PROJECTS = {
+    projects: [
+      { dir: 'C:/work/lend', current: true, summary: { name: '備品貸出アプリ', leaks: 4, pendingApprovals: 3, late: [{ id: 'W-03', name: '基本設計レビュー', phase: 'bd', owner: '設計担当', days: 3 }], dueToday: [{ id: 'W-04', name: '詳細設計', phase: 'dd', owner: '設計担当' }] } },
+      { dir: 'C:/work/other', current: false, summary: { name: '別の案件', leaks: 0, pendingApprovals: 0, late: [], dueToday: [] } },
+      { dir: 'C:/work/gone', current: false, problem: '.tadori が無いので飛ばしました' },
+    ],
+  }
+
+  test('案件ごとにカードを出し、件数・遅れ・今日が期日を並べる。いま開いている案件に印、ブラウザでは開くコマンドを出す。合計や割合は出さない', async ({ page }) => {
+    await page.route('**/api/projects', route => route.fulfill({ json: PROJECTS }))
+    await page.goto('/#phases')
+    await page.locator('nav a[href="#projects"]').click()
+    await expect(page.locator('h1')).toHaveText('案件の一覧')
+    const cards = page.locator('.pj-card')
+    await expect(cards).toHaveCount(3)
+
+    const current = cards.nth(0)
+    await expect(current).toHaveClass(/is-current/)
+    await expect(current).toContainText('いま開いている')
+    await expect(current.locator('.pj-counts')).toContainText('漏れ 4')
+    await expect(current.locator('.pj-late')).toHaveText('3 日遅れ: W-03 基本設計レビュー（設計担当）')
+    await expect(current.locator('.pj-due')).toHaveText('今日が期日: W-04 詳細設計（設計担当）')
+    await expect(current.locator('.pj-command')).toHaveCount(0)
+
+    const other = cards.nth(1)
+    await expect(other).toContainText('遅れているタスクも、今日が期日のタスクもありません')
+    await expect(other.locator('.pj-command')).toHaveText('tadori serve "C:/work/other"')
+
+    await expect(cards.nth(2).locator('h2')).toHaveText('gone')
+    await expect(cards.nth(2).locator('.form-problems')).toHaveText('.tadori が無いので飛ばしました')
+    await expect(page.locator('#view')).not.toContainText('%')
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
+  })
+})
+
 test.describe('節目の確かめの記録', () => {
   test('1 行 = 1 回の確かめで新しい順。結果を一言で出し、押すと当てたルールと根拠が開く', async ({ page }) => {
     await page.goto('/#log')

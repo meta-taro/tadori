@@ -471,4 +471,13 @@ export const JA = {
   'Changes since {commit}': '{commit} からの差分',
   'No change': '変わりなし',
   '{n} of {total} failure rows (kind FL) have no rule that grew from them. Whether each needs one is for a person to decide.': '失敗の行（FL）{total} 件のうち {n} 件に、生まれたルールがありません。ルールが要るかは人が決めます。',
+  'Projects': '案件の一覧',
+  'Open': '開く',
+  'Open now': 'いま開いている',
+  ' ({owner})': '（{owner}）',
+  'Late {days} days: {id} {name}{owner}': '{days} 日遅れ: {id} {name}{owner}',
+  'Due today: {id} {name}{owner}': '今日が期日: {id} {name}{owner}',
+  'No late tasks and nothing due today': '遅れているタスクも、今日が期日のタスクもありません',
+  'To open another project in the browser, run its command in a terminal. The desktop app can switch here.': 'ブラウザでほかの案件を開くには、その案件のコマンドを端末で打ってください。デスクトップアプリなら、ここから切り替えられます。',
+  'The project open now and recent projects. Gaps, pending approvals, late tasks and tasks due today, per project.': 'いま開いている案件と、最近の案件です。案件ごとに、漏れ・承認待ち・遅れているタスク・今日が期日のタスクを並べます。',
 }

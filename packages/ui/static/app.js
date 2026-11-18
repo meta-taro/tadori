@@ -12,6 +12,7 @@ import { renderSettings } from './view-settings.js'
 import { renderGlossary, setGlossaryQuery } from './view-glossary.js'
 import { renderDaily } from './view-daily.js'
 import { renderDoc } from './view-doc.js'
+import { renderProjects } from './view-projects.js'
 import { checkUpdateQuietly, warnIfServerStale } from './update.js'
 
 // 骨組み（index.html）の言葉を、いまの言語にする
@@ -36,6 +37,7 @@ const VIEWS = {
   log: { label: 'Check log', render: id => renderLog(view, state, id) },
   trace: { label: 'Trace', render: id => renderTrace(view, state, id ?? defaultTraceStart()) },
   doc: { label: 'Document versions', render: id => renderDoc(view, state, id ?? '') },
+  projects: { label: 'Projects', render: () => renderProjects(view, state) },
   settings: { label: 'Settings', render: () => renderSettings(view, state, reload) },
   glossary: { label: 'Glossary', render: () => renderGlossary(view) },
 }

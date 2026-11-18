@@ -401,6 +401,27 @@ describe('ルールを画面から足す・直す・消す（/api/rules）', () 
   })
 })
 
+describe('GET /api/projects', () => {
+  test('いま開いている案件と最近の案件の一覧にある案件について、件数・遅れ・今日が期日を返す。案件でないフォルダは理由つき', async () => {
+    const work = await mkdtemp(join(tmpdir(), 'tadori-cli-recent-'))
+    const recentProjectsFile = join(work, 'recent-projects.txt')
+    // 最近の案件：いま開いている案件（重ねて書いてあっても 1 回だけ）と、.tadori の無いフォルダ
+    await writeFile(recentProjectsFile, `${dir}\n${work}\n`, 'utf8')
+    const app = await startServer({ dir, port: 0, today: '2026-10-23', uiDir: null, recentProjectsFile })
+    const res = await fetch(`http://127.0.0.1:${(app.address as AddressInfo).port}/api/projects`)
+    expect(res.status).toBe(200)
+    const { projects } = await res.json()
+    expect(projects).toHaveLength(2)
+    expect(projects[0]).toMatchObject({ dir: resolve(dir), current: true })
+    expect(projects[0].summary.name).toContain('備品貸出アプリ')
+    expect(projects[0].summary.late[0]).toMatchObject({ id: 'W-03', days: 3, owner: '設計担当' })
+    expect(projects[0].summary.dueToday.map((x: { id: string }) => x.id)).toEqual(['W-04'])
+    expect(projects[1]).toMatchObject({ dir: resolve(work), current: false, problem: '.tadori が無いので飛ばしました' })
+    await app.close()
+    await rm(work, { recursive: true, force: true })
+  })
+})
+
 describe('server の中の例外（画面に要点と記録の場所を出し、手元に残す）', () => {
   test('落ちたら 500 で例外の要点と記録のファイルを返し、記録を新しい順に読める', async () => {
     const logDir = await mkdtemp(join(tmpdir(), 'tadori-cli-log-'))

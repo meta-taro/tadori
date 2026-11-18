@@ -41,26 +41,41 @@ function summaryLines(dir: string, s: ProjectSummary): string[] {
   return [head, counts, ...late, ...due]
 }
 
-/**
- * 案件ごとに、漏れ・承認待ち・遅れ・今日が期日を並べる。
- * 合計や順位は出さない（点数を作らない）。読めない案件は理由を書いて飛ばし、ほかの案件は出す。
- */
-export async function projectsText(dirs: readonly string[], today: string): Promise<string> {
-  const unique = [...new Set(dirs.map(d => resolve(d)))]
-  if (!unique.length) return t('No projects. Pass project folders, or open one in the desktop app first')
-  const blocks: string[][] = []
-  for (const dir of unique) {
-    if (!(await isProject(dir))) {
-      blocks.push([`- ${dir}`, `    ${t('No .tadori here (skipped)')}`])
-      continue
-    }
-    try {
-      const project = await loadProject(dir)
-      blocks.push(summaryLines(dir, summarizeProject(project, today, await approvalChanges(dir, project))))
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error)
-      blocks.push([`- ${dir}`, `    ${t('Could not read: {reason}', { reason })}`])
-    }
+/** 案件 1 つ分。読めた案件は summary、読めなかった案件は problem（理由の文）を持つ */
+export interface ProjectEntry {
+  readonly dir: string
+  readonly current: boolean
+  readonly summary?: ProjectSummary
+  readonly problem?: string
+}
+
+async function entryOf(dir: string, today: string, current: boolean): Promise<ProjectEntry> {
+  if (!(await isProject(dir))) return { dir, current, problem: t('No .tadori here (skipped)') }
+  try {
+    const project = await loadProject(dir)
+    return { dir, current, summary: summarizeProject(project, today, await approvalChanges(dir, project)) }
+  } catch (error) {
+    // 1 つの案件が読めなくても、ほかの案件は出す（理由はその案件の所に書く）
+    const reason = error instanceof Error ? error.message : String(error)
+    return { dir, current, problem: t('Could not read: {reason}', { reason }) }
   }
-  return blocks.map(b => b.join('\n')).join('\n')
+}
+
+/**
+ * 案件ごとに、漏れ・承認待ち・遅れ・今日が期日を集める。同じフォルダは 1 回だけ。
+ * 合計や順位は作らない（点数を作らない）。並びは渡された順のまま。
+ */
+export async function collectProjects(dirs: readonly string[], today: string, currentDir?: string): Promise<ProjectEntry[]> {
+  const current = currentDir ? resolve(currentDir) : undefined
+  const unique = [...new Set(dirs.map(d => resolve(d)))]
+  return Promise.all(unique.map(dir => entryOf(dir, today, dir === current)))
+}
+
+/** 案件ごとの事実を、人とエージェントが読む文にする（tadori projects・MCP の list_projects counts） */
+export async function projectsText(dirs: readonly string[], today: string): Promise<string> {
+  const entries = await collectProjects(dirs, today)
+  if (!entries.length) return t('No projects. Pass project folders, or open one in the desktop app first')
+  return entries
+    .map(e => (e.summary ? summaryLines(e.dir, e.summary) : [`- ${e.dir}`, `    ${e.problem ?? ''}`]).join('\n'))
+    .join('\n')
 }

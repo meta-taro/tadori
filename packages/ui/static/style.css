@@ -239,6 +239,20 @@
   .doc-diff .diff-add { color:var(--ok); background:var(--ok-soft); display:inline-block; min-width:100%; }
   .doc-diff .diff-del { color:var(--hole); background:var(--hole-soft); display:inline-block; min-width:100%; }
   .doc-diff .diff-hunk, .doc-diff .diff-meta { color:var(--ink-tertiary); }
+  /* 案件の一覧 */
+  .pj-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap:12px; margin-top:12px; }
+  .pj-card { padding:14px 16px; display:flex; flex-direction:column; gap:8px; min-width:0; }
+  .pj-card.is-current { border-color:var(--ok); }
+  .pj-head { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
+  .pj-head h2 { font-size:15px; margin:0; overflow-wrap:anywhere; text-transform:none; letter-spacing:normal; color:var(--ink); }
+  .pj-actions { margin-left:auto; }
+  .pj-dir { margin:0; font-size:12px; color:var(--ink-tertiary); overflow-wrap:anywhere; }
+  .pj-dir code, .pj-command { font-family:var(--mono); font-size:12px; }
+  .pj-command { display:block; padding:4px 8px; background:var(--surface-2); border-radius:var(--r-md); overflow-wrap:anywhere; user-select:all; }
+  .pj-counts { display:flex; flex-wrap:wrap; gap:6px; }
+  .pj-tasks { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3px; font-size:13px; }
+  .pj-late { color:var(--hole); }
+  .pj-due { color:var(--wait); }
   /* 正本へのリンクと、正本から手元へ反映した記録。古いものは目立たせる（正本と見比べる合図） */
   .origin { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
   .origin-link { color:var(--accent, inherit); text-decoration:none; }
