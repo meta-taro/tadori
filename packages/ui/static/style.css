@@ -239,6 +239,16 @@
   .doc-diff .diff-add { color:var(--ok); background:var(--ok-soft); display:inline-block; min-width:100%; }
   .doc-diff .diff-del { color:var(--hole); background:var(--hole-soft); display:inline-block; min-width:100%; }
   .doc-diff .diff-hunk, .doc-diff .diff-meta { color:var(--ink-tertiary); }
+  /* ルールになっていない失敗（ルールの画面の下）と、ルールの生まれた元へのリンク */
+  .rules-unruled { padding:14px 16px; margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+  .rules-unruled h2 { font-size:14px; margin:0; text-transform:none; letter-spacing:normal; color:var(--ink); }
+  .rules-unruled p { margin:0; }
+  .rules-unruled ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+  .rules-unruled li { display:grid; grid-template-columns:minmax(120px, max-content) 1fr; gap:12px; padding:7px 0; border-top:1px solid var(--hairline); font-size:13px; color:var(--ink-muted); line-height:1.6; }
+  .rules-unruled li a { font-family:var(--mono); font-size:12px; color:var(--accent); text-decoration:none; overflow-wrap:anywhere; }
+  .rules-unruled li a:hover, a.rule-source:hover { text-decoration:underline; }
+  a.rule-source { color:var(--accent); text-decoration:none; }
+  @media (max-width:640px) { .rules-unruled li { grid-template-columns:1fr; gap:2px; } }
   /* 案件の一覧 */
   .pj-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap:12px; margin-top:12px; }
   .pj-card { padding:14px 16px; display:flex; flex-direction:column; gap:8px; min-width:0; }

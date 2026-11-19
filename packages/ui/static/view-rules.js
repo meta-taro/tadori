@@ -261,7 +261,7 @@ function unruledFailuresHtml(state) {
   if (!failures.length) return ''
   const sources = new Set(state.rules.flatMap(sourcesOf))
   const unruled = failures.filter(i => !sources.has(i.id))
-  const links = unruled.map(i => `<li><a href="#trace-${encodeURIComponent(i.id)}">${esc(i.id)}</a> ${esc(i.title)}</li>`).join('')
+  const links = unruled.map(i => `<li><a href="#trace-${encodeURIComponent(i.id)}">${esc(i.id)}</a><span>${esc(i.title)}</span></li>`).join('')
   return `<section class="panel rules-unruled" id="rules-unruled">
     <h2>${esc(t('Failures without a rule'))}</h2>
     <p class="cond">${esc(t('{n} of {total} failure rows (kind FL) have no rule that grew from them. Whether each needs one is for a person to decide.', { n: unruled.length, total: failures.length }))}</p>

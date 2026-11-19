@@ -435,6 +435,9 @@ test.describe('ルールを画面から足す・直す・消す', () => {
     const section = page.locator('#rules-unruled')
     await expect(section).toContainText('失敗の行（FL）2 件のうち 1 件に、生まれたルールがありません')
     await expect(section.locator('li')).toHaveCount(1)
+    // 枠の内側に余白があり、ID はリンクの色で下線なし（見た目が当たっていないまま出さない）
+    await expect(section).toHaveCSS('padding-left', '16px')
+    await expect(section.getByRole('link', { name: 'FL-92' })).toHaveCSS('text-decoration-line', 'none')
     await section.getByRole('link', { name: 'FL-92' }).click()
     await expect(page).toHaveURL(/#trace-FL-92$/)
     await page.unrouteAll({ behavior: 'ignoreErrors' })
