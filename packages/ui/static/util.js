@@ -3,6 +3,9 @@ import { lang, t } from './i18n.js'
 
 /** @type {Readonly<Record<string, string>>} */
 const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+/** ルールの source 列を、台帳の行の ID の並びにする（似た失敗をまとめたルールは「FL-1|FL-2」） @param {{ source?: string }} rule */
+export const sourcesOf = rule => (rule.source ?? '').split('|').map(s => s.trim()).filter(Boolean)
+
 export const esc = (/** @type {unknown} */ s) => String(s ?? '').replace(/[&<>"']/g, c => HTML_ESCAPES[c] ?? c)
 
 export const chip = (/** @type {string} */ cls, /** @type {string | number} */ text) => `<span class="chip ${cls}"><span class="dot"></span>${text}</span>`

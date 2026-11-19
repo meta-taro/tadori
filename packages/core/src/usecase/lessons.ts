@@ -1,6 +1,6 @@
-import type { Item, Project, Rule } from '../domain/model.js'
+import { isBornFrom, type Item, type Project, type Rule } from '../domain/model.js'
 
-/** 失敗の行と、そこから生まれたルール（ルールの source 列がその行の ID） */
+/** 失敗の行と、そこから生まれたルール（ルールの source 列のどれかがその行の ID） */
 export interface FailureLessons {
   readonly item: Item
   readonly rules: readonly Rule[]
@@ -18,5 +18,5 @@ export function lessonsByFailure(project: Project, kinds: readonly string[] = FA
   const wanted = new Set(kinds)
   return project.items
     .filter(item => wanted.has(item.kind))
-    .map(item => ({ item, rules: project.rules.filter(r => r.source === item.id) }))
+    .map(item => ({ item, rules: project.rules.filter(r => isBornFrom(r, item.id)) }))
 }

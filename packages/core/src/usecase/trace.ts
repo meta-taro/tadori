@@ -1,4 +1,4 @@
-import { isRuleTarget, type Item, type Leak, type Project, type Rule } from '../domain/model.js'
+import { isBornFrom, isRuleTarget, type Item, type Leak, type Project, type Rule } from '../domain/model.js'
 import { runChecks } from './check.js'
 
 /**
@@ -71,5 +71,5 @@ export function trace(project: Project, id: string): TraceResult | null {
     return [...before, { type: 'item', item, level, leaks: own }, ...after]
   })
 
-  return { start, steps, lessons: project.rules.filter(r => r.source === start.id) }
+  return { start, steps, lessons: project.rules.filter(r => isBornFrom(r, start.id)) }
 }

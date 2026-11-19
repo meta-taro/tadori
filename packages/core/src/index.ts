@@ -7,7 +7,7 @@ export { unknownTaskStatuses, type UnknownTaskStatus } from './usecase/task-stat
 export { approvalTargets, changedAfterApproval, sourceFile, type ChangeAfterApproval, type FileChange } from './usecase/approval-changes.js'
 export { docDiff, docVersions, versionAt, DOC_VERSION_LIMIT, type DocVersion } from './infrastructure/doc-versions.js'
 export { ledgerDocument, type LedgerDocument } from './usecase/documents.js'
-export { checklistOf, checkpointsOf, CHECKPOINT_RESULTS, coverageOf, refusalsOf, missesByRule, runsById, runsOn, summaryOf, SUMMARY_RULE, type CheckpointAnswer, type CheckpointResult, type CheckpointRow, type CheckpointRun, type ChecklistEntry, type Coverage, type RuleMisses } from './usecase/checkpoint.js'
+export { checklistOf, checkpointsOf, CHECKPOINT_RESULTS, coverageOf, refusalsOf, missesByRule, missesOfRule, runsById, runsOn, summaryOf, SUMMARY_RULE, type CheckpointAnswer, type CheckpointResult, type CheckpointRow, type CheckpointRun, type ChecklistEntry, type Coverage, type MergedMisses, type RuleMisses } from './usecase/checkpoint.js'
 export { appendCheckpoint, CHECKPOINT_LOG, CHECKPOINT_LOG_COLUMNS, readCheckpointLog, rulesetVersion, stagedDigest, type CheckpointInput, type CheckpointWritten } from './infrastructure/checkpoint-log.js'
 export { trace, type TraceResult, type TraceStep } from './usecase/trace.js'
 export { summarizeProject, type ProjectSummary, type LateTask, type TaskFact } from './usecase/project-summary.js'

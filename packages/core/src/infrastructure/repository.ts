@@ -236,6 +236,7 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
       const at = splitValues(row.at ?? '')
       const check = (row.check ?? '').trim()
       const source = (row.source ?? '').trim()
+      const mergedFrom = splitValues(row.merged_from ?? '')
       // 判定するルールは、どの工程のものかが無いと、工程の完了判定に入らず黙って抜ける
       if (kind !== 'note' && !phase) {
         problems.push(t('{file}, rule {id}: write the phase (only "note" rules may leave it empty)', { file: `${PATHS.rulesets}/${file}`, id: String(row.id) }))
@@ -270,10 +271,18 @@ async function loadRules(dir: string, problems: string[]): Promise<Rule[]> {
         ...(at.length ? { at } : {}),
         ...(check ? { check } : {}),
         ...(source ? { source } : {}),
+        ...(mergedFrom.length ? { mergedFrom } : {}),
       }]
     })
   }))
-  return perFile.flat()
+  const rules = perFile.flat()
+  // 束ねる前の ID がまだルールとして残っていると、同じミスを 2 つのルールで数えてしまう
+  const ids = new Set(rules.map(r => r.id))
+  for (const rule of rules) {
+    const left = (rule.mergedFrom ?? []).filter(id => ids.has(id))
+    if (left.length) problems.push(t('Rule {id}: {ids} in merged_from is still a rule. Remove it from the rulesets (its misses are counted under {id})', { id: rule.id, ids: left.join(', ') }))
+  }
+  return rules
 }
 
 /** approvals.tsv の status に英語でも書ける値（大文字・小文字は問わない）。中では日本語の値と同じに扱う */

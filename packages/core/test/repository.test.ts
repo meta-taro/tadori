@@ -297,6 +297,14 @@ describe('判定しない文のルール（note）と、ルールの分類（gro
     await put('.tadori/rulesets/broken.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tlabel\nX1\t\tcovered\tBD\tDD\t\t工程なし\n')
     await expect(loadProject(dir)).rejects.toThrow(/X1/)
   })
+
+  test('merged_from を「|」で分けて読む。束ねる前の ID がまだルールとして残っていれば問題にする', async () => {
+    await writeMinimalProject()
+    await put('.tadori/rulesets/agreements.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tmerged_from\tlabel\nN-PROOF\t\tnote\t\t\t\tN-old1|N-old2\t確かめた入口を書く\n')
+    expect((await loadProject(dir)).rules.find(r => r.id === 'N-PROOF')?.mergedFrom).toEqual(['N-old1', 'N-old2'])
+    await put('.tadori/rulesets/old.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tlabel\nN-old1\t\tnote\t\t\t\t古い約束\n')
+    await expect(loadProject(dir)).rejects.toThrow(/N-PROOF[\s\S]*N-old1/)
+  })
 })
 
 describe('ルールの分類の色と範囲（rule-groups.tsv の color・scope）', () => {

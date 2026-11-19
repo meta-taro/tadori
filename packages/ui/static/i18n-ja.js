@@ -454,6 +454,7 @@ export const JA = {
   'Rules born from this row: {n}': 'この行から生まれたルール：{n} 件',
   'at {at}': '節目 {at}',
   'Missed {n} times in 30 days': '30 日で {n} 回ミス',
+  ' (including {ids})': '（{ids} を含む）',
   'Last missed: {last}': '最後のミス：{last}',
   'Failures without a rule': 'ルールになっていない失敗',
   'Rules added in this period: {n}': 'この期間に足したルール {n} 件',

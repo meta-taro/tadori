@@ -1,6 +1,6 @@
 // 節目の確かめの記録（.tadori/checkpoint-log.tsv）。1 行 = 1 回の確かめを新しい順に流し、押すと当てたルールと根拠が開く
 import { t } from './i18n.js'
-import { chip, esc, personChips } from './util.js'
+import { chip, esc, personChips, sourcesOf } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {ProjectState['checkpointLog'][number]} CheckpointRow */
@@ -106,7 +106,7 @@ function addedRulesReport(state, from) {
   const rules = state.rules.filter(r => (added[r.id] ?? '') >= from).sort((a, b) => (added[a.id] ?? '').localeCompare(added[b.id] ?? '') || a.id.localeCompare(b.id))
   if (!rules.length) return ''
   const lines = rules.map(r => t('- {date} {id} {label}{source}', {
-    date: added[r.id] ?? '', id: r.id, label: r.check || r.label, source: r.source ? t(' (from {id})', { id: r.source }) : '',
+    date: added[r.id] ?? '', id: r.id, label: r.check || r.label, source: sourcesOf(r).length ? t(' (from {id})', { id: sourcesOf(r).join(t(', ')) }) : '',
   }))
   return [t('Rules added in this period: {n}', { n: rules.length }), ...lines].join('\n')
 }

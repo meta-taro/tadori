@@ -400,16 +400,27 @@ test.describe('ルールを画面から足す・直す・消す', () => {
     await page.request.delete('/api/rules/N95', { headers })
   })
 
+  test('source に複数の失敗を書いたルールは、元の行ごとに辿る入口を出す', async ({ page }) => {
+    const headers = { 'x-tadori': '1', 'content-type': 'application/json' }
+    const res = await page.request.post('/api/rules', { headers, data: { id: 'N97', kind: 'note', label: '束ねた約束（試験用）', source: 'F-02|TC-04' } })
+    expect(res.ok()).toBe(true)
+    await page.goto('/#rules')
+    await expect(page.locator('tr', { hasText: 'N97' }).locator('.rule-source')).toHaveText(['F-02 から生まれた', 'TC-04 から生まれた'])
+    await page.request.delete('/api/rules/N97', { headers })
+  })
+
   test('この 30 日に節目でミスを見つけたルールには、回数の札を出す（数えるのは server。日付で変わるので答えを差し替えて見る）', async ({ page }) => {
     await page.route('**/api/state*', async route => {
       const body = await (await route.fetch()).json() as Record<string, unknown>
-      await route.fulfill({ json: { ...body, ruleMisses: { N2: { count: 2, last: '2026-10-29' } } } })
+      await route.fulfill({ json: { ...body, ruleMisses: { N2: { count: 2, last: '2026-10-29', included: [] }, N1: { count: 3, last: '2026-11-01', included: ['N-old1', 'N-old2'] } } } })
     })
     await page.goto('/#rules')
     const chip = page.locator('tr', { hasText: 'N2' }).locator('.rule-misses')
     await expect(chip).toHaveText('30 日で 2 回ミス')
     await expect(chip).toHaveAttribute('title', '最後のミス：2026-10-29')
-    await expect(page.locator('tr', { hasText: 'N1' }).locator('.rule-misses')).toHaveCount(0)
+    // 束ねる前のルールの分を含むときは、どの ID の分かを添える
+    await expect(page.locator('tr', { hasText: 'N1' }).locator('.rule-misses')).toHaveText('30 日で 3 回ミス（N-old1・N-old2 を含む）')
+    await expect(page.locator('tr', { hasText: 'N3' }).locator('.rule-misses')).toHaveCount(0)
     await page.unrouteAll({ behavior: 'ignoreErrors' })
   })
 

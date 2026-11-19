@@ -78,12 +78,13 @@ const taskSchema = () => ({
   id: S(t('Task ID (starts with W)')), phase: S(t('Phase ID')), name: S(t('Task name')), start: S(t('Start date YYYY-MM-DD')), end: S(t('End date YYYY-MM-DD')),
   status: S(t('Status (one from the settings)')), owner: S(t('Owner (for two or more, "A・B")')), issue: S(t('Issue ID (a ledger row)')),
 })
-const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'group', 'owner', 'label', 'at', 'check', 'source'] as const
+const RULE_KEYS = ['id', 'phase', 'kind', 'from', 'to', 'field', 'only', 'values', 'group', 'owner', 'label', 'at', 'check', 'source', 'merged_from'] as const
 const ruleSchema = () => ({
   id: S(t('Rule ID')), phase: S(t('Phase ID')), kind: S(t('covered, refers, filled, allowed, forbidden or approval, or note (a written agreement that is not checked)')), from: S(t('Source kind')), to: S(t('Target kind')),
   field: S(t('Column that filled, allowed and forbidden check')), only: S(t('Narrow the targets with "column=value", "column=a|b" (any of them) or "column!=value"')), values: S(t('For allowed: the values the column may hold, separated by | (e.g. OK|NG). For forbidden: the words the column must not contain, separated by | (case-insensitive; /.../ is a regular expression)')), group: S(t('Category ID from .tadori/rule-groups.tsv (empty to remove)')), owner: S(t('Owner who fixes it (a role)')), label: S(t('One sentence for people to read')),
   at: S(t('Checkpoints where this rule is put to the agent as a check item, separated by | (e.g. cases-written|before-judge). Empty to remove')), check: S(t('The check item to put at those checkpoints (a question that can be answered by looking). Empty to use label')),
-  source: S(t('Ledger row ID this rule was born from (e.g. a failure FL-3). Empty to remove')),
+  source: S(t('Ledger row IDs this rule was born from, separated by | (e.g. failures FL-3|FL-5). Empty to remove')),
+  merged_from: S(t('When this rule merges older rules: their IDs, separated by | (remove those rules first). Their checkpoint misses are counted under this rule. Empty to remove')),
 })
 
 

@@ -1,8 +1,9 @@
 import './i18n.js'
 import {
-  appendCheckpoint, checklistOf, checkpointsOf, CHECKPOINT_RESULTS, coverageOf, loadProject, readCheckpointLog, stagedDigest,
-  STAGED_CHECKPOINT, t, type CheckpointAnswer, type CheckpointWritten, type Coverage,
+  appendCheckpoint, checklistOf, checkpointsOf, joinList, CHECKPOINT_RESULTS, coverageOf, loadProject, readCheckpointLog, stagedDigest,
+  sourcesOf, STAGED_CHECKPOINT, t, type CheckpointAnswer, type CheckpointWritten, type Coverage, type MergedMisses, type Project, type Rule,
 } from '@tadori/core'
+import { localToday, mergedMisses, MISS_DAYS } from './state.js'
 
 /**
  * 工程の節目のチェック（MCP の checkpoint・checkpoint_record と、CLI の tadori checkpoint が同じものを使う）。
@@ -37,18 +38,44 @@ function coverageText(coverage: Coverage): string {
   return t('There is a record that checked every applicable rule')
 }
 
-/** その節目で突きつける項目の一覧（いまの記録の様子つき） */
-export async function checklistText(dir: string, request: CheckpointTarget): Promise<string> {
+/** 「この 30 日で N 回ミス・最後 日付（束ねる前の ID を含む）」。ミスが無ければ空 */
+function missText(misses: MergedMisses | undefined): string {
+  if (!misses) return ''
+  const included = misses.included.length ? t(' (including {ids})', { ids: joinList(misses.included) }) : ''
+  return t(' [missed {count} times in {days} days, last {last}{included}]', { count: misses.count, days: MISS_DAYS, last: misses.last, included })
+}
+
+/** そのルールが生まれた失敗の行と、その行が refs で指す行の題（元の事例を、チェックの瞬間に見せるため） */
+function originLines(project: Project, rule: Rule): string[] {
+  const titleOf = (id: string) => project.items.find(i => i.id === id)
+  return sourcesOf(rule).flatMap(id => {
+    const item = titleOf(id)
+    if (!item) return []
+    const refs = item.refs.flatMap(ref => { const r = titleOf(ref); return r ? [`      ${t('refers to {id} {title}', { id: r.id, title: r.title })}`] : [] })
+    return [`    ${t('Past case: {id} {title}', { id: item.id, title: item.title })}`, ...refs]
+  })
+}
+
+/**
+ * その節目で突きつける項目の一覧（いまの記録の様子つき）。
+ * ミスを見つけたことのあるルールには回数と最後の日を、失敗から生まれたルールには元の事例の題を添える（重さをその場で伝えるため。点数にはしない）
+ */
+export async function checklistText(dir: string, request: CheckpointTarget, today = localToday()): Promise<string> {
   const project = await loadProject(dir)
   const items = checklistOf(project.rules, request.at)
   if (!checkpointsOf(project).some(c => c.id === request.at)) return t('The checkpoint "{at}" is not defined ({allowed})', { at: request.at, allowed: checkpointsOf(project).map(c => c.id).join(' / ') })
   if (!items.length) return t('No rule applies at the checkpoint {at}', { at: request.at })
   const target = await resolveTarget(dir, request)
+  const log = await readCheckpointLog(dir)
+  const misses = mergedMisses(project, log, today)
   const lines = [
     t('Check each item at {at}. For each, record ok / na / fixed / open and where you checked (file:line or ledger ID) with checkpoint_record:', { at: request.at }),
-    ...items.map(i => `- ${i.rule}: ${i.check}`),
+    ...items.flatMap(i => {
+      const rule = project.rules.find(r => r.id === i.rule) as Rule
+      return [`- ${i.rule}${missText(misses[i.rule])}: ${i.check}`, ...originLines(project, rule)]
+    }),
   ]
-  if (target) lines.push('', coverageText(coverageOf(project.rules, request.at, target, await readCheckpointLog(dir))))
+  if (target) lines.push('', coverageText(coverageOf(project.rules, request.at, target, log)))
   return lines.join('\n')
 }
 

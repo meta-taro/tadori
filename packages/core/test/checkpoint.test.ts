@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { loadProject, ProjectLoadError } from '../src/infrastructure/repository.js'
 import { appendCheckpoint, CHECKPOINT_LOG, readCheckpointLog, stagedDigest } from '../src/infrastructure/checkpoint-log.js'
-import { checklistOf, checkpointsOf, coverageOf, missesByRule, refusalsOf, runsById, type CheckpointRow } from '../src/usecase/checkpoint.js'
+import { checklistOf, checkpointsOf, coverageOf, missesByRule, missesOfRule, refusalsOf, runsById, type CheckpointRow } from '../src/usecase/checkpoint.js'
 
 const run = promisify(execFile)
 
@@ -184,5 +184,26 @@ describe('missesByRule（ルールごとに、節目でミスを見つけた回�
     ], '2026-10-18')
     expect(misses.get('R1')).toEqual({ count: 2, last: '2026-11-10' })
     expect([...misses.keys()]).toEqual(['R1'])
+  })
+})
+
+describe('missesOfRule（束ねる前のルールの回数も足す）', () => {
+  const misses = new Map([
+    ['R-PROOF', { count: 1, last: '2026-11-19' }],
+    ['R-old1', { count: 1, last: '2026-11-05' }],
+    ['R-old2', { count: 1, last: '2026-11-12' }],
+  ])
+
+  test('merged_from の ID の回数を足し、最後の日は全部の中で新しい日。どの ID を足したかを返す', () => {
+    expect(missesOfRule({ id: 'R-PROOF', mergedFrom: ['R-old1', 'R-old2', 'R-none'] }, misses)).toEqual({ count: 3, last: '2026-11-19', included: ['R-old1', 'R-old2'] })
+  })
+
+  test('自分にミスが無くても、束ねる前の分があれば出す', () => {
+    expect(missesOfRule({ id: 'R-NEW', mergedFrom: ['R-old2'] }, misses)).toEqual({ count: 1, last: '2026-11-12', included: ['R-old2'] })
+  })
+
+  test('どこにもミスが無ければ undefined', () => {
+    expect(missesOfRule({ id: 'R-NEW', mergedFrom: ['R-none'] }, misses)).toBeUndefined()
+    expect(missesOfRule({ id: 'R-NEW' }, misses)).toBeUndefined()
   })
 })

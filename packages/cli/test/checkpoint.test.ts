@@ -93,3 +93,25 @@ describe('コミット前の確かめ（tadori checkpoint verify）', () => {
     expect((await verifyCheckpoint(dir, { at: 'before-commit' })).ok).toBe(false)
   })
 })
+
+describe('節目の項目に、ミスの回数と元の事例を添える', () => {
+  test('失敗から生まれたルールには元の事例の題（と refs の行）を、ミスを見つけたルールには回数と最後の日を出す', async () => {
+    // 失敗の行を 2 つ足し、N1 をそこから生まれ、古いルール N-old を束ねたものにする
+    expect((await tool('item_add', { id: 'FL-A1', kind: 'FL', title: '画面で押せない操作を URL 直で試して「できる」と書いた', refs: ['TC-04'] })).isError).toBeFalsy()
+    expect((await tool('item_add', { id: 'FL-A2', kind: 'FL', title: '本物と違うデータの状態で試して「起きる」と書いた' })).isError).toBeFalsy()
+    expect((await tool('rule_update', { id: 'N1', source: 'FL-A1|FL-A2', merged_from: 'N-old' })).isError).toBeFalsy()
+    // 古いルールの分と N1 の分で、ミスを 1 回ずつ記録したことにする
+    const header = 'run\twhen\twho\tat\ttarget\truleset\trule\tresult\twhere\tnote'
+    await writeFile(join(dir, '.tadori/checkpoint-log.tsv'), [header,
+      'r1\t2026-11-05 10:00\tA\tcases-written\tTC-07\tv\tN-old\tfixed\tx\t直した',
+      'r2\t2026-11-10 10:00\tA\tcases-written\tTC-07\tv\tN1\topen\tx\tまだ',
+      ''].join('\n'), 'utf8')
+    const body = textOf(await tool('checkpoint', { at: 'cases-written' }))
+    expect(body).toContain('- N1【この 30 日で 2 回ミス・最後 2026-11-10（N-old を含む）】: 期待する結果に作りを書いていないか')
+    expect(body).toContain('過去の事例：FL-A1 画面で押せない操作を URL 直で試して「できる」と書いた')
+    expect(body).toMatch(/関係する行：TC-04 /)
+    expect(body).toContain('過去の事例：FL-A2 本物と違うデータの状態で試して「起きる」と書いた')
+    // ミスも元の事例も無いルールには何も足さない
+    expect(body).toMatch(/^- N2: /m)
+  })
+})

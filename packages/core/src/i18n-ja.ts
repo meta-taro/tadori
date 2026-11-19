@@ -190,6 +190,8 @@ export const JA: Readonly<Record<string, string>> = {
   'rule.at is required: a lesson that is not read at a checkpoint does not take effect': 'rule.at が要ります（節目で読まれない約束は効かないため）',
   'Add lesson {id} and the rules it gave ({rules})': '失敗 {id} と、そこから生まれたルール（{rules}）を足す',
   'source {id} is not in the ledger (add the failure row first, or use lesson_add)': 'source の {id} は台帳にありません（先に失敗の行を足すか、lesson_add を使ってください）',
+  'Rule {id} cannot be merged from itself': 'ルール {id} の merged_from に自分の ID は書けません',
+  'Rule {id}: {ids} in merged_from is still a rule. Remove it from the rulesets (its misses are counted under {id})': 'ルール {id}：merged_from の {ids} がまだルールとして残っています。ルールセットから消してください（ミスの回数は {id} で数えます）',
   '{rev} is not a commit ID': '{rev} は commit の ID ではありません',
   '(the diff is too long; the rest is cut. Read it with git diff {from} {to} -- {file})': '（差分が長いので、ここで切りました。続きは git diff {from} {to} -- {file} で読めます）',
 }

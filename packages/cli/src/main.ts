@@ -187,7 +187,7 @@ async function main(): Promise<void> {
       process.exitCode = verified.ok ? 0 : 1
       return
     }
-    process.stdout.write(`${at ? await checklistText(dir, request) : await checkpointListText(dir)}
+    process.stdout.write(`${at ? await checklistText(dir, request, today) : await checkpointListText(dir)}
 `)
     return
   }

@@ -110,9 +110,22 @@ export interface Rule {
   readonly at?: readonly string[]
   /** 節目で突きつけるチェック項目の文（rulesets の check 列）。無ければ label を使う */
   readonly check?: string
-  /** このルールが生まれた元（失敗の記録など、台帳の行の ID。rulesets の source 列）。行からルールへ、ルールから行へ辿れる */
+  /**
+   * このルールが生まれた元（失敗の記録など、台帳の行の ID。rulesets の source 列）。行からルールへ、ルールから行へ辿れる。
+   * 似た失敗をまとめたルールは「FL-1|FL-2」のように複数書ける（分けた ID は sourcesOf で読む）
+   */
   readonly source?: string
+  /** 束ねる前のルールの ID（rulesets の merged_from 列を「|」で分けたもの）。ミスの回数を、束ねる前の分も足して数える */
+  readonly mergedFrom?: readonly string[]
 }
+
+/** ルールの source 列を、台帳の行の ID の並びにする（「|」で区切る。空なら空の並び） */
+export function sourcesOf(rule: Pick<Rule, 'source'>): string[] {
+  return (rule.source ?? '').split('|').map(s => s.trim()).filter(Boolean)
+}
+
+/** そのルールが、台帳の行 id から生まれたか（source のどれかが id） */
+export const isBornFrom = (rule: Pick<Rule, 'source'>, id: string): boolean => sourcesOf(rule).includes(id)
 
 /**
  * 工程の節目（試験ケースを書き終えた・判定を付ける前・外へ投稿する前・コミット前など）。

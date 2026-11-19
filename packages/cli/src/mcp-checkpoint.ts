@@ -19,7 +19,7 @@ const reply = (body: string, isError = false): ToolResult => ({ content: [{ type
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 
 /** 節目のチェックの道具。案件は options.projectDir（open_project で替わる）を読む */
-export function checkpointTools(options: { projectDir?: string }): Tool[] {
+export function checkpointTools(options: { projectDir?: string; today?: string }): Tool[] {
   const withDir = async (work: (dir: string) => Promise<ToolResult>): Promise<ToolResult> => {
     if (!options.projectDir) return reply(t('No project is open. Open one with open_project'), true)
     return work(options.projectDir)
@@ -32,7 +32,7 @@ export function checkpointTools(options: { projectDir?: string }): Tool[] {
       description: t('At a checkpoint in your work (test cases written, before a verdict, before posting outside, before committing), return the rules that apply there as check items, '
         + 'and whether there is already a record for the target. Check every item by looking, then record the results with checkpoint_record. This is not a human approval.'),
       inputSchema: { type: 'object', properties: { at: AT, target: TARGET }, additionalProperties: false },
-      run: async args => withDir(async dir => reply(str(args.at) ? await checklistText(dir, { at: str(args.at), target: str(args.target) }) : await checkpointListText(dir))),
+      run: async args => withDir(async dir => reply(str(args.at) ? await checklistText(dir, { at: str(args.at), target: str(args.target) }, options.today) : await checkpointListText(dir))),
     },
     {
       name: 'checkpoint_record',

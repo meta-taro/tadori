@@ -1,6 +1,6 @@
 // ルールセット：1,000 行を超えても探せるように、探す欄・絞り込み・工程ごとの帯・少しずつ出す
 import { t } from './i18n.js'
-import { api, ApiError, esc, isApproved, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, toastCommit, within, judgeBadge, personChips } from './util.js'
+import { api, ApiError, esc, isApproved, ICON_INFO, isMine, kindLabel, messageOf, peopleOf, toastCommit, within, judgeBadge, personChips, sourcesOf } from './util.js'
 
 /** @typedef {import('./types').ProjectState} ProjectState */
 /** @typedef {import('./types').Rule} Rule */
@@ -127,6 +127,16 @@ export function ruleTextHtml(label) {
   return `<div class="rule-text">${head ? `<div class="rule-steps-head">${esc(head)}</div>` : ''}${steps.map(step => `<div class="rule-step">${esc(step)}</div>`).join('')}</div>`
 }
 
+/**
+ * この 30 日に節目でミスを見つけた回数（事実だけ。割合にはしない）。押すとチェックの記録の画面へ
+ * @param {ProjectState['ruleMisses'][string] | undefined} misses
+ */
+function missesChip(misses) {
+  if (!misses) return ''
+  const included = misses.included.length ? t(' (including {ids})', { ids: misses.included.join(t(', ')) }) : ''
+  return `<a class="chip wait rule-misses" href="#log" title="${esc(t('Last missed: {last}', { last: misses.last }))}"><span class="dot"></span>${esc(t('Missed {n} times in 30 days', { n: misses.count }) + included)}</a>`
+}
+
 /** @param {ProjectState} state @param {Rule} r */
 function ruleRow(state, r) {
   const s = statusOf(state, r)
@@ -138,9 +148,10 @@ function ruleRow(state, r) {
     what ? `<span class="pair">${esc(what)}</span>` : '',
     r.only ? `<span class="cond">${esc(onlyText(r.only))}</span>` : '',
     // この 30 日に節目でミスを見つけた回数（事実だけ。割合にはしない）。押すとチェックの記録の画面へ
-    state.ruleMisses?.[r.id] ? `<a class="chip wait rule-misses" href="#log" title="${esc(t('Last missed: {last}', { last: state.ruleMisses[r.id]?.last ?? '' }))}"><span class="dot"></span>${esc(t('Missed {n} times in 30 days', { n: state.ruleMisses[r.id]?.count ?? 0 }))}</a>` : '',
+    // 束ねる前のルール（merged_from）の分も足した回数。どの ID の分を含むかを添える
+    missesChip(state.ruleMisses?.[r.id]),
     // 生まれた元（失敗の記録など）へは、つながりを辿る画面で飛べる
-    r.source ? `<a class="cond rule-source" href="#trace-${encodeURIComponent(r.source)}" title="${esc(t('Trace from {id}', { id: r.source }))}">${esc(t('From {id}', { id: r.source }))}</a>` : '',
+    ...sourcesOf(r).map(id => `<a class="cond rule-source" href="#trace-${encodeURIComponent(id)}" title="${esc(t('Trace from {id}', { id }))}">${esc(t('From {id}', { id }))}</a>`),
   ].filter(Boolean).join('')
   return `<tr>
     <td class="rule-id fit">${esc(r.id)}</td>
@@ -248,7 +259,7 @@ function ruleBody(form, isEdit) {
 function unruledFailuresHtml(state) {
   const failures = state.items.filter(i => i.kind === 'FL')
   if (!failures.length) return ''
-  const sources = new Set(state.rules.map(r => r.source).filter(Boolean))
+  const sources = new Set(state.rules.flatMap(sourcesOf))
   const unruled = failures.filter(i => !sources.has(i.id))
   const links = unruled.map(i => `<li><a href="#trace-${encodeURIComponent(i.id)}">${esc(i.id)}</a> ${esc(i.title)}</li>`).join('')
   return `<section class="panel rules-unruled" id="rules-unruled">

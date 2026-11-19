@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { Item } from '../domain/model.js'
+import { sourcesOf, type Item } from '../domain/model.js'
 import { ownersOf } from '../domain/people.js'
 import { joinList, t } from '../i18n.js'
 import { commitFiles, type CommitResult } from './git.js'
@@ -228,8 +228,10 @@ export interface RuleInput {
   readonly at?: string
   /** 節目で突きつけるチェック項目の文 */
   readonly check?: string
-  /** このルールが生まれた元（台帳の行の ID。失敗の記録など）。空で外す */
+  /** このルールが生まれた元（台帳の行の ID。失敗の記録など。複数は「FL-1|FL-2」）。空で外す */
   readonly source?: string
+  /** 束ねる前のルールの ID（「R-1|R-2」）。ミスの回数をその分も足して数える。空で外す */
+  readonly merged_from?: string
 }
 
 const RULE_HEADER = 'id\tphase\tkind\tfrom\tto\tfield\tonly\tvalues\tgroup\towner\tlabel\n'
@@ -258,7 +260,13 @@ export async function saveRule(dir: string, input: RuleInput, { create }: { crea
   if (input.phase === '' && !phaseOptional) throw new WriteRefused([t('A rule that checks needs a phase (only "note" rules may leave it empty)')])
   if (create && ((!input.phase && !phaseOptional) || !input.kind || !input.label)) throw new WriteRefused([t('A new rule needs phase, kind and label (a "note" rule needs only kind and label)')])
   // 生まれた元は台帳にある行だけ（推し量ってつながない）
-  if (input.source && !project.items.some(i => i.id === input.source)) throw new WriteRefused([t('source {id} is not in the ledger (add the failure row first, or use lesson_add)', { id: input.source })])
+  const unknownSources = sourcesOf({ source: input.source ?? '' }).filter(s => !project.items.some(i => i.id === s))
+  if (unknownSources.length) throw new WriteRefused([t('source {id} is not in the ledger (add the failure row first, or use lesson_add)', { id: unknownSources.join(', ') })])
+  // 束ねる前のルールは消してから束ねる（残すと同じミスを 2 つのルールで数える）
+  const merged = (input.merged_from ?? '').split('|').map(s => s.trim()).filter(Boolean)
+  if (merged.includes(id)) throw new WriteRefused([t('Rule {id} cannot be merged from itself', { id })])
+  const stillRules = merged.filter(m => project.rules.some(r => r.id === m))
+  if (stillRules.length) throw new WriteRefused([t('Rule {id}: {ids} in merged_from is still a rule. Remove it from the rulesets (its misses are counted under {id})', { id, ids: stillRules.join(', ') })])
 
   // 範囲が local の分類のルールは、git に入れないファイルに書く（その人とエージェントの間の約束は、チームの履歴に残さない）
   const isLocal = project.ruleGroups?.find(g => g.id === input.group)?.scope === 'local'

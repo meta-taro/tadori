@@ -28,6 +28,15 @@ describe('lessonsByFailure', () => {
     expect(result[0]?.rules).toEqual([])
   })
 
+  test('source に「|」で複数の失敗を書いたルールは、そのどの行にも並ぶ', () => {
+    const merged: Project = { ...project, rules: [...project.rules, noteFrom('N4', 'FL-2|FL-3')] }
+    expect(lessonsByFailure(merged).map(r => [r.item.id, r.rules.map(x => x.id)])).toEqual([
+      ['FL-1', ['N1', 'N2']],
+      ['FL-2', ['N4']],
+      ['FL-3', ['N3', 'N4']],
+    ])
+  })
+
   test('失敗の行が無ければ空', () => {
     expect(lessonsByFailure(sampleProject)).toEqual([])
   })

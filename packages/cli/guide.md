@@ -81,6 +81,8 @@ Other columns:
 - `label` one sentence for people to read (e.g. every viewpoint has a test case)
 - `at` the checkpoints where this rule is put to the agent as a check item, separated by `|` (e.g. `cases-written|before-judge`). See `checkpoint`
 - `check` the check item to put at those checkpoints (a question answered by looking). Empty uses `label`
+- `source` the ledger rows this rule was born from (e.g. failures), separated by `|` (e.g. `FL-3|FL-5`). Only rows in the ledger
+- `merged_from` when this rule merges older rules, their IDs separated by `|`. Remove the older rules from the rulesets first; their checkpoint misses are counted under this rule
 
 Example:
 ```
@@ -110,7 +112,7 @@ Written agreements are easy to forget at the moment they matter. A checkpoint pu
 
 - Checkpoints: `cases-written` (test cases written), `before-judge` (before a verdict), `before-post` (before posting outside), `before-commit`. A project can define its own in `.tadori/checkpoints.tsv` (columns `id name nudge`), including ones that come once or several times a day, such as before a regular meeting (`before-meeting`)
 - Make a rule apply at a checkpoint with its `at` column, and write the check item in `check`
-- At the checkpoint, read the items with `checkpoint` (MCP, `at` and `target`) or `tadori checkpoint <folder> --at <checkpoint>`
+- At the checkpoint, read the items with `checkpoint` (MCP, `at` and `target`) or `tadori checkpoint <folder> --at <checkpoint>`. A rule that had misses at checkpoints in the last 30 days shows the count and the last date (including the rules in `merged_from`), and a rule born from failures shows the titles of those failure rows and of the rows they refer to. These are facts, not a score
 - Check each item by looking, then record with `checkpoint_record`: for every item, a result (`ok` checked and met / `na` does not apply / `fixed` found a miss and fixed it / `open` found a miss, not fixed yet) and where you checked (file:line or ledger ID). `fixed` and `open` need a `note` on what was missing and what you did. If any item is missing, nothing is written. On success it returns the record ID; link it to the daily progress line for that work with `checks`
 - The target is the WBS task ID or ledger ID. For a checkpoint that comes once a day, the date (YYYY-MM-DD). For one that comes more than once a day, the date with a slot (`2026-11-16-1`, `2026-11-16-2` and so on; up to 12 letters or digits). For `before-commit` it is the staged change: record after staging, and do not change what is staged afterwards
 - The record goes to `.tadori/checkpoint-log.tsv` (append only, committed). Each record keeps the ruleset version at that time (the last commit of the rule files), so a later defect can be told apart: a rule was missing, or a rule was not applied

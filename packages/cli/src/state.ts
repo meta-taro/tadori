@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { unknownTaskStatuses, type UnknownTaskStatus, approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readCheckpointLog, checkpointsOf, missesByRule, type RuleMisses, type Checkpoint, type CheckpointRow, readMembers, repositoryPrefix, resolvedItems, ruleAddedDates, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
+import { unknownTaskStatuses, type UnknownTaskStatus, approvalTargets, buildGates, buildLink, lastCommits, loadProject, originOf, type Origin, readChecks, readCheckpointLog, checkpointsOf, missesByRule, missesOfRule, type MergedMisses, type Checkpoint, type CheckpointRow, readMembers, repositoryPrefix, resolvedItems, ruleAddedDates, runChecks, type Member, type Gate, type Leak, type Project, type ResolvedItem } from '@tadori/core'
 
 /** 漏れに「md-business で開く」の URL を付けたもの（雛形が .tadori/links.tsv にあるとき） */
 export type LeakWithLink = Leak & {
@@ -31,7 +31,7 @@ export interface ProjectState {
   /** 節目で確かめた記録（.tadori/checkpoint-log.tsv。書いた順） */
   readonly checkpointLog: readonly CheckpointRow[]
   /** ルールごとの、この 30 日に節目でミスを見つけた回数と最後の日（ミスの無いルールは入らない。事実だけで、割合にはしない） */
-  readonly ruleMisses: Readonly<Record<string, RuleMisses>>
+  readonly ruleMisses: Readonly<Record<string, MergedMisses>>
   /** ルールごとの、ルールセットに最初に入った commit の日（git の履歴から読む。commit していないルールは入らない） */
   readonly ruleAdded: Readonly<Record<string, string>>
   /** 節目の並び（案件が決めたものか、既定の 4 つ） */
@@ -68,7 +68,7 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
     gates: buildGates(project, leaks, today, await approvalChanges(dir, project)),
     checks,
     checkpointLog,
-    ruleMisses: Object.fromEntries(missesByRule(checkpointLog, daysBefore(today, MISS_DAYS))),
+    ruleMisses: mergedMisses(project, checkpointLog, today),
     ruleAdded: await ruleAddedDates(dir),
     checkpoints: checkpointsOf(project),
     resolved: resolvedItems(checks, leaks),
@@ -82,8 +82,17 @@ export async function loadState(dir: string, today: string): Promise<{ project: 
 /** ルールの表に出す「止まった回数」を数える日数 */
 export const MISS_DAYS = 30
 
+/**
+ * ルールごとの、この 30 日に節目でミスを見つけた回数と最後の日。束ねる前のルール（merged_from）の分も足す。
+ * ミスの無いルールは入れない
+ */
+export function mergedMisses(project: Pick<Project, 'rules'>, log: readonly CheckpointRow[], today: string): Record<string, MergedMisses> {
+  const misses = missesByRule(log, daysBefore(today, MISS_DAYS))
+  return Object.fromEntries(project.rules.flatMap(rule => { const m = missesOfRule(rule, misses); return m ? [[rule.id, m]] : [] }))
+}
+
 /** day（YYYY-MM-DD）の n-1 日前（その日を含めて n 日の始まり） */
-function daysBefore(day: string, n: number): string {
+export function daysBefore(day: string, n: number): string {
   const d = new Date(`${day}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() - n + 1)
   return d.toISOString().slice(0, 10)

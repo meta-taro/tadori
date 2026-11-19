@@ -151,4 +151,20 @@ describe('ルールの生まれた元（source）', () => {
     expect((await loadProject(dir)).rules.find(r => r.id === 'N93')).not.toHaveProperty('source')
     await expect(saveRule(dir, { id: 'N93', source: 'FL-99' }, { create: false })).rejects.toThrow(/FL-99/)
   })
+
+  test('source には台帳の行を「|」で複数書ける。台帳に無い ID が 1 つでもあれば断る', async () => {
+    await saveRule(dir, { id: 'N94', kind: 'note', label: '束ねた約束', source: 'F-02|TC-04' }, { create: true })
+    expect((await loadProject(dir)).rules.find(r => r.id === 'N94')?.source).toBe('F-02|TC-04')
+    await expect(saveRule(dir, { id: 'N94', source: 'F-02|FL-98' }, { create: false })).rejects.toThrow(/FL-98/)
+  })
+})
+
+describe('ルールを束ねる（merged_from）', () => {
+  test('束ねる前の ID を書ける。まだルールとして残っている ID・自分の ID は断る', async () => {
+    await saveRule(dir, { id: 'N95', kind: 'note', label: '束ねた約束', merged_from: 'N-old1|N-old2' }, { create: true })
+    expect((await loadProject(dir)).rules.find(r => r.id === 'N95')?.mergedFrom).toEqual(['N-old1', 'N-old2'])
+    await saveRule(dir, { id: 'N94', kind: 'note', label: '残っている約束' }, { create: true })
+    await expect(saveRule(dir, { id: 'N95', merged_from: 'N94' }, { create: false })).rejects.toThrow(/N94/)
+    await expect(saveRule(dir, { id: 'N95', merged_from: 'N95' }, { create: false })).rejects.toThrow(WriteRefused)
+  })
 })

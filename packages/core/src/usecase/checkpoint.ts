@@ -148,6 +148,27 @@ export function missesByRule(log: readonly CheckpointRow[], from: string): Reado
   return result
 }
 
+/** 束ねる前のルールの分も足した回数。included は回数に入れた束ねる前の ID（ミスのあったものだけ） */
+export interface MergedMisses extends RuleMisses {
+  readonly included: readonly string[]
+}
+
+/**
+ * ルールの回数に、束ねる前のルール（merged_from）の回数を足す。最後の日は全部の中で新しい日。
+ * 1 回も無ければ undefined（ミスの無いルールには何も出さないため）
+ */
+export function missesOfRule(rule: Pick<Rule, 'id' | 'mergedFrom'>, misses: ReadonlyMap<string, RuleMisses>): MergedMisses | undefined {
+  const own = misses.get(rule.id)
+  const merged = (rule.mergedFrom ?? []).flatMap(id => { const m = misses.get(id); return m ? [{ id, ...m }] : [] })
+  const all = [...(own ? [own] : []), ...merged]
+  if (!all.length) return undefined
+  return {
+    count: all.reduce((sum, m) => sum + m.count, 0),
+    last: all.reduce((latest, m) => (m.last > latest ? m.last : latest), ''),
+    included: merged.map(m => m.id),
+  }
+}
+
 /** この節目・この対象の最後の記録が、いま効くルールをすべて当てているか */
 export function coverageOf(rules: readonly Rule[], at: string, target: string, log: readonly CheckpointRow[]): Coverage {
   const expected = checklistOf(rules, at).map(c => c.rule)
