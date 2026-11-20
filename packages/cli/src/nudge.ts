@@ -1,5 +1,5 @@
 import './i18n.js'
-import { checklistOf, checkpointsOf, coverageOf, loadProject, readCheckpointLog, runsOn, stagedDigest, STAGED_CHECKPOINT, t, type Checkpoint, type Coverage } from '@tadori/core'
+import { checklistOf, checkpointsOf, coverageOf, loadProject, parseThread, readCheckpointLog, runsOn, stagedDigest, STAGED_CHECKPOINT, t, THREAD_SERVICE_NAMES, type Checkpoint, type Coverage } from '@tadori/core'
 import { loadDaily, localStamp } from './daily.js'
 import { listJoin } from './i18n.js'
 
@@ -91,7 +91,14 @@ async function checkpointShortfall(dir: string, checkpoint: Checkpoint, request:
 async function staleWaitShortfall(dir: string, request: NudgeRequest): Promise<string> {
   const daily = await loadDaily(dir, request.today, undefined, { now: request.now ?? new Date() })
   const ids = daily.stale.ids
-  return ids.length ? t('{n} waiting lines in today\'s daily progress have not been edited for {hours} hours or more: {ids}. Check whether the answer came, then update them', { n: ids.length, hours: daily.stale.hours, ids: ids.join(', ') }) : ''
+  if (!ids.length) return ''
+  const shortfall = t('{n} waiting lines in today\'s daily progress have not been edited for {hours} hours or more: {ids}. Check whether the answer came, then update them', { n: ids.length, hours: daily.stale.hours, ids: ids.join(', ') })
+  // スレッドを結んだ行は、どのチャットかを添える。いまはチャットへつないでいないので、返事の有無は確かめていないと言い切る
+  const threads = ids.flatMap(id => {
+    const thread = parseThread(daily.entries.find(e => e.id === id)?.thread ?? '')
+    return thread ? [t('{id} ({service})', { id, service: THREAD_SERVICE_NAMES[thread.service] })] : []
+  })
+  return threads.length ? t('{shortfall} {threads}: not connected to the chat, so whether the answer came has not been checked', { shortfall, threads: listJoin(threads) }) : shortfall
 }
 
 export async function nudge(dir: string, request: NudgeRequest): Promise<Nudge> {

@@ -200,4 +200,9 @@ describe('checkMarkOf（行のしるし：つないだチェックの記録）',
     const carried = carriedOver([row({ section: 'next', checks: ['r-ok'] })], '2026-11-09')
     expect(carried[0]?.checks).toBeUndefined()
   })
+
+  test('待ちのスレッドは持ち越す（次の日も同じ返事を待つ）', () => {
+    const thread = 'https://discord.com/channels/1/2/3'
+    expect(carriedOver([row({ section: 'next', origin: 'manual', thread })], '2026-11-09')[0]?.thread).toBe(thread)
+  })
 })

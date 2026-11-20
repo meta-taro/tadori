@@ -1,5 +1,5 @@
 import './i18n.js'
-import { entriesFromSheet, nextWorkday, originOf, t, type CheckMark, type CheckpointRun, type DailyEntry, type DailySheet, type Project, type StaleRule } from '@tadori/core'
+import { entriesFromSheet, nextWorkday, originOf, parseThread, t, THREAD_SERVICE_NAMES, type CheckMark, type CheckpointRun, type DailyEntry, type DailySheet, type Project, type StaleRule } from '@tadori/core'
 import { originText } from './format.js'
 import { joinWords, listJoin, noteJoin } from './i18n.js'
 
@@ -162,6 +162,12 @@ function originNote(project: Project, item: Project['items'][number], date: stri
 }
 
 /** 補足の 1 行（正式な名前・WBS・場所）。補足するものが無ければ null */
+/** 待ちのスレッドの補足（「Slack のスレッド：URL」）。読めない URL は出さない */
+function threadNote(url: string | undefined): string[] {
+  const thread = parseThread(url ?? '')
+  return thread ? [t('{service} thread: {url}', { service: THREAD_SERVICE_NAMES[thread.service], url: thread.url })] : []
+}
+
 function noteLine(project: Project, entry: DailyEntry, no: number, format: DailyFormat, date: string, runs?: ReadonlyMap<string, CheckpointRun>): string | null {
   const phaseName = (id: string) => project.phases.find(p => p.id === id)?.name ?? id
   const issue = entry.issue ? project.items.find(i => i.id === entry.issue) : undefined
@@ -178,6 +184,8 @@ function noteLine(project: Project, entry: DailyEntry, no: number, format: Daily
     ...(entry.note ? [entry.note] : []),
     // 行のリンクは読み上げる行には入れず、補足に「表示名：URL」で出す（聞かれたら開くもの）
     ...[...new Set((entry.links ?? []).map(l => t('{label}: {url}', { label: l.label, url: l.url })))], // 同じ表示名と URL は 1 回だけ
+    // 待ちのスレッドは、どのチャットかと URL を補足に出す（返事が来たかを開いて確かめられるように）
+    ...threadNote(entry.thread),
     // つないだチェックの記録は、まとめの 1 文を補足に出す（聞かれたら「どう確かめたか」を答えられるように）
     ...(entry.checks ?? []).flatMap(id => {
       const run = runs?.get(id)

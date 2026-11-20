@@ -65,6 +65,8 @@ export const JA = {
   'Checked': '確かめた',
   'Tag': '印',
   'Open {label}: {url}': '{label} を開く：{url}',
+  '{service} thread': '{service} のスレッド',
+  'Open the thread you are waiting on: {url}': '返事を待っているスレッドを開く：{url}',
   'Source': '正本',
   'Open the source of truth ({sync}): {url}': '正本を開く（{sync}）：{url}',
   'Trace from {id}': '{id} から辿る',

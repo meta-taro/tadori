@@ -1,7 +1,7 @@
 import './i18n.js'
 import {
   BADGE_TONES, buildDaily, carriedOver, checkMarkOf, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
-  readAloud, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
+  parseThread, readAloud, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
 import { checkMarkText, checkTagsOf, dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
@@ -193,6 +193,19 @@ function linkList(body: Record<string, unknown>): DailyLink[] | undefined {
   }).filter((l, i, all) => all.findIndex(o => linkKey(o) === linkKey(l)) === i) // 同じリンクは 1 つにまとめる
 }
 
+/**
+ * 待ちの行に結ぶチャットのスレッドの URL。Slack・Discord・Google Chat・Teams の投稿の形だけを受ける
+ * （ほかの URL を断るのは、投稿先の取り違えに書いた時点で気づけるようにするため）。空文字は「外す」
+ */
+function threadValue(body: Record<string, unknown>): string | undefined {
+  if (body.thread === undefined) return undefined
+  const value = typeof body.thread === 'string' ? body.thread.trim() : ''
+  if (!value) return ''
+  const thread = parseThread(value)
+  if (!thread) throw new DailyInputError(t('thread must be the URL of a chat post: Slack (https://<workspace>.slack.com/archives/<channel>/p<ts>), Discord (https://discord.com/channels/<server>/<channel>/<message>), Google Chat (https://chat.google.com/room/<space>/<thread>) or Teams (https://teams.microsoft.com/l/message/<channel>/<message>)'))
+  return thread.url
+}
+
 const MAX_BADGES = 8
 const MAX_BADGE_TEXT = 40
 
@@ -283,6 +296,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
   const links = linkList(body)
   const badges = badgeList(body)
   const checks = await checkList(dir, body)
+  const thread = threadValue(body)
   const chosenSection = section(body, true) as DailySection
   // 課題ごとの要約は、課題を付けて 1 日 1 課題に 1 つ（2 つ目は今ある要約を直してもらう）
   if (chosenSection === 'summary') {
@@ -302,6 +316,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     ...(links?.length ? { links } : {}),
     ...(badges?.length ? { badges } : {}),
     ...(checks?.length ? { checks } : {}),
+    ...(thread ? { thread } : {}),
     origin: 'manual',
     updated: localStamp(),
   })
@@ -341,12 +356,13 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     links: isCleared('links') ? [] : linkList(body),
     badges: isCleared('badges') ? [] : badgeList(body),
     checks: isCleared('checks') ? [] : await checkList(dir, body),
+    thread: isCleared('thread') ? '' : threadValue(body),
   }
   const changed = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
   // 本文か課題を変えたときだけ、課題番号と短い件名を頭に付け直す
   const filled: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited', updated: localStamp() }
   // 空にした欄は、行から外す（日ごとのファイルにも空で書く）
-  const { issue, note, tag: entryTag, links, badges, checks, ...rest } = filled
+  const { issue, note, tag: entryTag, links, badges, checks, thread, ...rest } = filled
   const merged: DailyEntry = {
     ...rest,
     ...(issue ? { issue } : {}),
@@ -355,6 +371,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     ...(links?.length ? { links } : {}),
     ...(badges?.length ? { badges } : {}),
     ...(checks?.length ? { checks } : {}),
+    ...(thread ? { thread } : {}),
   }
   const entry = patch.text !== undefined || patch.issue !== undefined ? await withIssueHead(dir, merged) : merged
   const commit = await writeDaily(dir, date, entries.map(e => (e.id === id ? entry : e)), t('Edit daily progress line {id} ({date})', { id, date }))

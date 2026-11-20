@@ -18,6 +18,7 @@ export { buildDaily, nextWorkday, ownersOf, type DailyLine, type DailySheet, typ
 export { readStatusChanges } from './infrastructure/status-history.js'
 export { BADGE_TONES, carriedOver, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, memberOf, checkMarkOf, isWaiting, mergeDaily, readAloud, staleWaits, withoutSummaries, type CheckMark, type StaleRule, type BadgeTone, type DailyBadge, type DailyEntry, type DailyLink, type DailyOrigin, type DailySection } from './usecase/daily-entries.js'
 export { isFor, type Member } from './domain/people.js'
+export { parseThread, THREAD_SERVICE_NAMES, THREAD_SERVICES, type ChatThread, type ThreadService } from './domain/threads.js'
 export { isStale, originOf, sourceLinkOf, type Origin, type SourceDef, type SourceLink } from './domain/sources.js'
 export { readActivity, type ActivityOptions } from './infrastructure/activity.js'
 export { addLesson, removeItem, removeMember, removeRule, saveItem, saveMember, saveRule, saveTask, WriteRefused, type ItemInput, type LessonInput, type MemberInput, type RuleInput, type TaskInput } from './infrastructure/project-writer.js'

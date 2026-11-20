@@ -74,6 +74,11 @@ export interface DailyEntry {
    * 「その作業がルールどおりに確かめられた」という行ごとのしるしになる。つなぐのは人かエージェント
    */
   readonly checks?: readonly string[]
+  /**
+   * 待ちの行に結ぶ、チャットのスレッドの URL（Slack・Discord・Google Chat・Teams の投稿）。
+   * 返事を待っている元の投稿を指す。本文は持たない。返事が来たかは、そのチャットへ読み取り専用でつないだときだけ確かめる
+   */
+  readonly thread?: string
 }
 
 /** 行のリンク。表示名は人が読む名前（例：QA表・設計書 3.2.5）。URL は http・https だけ */
@@ -162,7 +167,7 @@ export function carriedOver(previous: readonly DailyEntry[], previousDate: strin
     .filter(e => e.section === 'next' && (e.origin === 'manual' || e.origin === 'edited'))
     .map(e => {
       // チェックの記録は前の日の作業のものなので持ち越さない（今日の作業のしるしと取り違えないように）
-      const { note, links, issue, checks: _checks, ...rest } = e
+      const { note, links, issue, thread, checks: _checks, ...rest } = e
       return {
         ...rest,
         id: '',
@@ -173,6 +178,8 @@ export function carriedOver(previous: readonly DailyEntry[], previousDate: strin
         ...(issue ? { issue } : {}),
         ...(note ? { note } : {}),
         ...(links?.length ? { links } : {}),
+        // 待ちのスレッドは次の日も同じ返事を待つので持ち越す
+        ...(thread ? { thread } : {}),
       }
     })
 }

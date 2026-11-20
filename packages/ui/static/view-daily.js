@@ -84,6 +84,23 @@ const entryLinks = (/** @type {DailyEntry} */ entry) => (entry.links ?? [])
   .filter(l => !l.anchor || nthIndexOf(entry.text, l.anchor, l.nth ?? 1) < 0)
   .flatMap(l => (webUrl(l.url) ? [outLink(l.label, webUrl(l.url), t('Open {label}: {url}', { label: l.label, url: l.url }))] : [])).join('')
 
+/** 待ちのスレッドのチャットの名前（URL の場所で見分ける。形を確かめるのは書くときの tadori の側） */
+const THREAD_HOSTS = /** @type {const} */ ([[/\.slack\.com$/, 'Slack'], [/(^|\.)discord(app)?\.com$/, 'Discord'], [/^chat\.google\.com$/, 'Google Chat'], [/^teams\.(microsoft\.com|cloud\.microsoft)$/, 'Teams']])
+/**
+ * 待ちの行に結んだチャットのスレッドへのリンク（返事が来たかを、その場から開いて確かめられるように）
+ * @param {DailyEntry} entry
+ */
+function threadLink(entry) {
+  const url = webUrl(entry.thread)
+  if (!url) return ''
+  let host = ''
+  try { host = new URL(url).hostname } catch { return '' }
+  const service = THREAD_HOSTS.find(([pattern]) => pattern.test(host))?.[1]
+  if (!service) return ''
+  const label = t('{service} thread', { service })
+  return outLink(label, url, t('Open the thread you are waiting on: {url}', { url }), 'thread-link')
+}
+
 /**
  * 課題の正本へ飛ぶ小さなリンク（会議の場で正本を開けるように）。表示名は正本の表の名前。反映が古ければ目立たせる
  * @param {Origin | undefined} origin
@@ -125,7 +142,7 @@ function entryRow(entry, no, origins = {}, isAll = true, isSummary = entry.secti
       : `<input class="inline-input daily-text" data-entry="${esc(entry.id)}" value="${esc(entry.text)}" aria-label="${esc(t('Text of row {n}', { n: no }))}" maxlength="500">`}
     <span class="daily-badges">${badges}${markChip(entry.id)}${staleChip}</span>
     ${updated ? `<span class="daily-updated cond mono" title="${esc(t('When this row was last added or edited'))}">${esc(updated)}</span>` : ''}
-    <span class="daily-links">${origin}${entryLinks(entry)}</span>
+    <span class="daily-links">${origin}${threadLink(entry)}${entryLinks(entry)}</span>
     <span class="daily-meta">${badge}${issue}${wbs}</span>
     <button type="button" class="btn-ghost" data-remove="${esc(entry.id)}" aria-label="${esc(t('Remove row {n}', { n: no }))}">${esc(t('Remove'))}</button>
   </li>`

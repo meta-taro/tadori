@@ -216,6 +216,24 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     await expect(page.locator('.daily-preview a', { hasText: 'QA表 ↗' })).toHaveAttribute('href', 'https://sheets.example.com/qa#row=12')
   })
 
+  test('待ちの行に結んだチャットのスレッドは「Slack のスレッド ↗」のリンクで出し、チャットの投稿でない URL は断る', async ({ page }) => {
+    const thread = 'https://example.slack.com/archives/C0123ABCD/p1700000000123456'
+    const res = await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: '〈A さんの確認待ち〉', thread },
+    })
+    expect(res.ok()).toBe(true)
+    const wrong = await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: 'x', thread: 'https://example.com/a' },
+    })
+    expect(wrong.status()).toBe(400)
+    await openDaily(page)
+    const link = page.locator('.daily-entry .thread-link', { hasText: 'Slack のスレッド ↗' })
+    await expect(link).toHaveAttribute('href', thread)
+    await expect(link).toHaveAttribute('target', '_blank')
+  })
+
   test('足した行には最後に直した時刻を「HH:MM 更新」で出し、古いままの待ちの行には印と件数の知らせを出す', async ({ page }) => {
     const res = await page.request.post('/api/daily/2026-10-30/entries', {
       headers: { 'x-tadori': '1', 'content-type': 'application/json' },

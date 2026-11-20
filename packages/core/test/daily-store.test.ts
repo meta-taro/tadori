@@ -26,7 +26,7 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     ]
     const commit = await writeDaily(dir, '2026-11-09', entries, '1 日の進行を直した')
     expect(commit.committed).toBe(false) // git の外なので commit しない
-    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\tupdated\tchecks\n/)
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\tupdated\tchecks\tthread\n/)
     const back = await readDaily(dir, '2026-11-09')
     expect(back[0]).toEqual({ ...entries[0], text: '画面の設計 を直した' })
     expect(back[1]).toEqual(entries[1])
@@ -97,5 +97,20 @@ describe('行のしるし（チェックの記録の ID）', () => {
     const back = await readDaily(dir, '2026-11-09')
     expect(back[0]?.checks).toEqual(['20261109-101500-ab12', '20261109-111500-cd34'])
     expect(back[1]?.checks).toBeUndefined()
+  })
+})
+
+describe('待ちのスレッド（チャットの投稿の URL）', () => {
+  test('thread は最後の列に書き、読むと戻る。空なら持たない。thread 列の無い前の版のファイルもそのまま読める', async () => {
+    const dir = await dirOf()
+    const url = 'https://example.slack.com/archives/C0123ABCD/p1700000000123456'
+    await writeDaily(dir, '2026-11-09', [
+      { id: 'm1', who: 'A', section: 'today', text: '〈A さんの確認待ち〉', wbs: [], origin: 'manual', thread: url },
+      { id: 'm2', who: 'A', section: 'today', text: 'y', wbs: [], origin: 'manual' },
+    ], 'x')
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/\tchecks\tthread\n/)
+    const back = await readDaily(dir, '2026-11-09')
+    expect(back[0]?.thread).toBe(url)
+    expect(back[1]?.thread).toBeUndefined()
   })
 })
