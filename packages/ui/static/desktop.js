@@ -29,12 +29,22 @@ export function initDesktop() {
   const win = tauri.window.getCurrentWindow()
   const topbar = /** @type {HTMLElement} */ (document.querySelector('.topbar'))
   document.documentElement.classList.add('desktop')
-  // 正本へのリンクは、窓の中で外のページへ移らず、OS の既定のブラウザで開く（Rust 側で http・https だけを受ける）
-  document.addEventListener('click', e => {
+  // 正本へのリンクは、窓の中で外のページへ移らない（Rust 側で http・https だけを受ける）。
+  // 押すと tadori の小さな別窓（のぞき窓）でさっと見る。Ctrl（mac は ⌘）・Shift を押しながらか、中ボタンなら OS の既定のブラウザで開く
+  const openLink = (/** @type {MouseEvent} */ e, /** @type {boolean} */ inBrowser) => {
     const link = e.target instanceof Element ? e.target.closest('a[data-external]') : null
     if (!(link instanceof HTMLAnchorElement)) return
     e.preventDefault()
-    invoke('open_external', { url: link.href }).catch(error => toast(String(error)))
+    invoke(inBrowser ? 'open_external' : 'peek_external', { url: link.href }).catch(error => toast(String(error)))
+  }
+  document.addEventListener('click', e => openLink(e, e.ctrlKey || e.metaKey || e.shiftKey))
+  document.addEventListener('auxclick', e => { if (e.button === 1) openLink(e, true) })
+  // のぞき窓とブラウザの使い分けを、リンクに重ねたときの説明に足す
+  document.addEventListener('mouseover', e => {
+    const link = e.target instanceof Element ? e.target.closest('a[data-external]') : null
+    if (!(link instanceof HTMLAnchorElement) || link.dataset.peekHint) return
+    link.dataset.peekHint = '1'
+    link.title = [link.title, t('Click to peek in a small window. Ctrl+click (⌘+click on Mac) opens it in the browser')].filter(Boolean).join('\n')
   })
 
   topbar.insertAdjacentHTML('afterbegin', `<div class="win-menu" role="menubar" aria-label="${esc(t('Menu'))}">

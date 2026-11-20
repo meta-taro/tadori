@@ -234,6 +234,30 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     await expect(link).toHaveAttribute('target', '_blank')
   })
 
+  test('デスクトップアプリの窓では、リンクを押すとのぞき窓で開き、Ctrl＋クリックなら OS のブラウザで開く', async ({ page }) => {
+    // Tauri の窓の代わり：呼ばれた命令と URL を覚えるだけ。窓の操作は何もしない
+    await page.addInitScript(() => {
+      const w = window as unknown as { __invoked: string[], __TAURI__: unknown }
+      w.__invoked = []
+      const win = new Proxy({}, { get: () => () => Promise.resolve(false) })
+      w.__TAURI__ = {
+        window: { getCurrentWindow: () => win },
+        core: { invoke: (command: string, args?: { url?: string }) => { w.__invoked.push(`${command} ${args?.url ?? ''}`.trim()); return Promise.resolve([]) } },
+      }
+    })
+    await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: '課題を見た', links: [{ label: '課題', url: 'https://tracker.example.com/view/A-1' }] },
+    })
+    await openDaily(page)
+    const link = page.locator('.daily-entry .daily-link', { hasText: '課題 ↗' }).first()
+    await link.click()
+    await link.click({ modifiers: ['Control'] })
+    const invoked = await page.evaluate(() => (window as unknown as { __invoked: string[] }).__invoked)
+    expect(invoked.filter(c => c.includes('tracker.example.com'))).toEqual(['peek_external https://tracker.example.com/view/A-1', 'open_external https://tracker.example.com/view/A-1'])
+    await expect(link).toHaveAttribute('title', /Ctrl＋クリック/)
+  })
+
   test('足した行には最後に直した時刻を「HH:MM 更新」で出し、古いままの待ちの行には印と件数の知らせを出す', async ({ page }) => {
     const res = await page.request.post('/api/daily/2026-10-30/entries', {
       headers: { 'x-tadori': '1', 'content-type': 'application/json' },
