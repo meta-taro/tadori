@@ -234,7 +234,7 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     await expect(link).toHaveAttribute('target', '_blank')
   })
 
-  test('デスクトップアプリの窓では、リンクを押すとのぞき窓で開き、Ctrl＋クリックなら OS のブラウザで開く', async ({ page }) => {
+  test('デスクトップアプリの窓では、リンクを押すといつものブラウザの小さな窓で開き、Ctrl＋クリックならふつうのタブで開く', async ({ page }) => {
     // Tauri の窓の代わり：呼ばれた命令と URL を覚えるだけ。窓の操作は何もしない
     await page.addInitScript(() => {
       const w = window as unknown as { __invoked: string[], __TAURI__: unknown }

@@ -66,7 +66,7 @@ export const JA = {
   'Tag': '印',
   'Open {label}: {url}': '{label} を開く：{url}',
   '{service} thread': '{service} のスレッド',
-  'Click to peek in a small window. Ctrl+click (⌘+click on Mac) opens it in the browser': '押すと小さな窓（のぞき窓）でさっと見ます。Ctrl＋クリック（mac は ⌘＋クリック）でブラウザで開きます',
+  'Click to open it in a small window of your browser (Chrome, Edge and similar). Ctrl+click (⌘+click on Mac) opens it as a normal tab': '押すと、いつものブラウザ（Chrome・Edge など）の小さな窓でさっと見ます。Ctrl＋クリック（mac は ⌘＋クリック）でふつうのタブで開きます',
   'Open the thread you are waiting on: {url}': '返事を待っているスレッドを開く：{url}',
   'Source': '正本',
   'Open the source of truth ({sync}): {url}': '正本を開く（{sync}）：{url}',

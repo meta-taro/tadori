@@ -4,6 +4,7 @@
 //! 画面（127.0.0.1 のページ）から呼べるのは、自作の上の帯のための窓の操作と、ここにある 6 つの命令だけ
 //! （capabilities/desktop-shell.json）。ファイルの読み書きなどは呼ばせない。
 
+mod browser;
 mod lang;
 mod sidecar;
 
@@ -92,36 +93,18 @@ fn open_external(handle: AppHandle, url: String) -> Result<(), String> {
     handle.opener().open_url(parsed.as_str(), None::<&str>).map_err(|e| format!("{}{e}", tr("Could not open the browser: ", "ブラウザで開けませんでした：")))
 }
 
-/// のぞき窓のラベル。capabilities はどれも main の窓だけに許しているので、この窓のページ（外のサイト）からは命令を 1 つも呼べない
-const PEEK_LABEL: &str = "peek";
-
-/// 正本のリンクを、tadori の中の小さな別窓（のぞき窓）で開いて、さっと見る。
-/// 窓は 1 つだけで、開いていれば中のページを替えて前に出す。窓の中で移れるのは http・https だけで、ダウンロードはさせない。
-/// ログインの状態は tadori の窓どうしで共有する（OS のブラウザとは別。初めはのぞき窓の中で一度ログインが要ることがある）
+/// 正本のリンクを、いつものブラウザの小さな窓（アドレスバーの無い窓）で開いて、さっと見る。
+/// いつものブラウザなので、ログインもそのまま使える。小さな窓を持たないブラウザ（Firefox・Safari など）が既定なら、ふつうに開く
 #[tauri::command]
 async fn peek_external(handle: AppHandle, url: String) -> Result<(), String> {
     let parsed = Url::parse(&url).map_err(|_| format!("{}{url}", tr("Not a valid URL: ", "URL として読めません：")))?;
     if !matches!(parsed.scheme(), "http" | "https") {
         return Err(tr("Only http and https links can be opened", "正本のリンクは http か https だけを開きます").into());
     }
-    let title = format!("{}{}", tr("Peek: ", "のぞき窓："), parsed.host_str().unwrap_or_default());
-    let failed = |e: tauri::Error| format!("{}{e}", tr("Could not open the peek window: ", "のぞき窓を開けませんでした："));
-    if let Some(window) = handle.get_webview_window(PEEK_LABEL) {
-        window.navigate(parsed).map_err(failed)?;
-        let _ = window.set_title(&title);
-        let _ = window.unminimize();
-        return window.set_focus().map_err(failed);
+    if browser::open_small(parsed.as_str()) {
+        return Ok(());
     }
-    tauri::WebviewWindowBuilder::new(&handle, PEEK_LABEL, tauri::WebviewUrl::External(parsed))
-        .title(title)
-        .inner_size(960.0, 720.0)
-        .min_inner_size(480.0, 360.0)
-        .center()
-        .on_navigation(|next| matches!(next.scheme(), "http" | "https"))
-        .on_download(|_, _| false)
-        .build()
-        .map(|_| ())
-        .map_err(failed)
+    open_external(handle, url)
 }
 
 /// ヘルプ › バージョンと更新：新しい版を落とし、署名を確かめてから入れ替えて、立ち上がり直す。
@@ -350,11 +333,11 @@ fn show_error(handle: &AppHandle, message: &str) {
 }
 
 #[cfg(windows)]
-fn hide_console(command: &mut Command) {
+pub(crate) fn hide_console(command: &mut Command) {
     use std::os::windows::process::CommandExt;
     // 裏の node に黒いコンソール窓を出させない（CREATE_NO_WINDOW）
     command.creation_flags(0x0800_0000);
 }
 
 #[cfg(not(windows))]
-fn hide_console(_command: &mut Command) {}
+pub(crate) fn hide_console(_command: &mut Command) {}
