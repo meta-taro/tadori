@@ -1,7 +1,7 @@
 import './i18n.js'
 import {
   BADGE_TONES, buildDaily, carriedOver, checkMarkOf, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
-  parseThread, readAloud, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
+  parseThread, readAloud, THREAD_SERVICE_NAMES, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
 } from '@tadori/core'
 import { checkMarkText, checkTagsOf, dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
@@ -40,6 +40,8 @@ export interface Daily {
    * mark＝ok / open / missing、text＝案件の言葉（文に出すのと同じ）、runs＝つないだ記録（画面がその記録へ飛ぶ）
    */
   readonly marks: readonly DailyMark[]
+  /** 待ちのスレッドを結んだ行の、チャットの名前（行の ID → Slack など）。画面のリンクの表示名に使う。読めない URL の行は入れない */
+  readonly threads: Readonly<Record<string, string>>
 }
 
 export interface DailyMark {
@@ -127,7 +129,11 @@ export async function loadDaily(dir: string, date: string, who?: string, view: D
   const runs = runsById(await readCheckpointLog(dir))
   const marks = marksOf(shown, runs, format)
   const markById = new Map(marks.map(m => [m.id, m.mark]))
-  return { date, text: formatEntries(spoken, project, date, format, { showWho: !who, marks: markById, runs }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
+  const threads = Object.fromEntries(shown.flatMap(e => {
+    const thread = parseThread(e.thread ?? '')
+    return thread ? [[e.id, THREAD_SERVICE_NAMES[thread.service]]] : []
+  }))
+  return { date, threads, text: formatEntries(spoken, project, date, format, { showWho: !who, marks: markById, runs }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
     whoMarks: who ? [] : [...new Set(shown.map(e => whoMark(e.who, format)).filter(Boolean))],
     stale: { ids: staleWaits(shown, view.now ?? new Date(), staleRuleOf(format)).map(e => e.id), hours: staleRuleOf(format).hours }, marks }
 }
@@ -194,7 +200,7 @@ function linkList(body: Record<string, unknown>): DailyLink[] | undefined {
 }
 
 /**
- * 待ちの行に結ぶチャットのスレッドの URL。Slack・Discord・Google Chat・Teams の投稿の形だけを受ける
+ * 待ちの行に結ぶチャットのスレッドの URL。Slack・Discord・Google Chat・Teams・Chatwork・Mattermost の投稿の形だけを受ける（見分け方は core の domain/threads.ts の READERS）
  * （ほかの URL を断るのは、投稿先の取り違えに書いた時点で気づけるようにするため）。空文字は「外す」
  */
 function threadValue(body: Record<string, unknown>): string | undefined {
@@ -202,7 +208,7 @@ function threadValue(body: Record<string, unknown>): string | undefined {
   const value = typeof body.thread === 'string' ? body.thread.trim() : ''
   if (!value) return ''
   const thread = parseThread(value)
-  if (!thread) throw new DailyInputError(t('thread must be the URL of a chat post: Slack (https://<workspace>.slack.com/archives/<channel>/p<ts>), Discord (https://discord.com/channels/<server>/<channel>/<message>), Google Chat (https://chat.google.com/room/<space>/<thread>) or Teams (https://teams.microsoft.com/l/message/<channel>/<message>)'))
+  if (!thread) throw new DailyInputError(t('thread must be the URL of a chat post: Slack (https://<workspace>.slack.com/archives/<channel>/p<ts>), Discord (https://discord.com/channels/<server>/<channel>/<message>), Google Chat (https://chat.google.com/room/<space>/<thread>), Teams (https://teams.microsoft.com/l/message/<channel>/<message>), Chatwork (https://www.chatwork.com/#!rid<room>-<message>) or Mattermost (https://<host>/<team>/pl/<post>)'))
   return thread.url
 }
 

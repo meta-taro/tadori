@@ -21,6 +21,8 @@ let readMode = false
 
 /** 古いままの待ちの行（server が案件の stale_hours・wait_words で選んだもの）の ID と、何時間で古いとするか */
 let stale = { ids: /** @type {Set<string>} */ (new Set()), hours: 0 }
+/** 待ちのスレッドを結んだ行の、チャットの名前（行の ID → Slack など） */
+let threadNames = /** @type {Readonly<Record<string, string>>} */ ({})
 /** 行のしるし（server が、行につないだチェックの記録から決めたもの）。行の ID → しるし */
 let marks = /** @type {Map<string, import('./types').Daily['marks'][number]>} */ (new Map())
 
@@ -84,21 +86,16 @@ const entryLinks = (/** @type {DailyEntry} */ entry) => (entry.links ?? [])
   .filter(l => !l.anchor || nthIndexOf(entry.text, l.anchor, l.nth ?? 1) < 0)
   .flatMap(l => (webUrl(l.url) ? [outLink(l.label, webUrl(l.url), t('Open {label}: {url}', { label: l.label, url: l.url }))] : [])).join('')
 
-/** 待ちのスレッドのチャットの名前（URL の場所で見分ける。形を確かめるのは書くときの tadori の側） */
-const THREAD_HOSTS = /** @type {const} */ ([[/\.slack\.com$/, 'Slack'], [/(^|\.)discord(app)?\.com$/, 'Discord'], [/^chat\.google\.com$/, 'Google Chat'], [/^teams\.(microsoft\.com|cloud\.microsoft)$/, 'Teams']])
 /**
- * 待ちの行に結んだチャットのスレッドへのリンク（返事が来たかを、その場から開いて確かめられるように）
+ * 待ちの行に結んだチャットのスレッドへのリンク（返事が来たかを、その場から開いて確かめられるように）。
+ * どのチャットかはサーバーが URL の形から見分けて threads で渡す（画面には見分け方の一覧を持たない）
  * @param {DailyEntry} entry
  */
 function threadLink(entry) {
   const url = webUrl(entry.thread)
-  if (!url) return ''
-  let host = ''
-  try { host = new URL(url).hostname } catch { return '' }
-  const service = THREAD_HOSTS.find(([pattern]) => pattern.test(host))?.[1]
-  if (!service) return ''
-  const label = t('{service} thread', { service })
-  return outLink(label, url, t('Open the thread you are waiting on: {url}', { url }), 'thread-link')
+  const service = threadNames[entry.id]
+  if (!url || !service) return ''
+  return outLink(t('{service} thread', { service }), url, t('Open the thread you are waiting on: {url}', { url }), 'thread-link')
 }
 
 /**
@@ -208,6 +205,7 @@ export async function renderDaily(view, state) {
     return
   }
   stale = { ids: new Set(daily.stale?.ids ?? []), hours: daily.stale?.hours ?? 0 }
+  threadNames = daily.threads ?? {}
   marks = new Map((daily.marks ?? []).map(m => [m.id, m]))
   const base = `/api/daily/${encodeURIComponent(date)}`
   view.innerHTML = `

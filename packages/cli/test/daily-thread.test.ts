@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { addDaily, DailyInputError, loadDaily, updateDaily } from '../src/daily.js'
 import { nudge } from '../src/nudge.js'
+import type { ReplyReader } from '@tadori/core'
 
 // 架空の最小の案件。待ちの行に、返事を待っているチャットのスレッドの URL を結ぶ
 let dir = ''
@@ -57,5 +58,15 @@ describe('待ちの行のスレッド', () => {
     const result = await nudge(dir, { at: 'before-meeting', today: day, now: new Date(2026, 10, 20, 12, 0), staleWaits: true })
     expect(result.text).toContain('m1, m2')
     expect(result.text).toContain('m1（Slack）は、チャットにつないでいないため返事の有無を確かめていません')
+  })
+
+  test('そのチャットの読む口を差し込めば、返事あり・まだ・読めなかったを行ごとに知らせる（本文は出さない）', async () => {
+    const answered: ReplyReader = { service: 'slack', check: async () => ({ state: 'answered', by: 'A さん', at: '2026-11-20T10:05' }) }
+    const result = await nudge(dir, { at: 'before-meeting', today: day, now: new Date(2026, 10, 20, 12, 0), staleWaits: true, readers: [answered] })
+    expect(result.text).toContain('m1：Slack のスレッドに A さん の返事あり（2026-11-20 10:05）。行を直してください')
+    expect(result.text).not.toContain('チャットにつないでいない')
+    const failing: ReplyReader = { service: 'slack', check: async () => { throw new Error('missing_scope') } }
+    const failed = await nudge(dir, { at: 'before-meeting', today: day, now: new Date(2026, 10, 20, 12, 0), staleWaits: true, readers: [failing] })
+    expect(failed.text).toContain('m1：Slack のスレッドを読めませんでした（missing_scope）')
   })
 })

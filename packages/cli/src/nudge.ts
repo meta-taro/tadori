@@ -1,7 +1,8 @@
 import './i18n.js'
-import { checklistOf, checkpointsOf, coverageOf, loadProject, parseThread, readCheckpointLog, runsOn, stagedDigest, STAGED_CHECKPOINT, t, THREAD_SERVICE_NAMES, type Checkpoint, type Coverage } from '@tadori/core'
+import { checkReply, checklistOf, checkpointsOf, coverageOf, loadProject, parseThread, readCheckpointLog, runsOn, stagedDigest, STAGED_CHECKPOINT, t, THREAD_SERVICE_NAMES, type Checkpoint, type Coverage, type ReplyCheck, type ReplyReader } from '@tadori/core'
 import { loadDaily, localStamp } from './daily.js'
 import { listJoin } from './i18n.js'
+import { replyReaders } from './replies.js'
 
 /**
  * 節目の呼び忘れを知らせる（tadori nudge）。エージェントのフック（Claude Code の hooks など）や定時の起動から呼んでもらう。
@@ -22,6 +23,8 @@ export interface NudgeRequest {
   readonly since?: string
   /** いまの時刻（試験で決めるため。省けば今） */
   readonly now?: Date
+  /** 待ちのスレッドの返事を読む口（試験で差し替えるため。省けば replyReaders()） */
+  readonly readers?: readonly ReplyReader[]
 }
 
 export interface Nudge {
@@ -93,12 +96,27 @@ async function staleWaitShortfall(dir: string, request: NudgeRequest): Promise<s
   const ids = daily.stale.ids
   if (!ids.length) return ''
   const shortfall = t('{n} waiting lines in today\'s daily progress have not been edited for {hours} hours or more: {ids}. Check whether the answer came, then update them', { n: ids.length, hours: daily.stale.hours, ids: ids.join(', ') })
-  // スレッドを結んだ行は、どのチャットかを添える。いまはチャットへつないでいないので、返事の有無は確かめていないと言い切る
-  const threads = ids.flatMap(id => {
+  // スレッドを結んだ行は、そのチャットの読む口で返事が来たかを確かめる。口が無いチャットは、確かめていないと言い切る
+  const readers = request.readers ?? replyReaders()
+  const checked = await Promise.all(ids.flatMap(id => {
     const thread = parseThread(daily.entries.find(e => e.id === id)?.thread ?? '')
-    return thread ? [t('{id} ({service})', { id, service: THREAD_SERVICE_NAMES[thread.service] })] : []
-  })
-  return threads.length ? t('{shortfall} {threads}: not connected to the chat, so whether the answer came has not been checked', { shortfall, threads: listJoin(threads) }) : shortfall
+    return thread ? [checkReply(thread, readers).then(reply => ({ id, service: THREAD_SERVICE_NAMES[thread.service], reply }))] : []
+  }))
+  const unconnected = checked.filter(c => c.reply.state === 'unconnected').map(c => t('{id} ({service})', { id: c.id, service: c.service }))
+  const lines = [
+    shortfall,
+    ...checked.flatMap(c => replyText(c.id, c.service, c.reply)),
+    ...(unconnected.length ? [t('{threads}: not connected to the chat, so whether the answer came has not been checked', { threads: listJoin(unconnected) })] : []),
+  ]
+  return lines.join(t('. '))
+}
+
+/** 1 つのスレッドの確かめた結果の文（未接続はまとめて出すので、ここでは出さない） */
+function replyText(id: string, service: string, reply: ReplyCheck): string[] {
+  if (reply.state === 'answered') return [t('{id}: {by} replied in the {service} thread ({at}). Update the line', { id, service, by: reply.by, at: reply.at.replace('T', ' ') })]
+  if (reply.state === 'waiting') return [t('{id}: no answer yet in the {service} thread', { id, service })]
+  if (reply.state === 'failed') return [t('{id}: could not read the {service} thread ({reason})', { id, service, reason: reply.reason })]
+  return []
 }
 
 export async function nudge(dir: string, request: NudgeRequest): Promise<Nudge> {

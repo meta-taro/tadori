@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { parseThread } from '../src/domain/threads.js'
+import { checkReply, type ReplyReader } from '../src/usecase/thread-replies.js'
 
 describe('parseThread（待ちの行に結ぶチャットのスレッドの URL）', () => {
   test('Slack の投稿の URL から、チャンネルと投稿の ts を読む', () => {
@@ -47,5 +48,37 @@ describe('parseThread（待ちの行に結ぶチャットのスレッドの URL�
     expect(parseThread('https://evil.example/https://discord.com/channels/1/2/3')).toBeUndefined()
     expect(parseThread('not a url')).toBeUndefined()
     expect(parseThread('')).toBeUndefined()
+  })
+})
+
+describe('差し込み式：ほかのチャットの URL', () => {
+  test('Chatwork のメッセージの URL（KDDI Chatwork も）を、ルームとメッセージで読む', () => {
+    expect(parseThread('https://www.chatwork.com/#!rid123456-1234567890123456789')).toMatchObject({ service: 'chatwork', channel: '123456', message: '1234567890123456789' })
+    expect(parseThread('https://kcw.kddi.ne.jp/#!rid123456-99')?.service).toBe('chatwork')
+    expect(parseThread('https://www.chatwork.com/#!rid123456')).toBeUndefined()
+  })
+
+  test('Mattermost の投稿の URL は、自前の場所でも道の形（/<チーム>/pl/<投稿>）で読む', () => {
+    expect(parseThread('https://chat.example.com/team-a/pl/abcdefghijklmnopqrstuvwxyz')).toMatchObject({ service: 'mattermost', host: 'chat.example.com', space: 'team-a', message: 'abcdefghijklmnopqrstuvwxyz' })
+    expect(parseThread('https://chat.example.com/team-a/pl/short')).toBeUndefined()
+  })
+})
+
+describe('checkReply（返事を読む口）', () => {
+  const thread = parseThread('https://example.slack.com/archives/C0123ABCD/p1700000000123456')!
+  test('そのチャットの読む口が無ければ、未接続と返す', async () => {
+    expect(await checkReply(thread, [])).toEqual({ state: 'unconnected' })
+  })
+
+  test('読む口があれば、その答えを返し、待ちの相手を渡す', async () => {
+    const seen: string[][] = []
+    const reader: ReplyReader = { service: 'slack', check: async (_t, waitingOn) => { seen.push([...waitingOn]); return { state: 'answered', by: 'A さん', at: '2026-11-20T10:05' } } }
+    expect(await checkReply(thread, [reader], ['U01'])).toEqual({ state: 'answered', by: 'A さん', at: '2026-11-20T10:05' })
+    expect(seen).toEqual([['U01']])
+  })
+
+  test('読む口が失敗したら、握り潰さず理由を返す', async () => {
+    const reader: ReplyReader = { service: 'slack', check: async () => { throw new Error('missing_scope') } }
+    expect(await checkReply(thread, [reader])).toEqual({ state: 'failed', reason: 'missing_scope' })
   })
 })
