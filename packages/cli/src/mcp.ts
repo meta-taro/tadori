@@ -7,6 +7,7 @@ import { howTo } from './guide.js'
 import { committed, writeTools, type WriteContext } from './mcp-write.js'
 import { checkpointTools } from './mcp-checkpoint.js'
 import { docTools } from './mcp-docs.js'
+import { replyLines, replyReaders } from './replies.js'
 import { addDaily, DailyInputError, type DailyMark, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 import { loadState, localToday } from './state.js'
 import { defaultLogDir, readServerErrors } from './error-log.js'
@@ -314,7 +315,7 @@ function dailyTools(options: McpOptions): Tool[] {
         + 'To edit the text or write a question, use daily_update / daily_add.'),
       inputSchema: { type: 'object', properties: { who: { type: 'string', description: t('Owner. Empty for everyone') }, date: DATE, read: { type: 'boolean', description: t('true for the text to read out: an issue with a summary shows the summary instead of its detailed lines for Today') } }, additionalProperties: false },
       run: async args => withDay(args, async (dir, date) => {
-        const daily = await loadDaily(dir, date, str(args.who).trim() || undefined, { read: args.read === true })
+        const daily = await loadDaily(dir, date, str(args.who).trim() || undefined, { read: args.read === true, readers: replyReaders() })
         const stale = new Set(daily.stale.ids)
         const marks = new Map(daily.marks.map(m => [m.id, m]))
         const rows = daily.entries.map(e => `- [${e.id}] ${e.section} · ${e.who || t('no owner')} · ${e.text}${e.origin === 'auto' ? '' : e.origin === 'manual' ? t(' (added line)') : t(' (edited line)')}${updatedNote(e.updated, daily.date)}${stale.has(e.id) ? t(' (stale wait)') : ''}${markNote(marks.get(e.id))}`)
@@ -324,7 +325,10 @@ function dailyTools(options: McpOptions): Tool[] {
         // しるしを求める行なのに記録をつないでいない行も、件数と ID を出す（つなぐのはエージェントか人）
         const missing = daily.marks.filter(m => m.mark === 'missing').map(m => m.id)
         const missingWarn = missing.length ? `\n\n${t('{n} lines have no check record linked: {ids}. Record the checkpoint and pass its record ID as checks with daily_update.', { n: missing.length, ids: missing.join(', ') })}` : ''
-        return text(`${t('{text}\n\nLines ({where}):\n{rows}', { text: daily.text, where, rows: rows.join('\n') })}${warn}${missingWarn}`)
+        // 待ちのスレッドの返事の有無（返事が来ていれば、行を直すのはエージェントか人）
+        const replies = replyLines(Object.entries(daily.replies).map(([id, reply]) => ({ id, service: daily.threads[id] ?? '', reply })))
+        const replyWarn = replies.length ? `\n\n${replies.join('\n')}` : ''
+        return text(`${t('{text}\n\nLines ({where}):\n{rows}', { text: daily.text, where, rows: rows.join('\n') })}${warn}${missingWarn}${replyWarn}`)
       }),
     },
     {

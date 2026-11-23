@@ -232,6 +232,27 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     const link = page.locator('.daily-entry .thread-link', { hasText: 'Slack のスレッド ↗' })
     await expect(link).toHaveAttribute('href', thread)
     await expect(link).toHaveAttribute('target', '_blank')
+    // トークンを置いていない試験の server では、返事の有無は未確認と出る
+    const row = page.locator('.daily-entry').filter({ has: page.locator('.thread-link') }).first()
+    await expect(row.locator('.reply-chip')).toHaveText('返事は未確認')
+  })
+
+  test('Slack の口が答えた返事の有無を、スレッドのリンクの横に札で出す（返事あり・まだ・読めない）', async ({ page }) => {
+    const thread = 'https://example.slack.com/archives/C0123ABCD/p1700000000999999'
+    const res = await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: '〈B さんの確認待ち〉', thread },
+    })
+    const { entry } = await res.json() as { entry: { id: string } }
+    // 実際の Slack にはつながないので、server の答えの replies だけを差し替えて、画面の出し方を見る
+    await page.route('**/api/daily?*', async route => {
+      const body = await (await route.fetch()).json() as Record<string, unknown>
+      await route.fulfill({ json: { ...body, replies: { [entry.id]: { state: 'answered', by: 'B さん', at: '2026-10-30T10:05' } } } })
+    })
+    await openDaily(page)
+    const row = page.locator('.daily-entry').filter({ has: page.locator(`[data-entry="${entry.id}"]`) })
+    await expect(row.locator('.reply-chip')).toHaveText('返事あり：B さん 10/30 10:05')
+    await expect(row.locator('.reply-chip')).toHaveClass(/ok/)
   })
 
   test('デスクトップアプリの窓では、リンクを押すといつものブラウザの小さな窓で開き、Ctrl＋クリックならふつうのタブで開く', async ({ page }) => {

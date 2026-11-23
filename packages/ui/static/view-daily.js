@@ -23,6 +23,8 @@ let readMode = false
 let stale = { ids: /** @type {Set<string>} */ (new Set()), hours: 0 }
 /** 待ちのスレッドを結んだ行の、チャットの名前（行の ID → Slack など） */
 let threadNames = /** @type {Readonly<Record<string, string>>} */ ({})
+/** 待ちのスレッドに返事が来たか（行の ID → 答え）。読む口を差したチャットだけ入る */
+let threadReplies = /** @type {import('./types').Daily['replies']} */ ({})
 /** 行のしるし（server が、行につないだチェックの記録から決めたもの）。行の ID → しるし */
 let marks = /** @type {Map<string, import('./types').Daily['marks'][number]>} */ (new Map())
 
@@ -95,7 +97,23 @@ function threadLink(entry) {
   const url = webUrl(entry.thread)
   const service = threadNames[entry.id]
   if (!url || !service) return ''
-  return outLink(t('{service} thread', { service }), url, t('Open the thread you are waiting on: {url}', { url }), 'thread-link')
+  return outLink(t('{service} thread', { service }), url, t('Open the thread you are waiting on: {url}', { url }), 'thread-link') + replyChip(entry.id, service)
+}
+
+/**
+ * スレッドの返事の有無の札。返事あり（誰・いつ）＝ok / まだ＝wait / 読めない＝hole / 未接続＝色なし。本文は出さない
+ * @param {string} id
+ * @param {string} service
+ */
+function replyChip(id, service) {
+  const reply = threadReplies[id]
+  if (!reply) return ''
+  const [tone, label, title] = reply.state === 'answered'
+    ? ['ok', t('Replied: {by} {at}', { by: reply.by, at: reply.at.slice(5).replace('-', '/').replace('T', ' ') }), t('Update the line, since the answer came')]
+    : reply.state === 'waiting' ? ['wait', t('No reply yet'), '']
+      : reply.state === 'failed' ? ['hole', t('Could not read'), reply.reason]
+        : ['none', t('Reply not checked'), t('Not connected to {service}, so whether the answer came has not been checked', { service })]
+  return `<span class="chip ${tone} reply-chip" title="${esc(title)}"><span class="dot"></span>${esc(label)}</span>`
 }
 
 /**
@@ -206,6 +224,7 @@ export async function renderDaily(view, state) {
   }
   stale = { ids: new Set(daily.stale?.ids ?? []), hours: daily.stale?.hours ?? 0 }
   threadNames = daily.threads ?? {}
+  threadReplies = daily.replies ?? {}
   marks = new Map((daily.marks ?? []).map(m => [m.id, m]))
   const base = `/api/daily/${encodeURIComponent(date)}`
   view.innerHTML = `

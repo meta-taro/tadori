@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { addDaily, DailyInputError, loadDaily, updateDaily } from '../src/daily.js'
 import { nudge } from '../src/nudge.js'
+import { replyReaders } from '../src/replies.js'
 import type { ReplyReader } from '@tadori/core'
 
 // 架空の最小の案件。待ちの行に、返事を待っているチャットのスレッドの URL を結ぶ
@@ -68,5 +69,21 @@ describe('待ちの行のスレッド', () => {
     const failing: ReplyReader = { service: 'slack', check: async () => { throw new Error('missing_scope') } }
     const failed = await nudge(dir, { at: 'before-meeting', today: day, now: new Date(2026, 10, 20, 12, 0), staleWaits: true, readers: [failing] })
     expect(failed.text).toContain('m1：Slack のスレッドを読めませんでした（missing_scope）')
+  })
+})
+
+describe('返事を読む口の差し方', () => {
+  test('TADORI_SLACK_TOKEN を置いたときだけ Slack の口を差す（置いていなければ未接続）', () => {
+    expect(replyReaders({}).map(r => r.service)).toEqual([])
+    expect(replyReaders({ TADORI_SLACK_TOKEN: '  ' }).map(r => r.service)).toEqual([])
+    expect(replyReaders({ TADORI_SLACK_TOKEN: 'xoxb-test' }).map(r => r.service)).toEqual(['slack'])
+  })
+
+  test('1 日の進行は、読む口を渡したときだけ確かめて replies に入れる（渡さなければチャットへつながない）', async () => {
+    const answered: ReplyReader = { service: 'slack', check: async () => ({ state: 'answered', by: 'A さん', at: '2026-11-20T10:05' }) }
+    expect((await loadDaily(dir, day)).replies).toEqual({})
+    const daily = await loadDaily(dir, day, undefined, { readers: [answered] })
+    expect(daily.replies).toEqual({ m1: { state: 'answered', by: 'A さん', at: '2026-11-20T10:05' } })
+    expect(daily.threads).toEqual({ m1: 'Slack' })
   })
 })

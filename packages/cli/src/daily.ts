@@ -1,7 +1,7 @@
 import './i18n.js'
 import {
-  BADGE_TONES, buildDaily, carriedOver, checkMarkOf, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
-  parseThread, readAloud, THREAD_SERVICE_NAMES, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection,
+  BADGE_TONES, buildDaily, checkReply, carriedOver, checkMarkOf, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
+  parseThread, readAloud, THREAD_SERVICE_NAMES, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection, type ReplyCheck, type ReplyReader,
 } from '@tadori/core'
 import { checkMarkText, checkTagsOf, dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
@@ -42,6 +42,8 @@ export interface Daily {
   readonly marks: readonly DailyMark[]
   /** 待ちのスレッドを結んだ行の、チャットの名前（行の ID → Slack など）。画面のリンクの表示名に使う。読めない URL の行は入れない */
   readonly threads: Readonly<Record<string, string>>
+  /** 待ちのスレッドに返事が来たか（行の ID → 答え）。読む口を渡して確かめたときだけ入る。本文は持たない */
+  readonly replies: Readonly<Record<string, ReplyCheck>>
 }
 
 export interface DailyMark {
@@ -116,6 +118,11 @@ export interface DailyView {
   readonly read?: boolean
   /** 古い待ちの行を数えるときの「いま」（試験で時刻を決めるため。省けば今の時刻） */
   readonly now?: Date
+  /**
+   * 待ちのスレッドに返事が来たかを読む口。渡したときだけ確かめて replies に入れる（画面と MCP の daily が渡す）。
+   * 省けばチャットへはつながない（試験や、nudge のように自分で確かめるところ）
+   */
+  readonly readers?: readonly ReplyReader[]
 }
 
 export async function loadDaily(dir: string, date: string, who?: string, view: DailyView = {}): Promise<Daily> {
@@ -129,11 +136,14 @@ export async function loadDaily(dir: string, date: string, who?: string, view: D
   const runs = runsById(await readCheckpointLog(dir))
   const marks = marksOf(shown, runs, format)
   const markById = new Map(marks.map(m => [m.id, m.mark]))
-  const threads = Object.fromEntries(shown.flatMap(e => {
+  const threaded = shown.flatMap(e => {
     const thread = parseThread(e.thread ?? '')
-    return thread ? [[e.id, THREAD_SERVICE_NAMES[thread.service]]] : []
-  }))
-  return { date, threads, text: formatEntries(spoken, project, date, format, { showWho: !who, marks: markById, runs }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
+    return thread ? [{ id: e.id, thread }] : []
+  })
+  const threads = Object.fromEntries(threaded.map(({ id, thread }) => [id, THREAD_SERVICE_NAMES[thread.service]]))
+  const readers = view.readers
+  const replies = readers ? Object.fromEntries(await Promise.all(threaded.map(async ({ id, thread }) => [id, await checkReply(thread, readers)] as const))) : {}
+  return { date, threads, replies, text: formatEntries(spoken, project, date, format, { showWho: !who, marks: markById, runs }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
     whoMarks: who ? [] : [...new Set(shown.map(e => whoMark(e.who, format)).filter(Boolean))],
     stale: { ids: staleWaits(shown, view.now ?? new Date(), staleRuleOf(format)).map(e => e.id), hours: staleRuleOf(format).hours }, marks }
 }

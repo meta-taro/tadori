@@ -1,8 +1,8 @@
 import './i18n.js'
-import { checkReply, checklistOf, checkpointsOf, coverageOf, loadProject, parseThread, readCheckpointLog, runsOn, stagedDigest, STAGED_CHECKPOINT, t, THREAD_SERVICE_NAMES, type Checkpoint, type Coverage, type ReplyCheck, type ReplyReader } from '@tadori/core'
+import { checkReply, checklistOf, checkpointsOf, coverageOf, loadProject, parseThread, readCheckpointLog, runsOn, stagedDigest, STAGED_CHECKPOINT, t, THREAD_SERVICE_NAMES, type Checkpoint, type Coverage, type ReplyReader } from '@tadori/core'
 import { loadDaily, localStamp } from './daily.js'
 import { listJoin } from './i18n.js'
-import { replyReaders } from './replies.js'
+import { replyLines, replyReaders } from './replies.js'
 
 /**
  * 節目の呼び忘れを知らせる（tadori nudge）。エージェントのフック（Claude Code の hooks など）や定時の起動から呼んでもらう。
@@ -102,21 +102,7 @@ async function staleWaitShortfall(dir: string, request: NudgeRequest): Promise<s
     const thread = parseThread(daily.entries.find(e => e.id === id)?.thread ?? '')
     return thread ? [checkReply(thread, readers).then(reply => ({ id, service: THREAD_SERVICE_NAMES[thread.service], reply }))] : []
   }))
-  const unconnected = checked.filter(c => c.reply.state === 'unconnected').map(c => t('{id} ({service})', { id: c.id, service: c.service }))
-  const lines = [
-    shortfall,
-    ...checked.flatMap(c => replyText(c.id, c.service, c.reply)),
-    ...(unconnected.length ? [t('{threads}: not connected to the chat, so whether the answer came has not been checked', { threads: listJoin(unconnected) })] : []),
-  ]
-  return lines.join(t('. '))
-}
-
-/** 1 つのスレッドの確かめた結果の文（未接続はまとめて出すので、ここでは出さない） */
-function replyText(id: string, service: string, reply: ReplyCheck): string[] {
-  if (reply.state === 'answered') return [t('{id}: {by} replied in the {service} thread ({at}). Update the line', { id, service, by: reply.by, at: reply.at.replace('T', ' ') })]
-  if (reply.state === 'waiting') return [t('{id}: no answer yet in the {service} thread', { id, service })]
-  if (reply.state === 'failed') return [t('{id}: could not read the {service} thread ({reason})', { id, service, reason: reply.reason })]
-  return []
+  return [shortfall, ...replyLines(checked)].join(t('. '))
 }
 
 export async function nudge(dir: string, request: NudgeRequest): Promise<Nudge> {

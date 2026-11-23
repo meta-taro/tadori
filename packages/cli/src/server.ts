@@ -16,6 +16,7 @@ import { docView, DocRefused } from './mcp-docs.js'
 import { collectProjects, readRecentProjects } from './projects.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
 import { AgentActionError, parseAgentAction } from './agent.js'
+import { replyReaders } from './replies.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 
 export interface ServerOptions {
@@ -247,7 +248,7 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
     if (!isDay(date)) throw new HttpError(400, t('Give the date as YYYY-MM-DD'))
     const who = url.searchParams.get('who')?.trim()
     // read=1：読み上げの文（課題ごとの要約があれば、その課題の今日の細かい行の代わりに要約を出す）
-    return sendJson(res, 200, await loadDaily(dir, date, who || undefined, { read: url.searchParams.get('read') === '1' }))
+    return sendJson(res, 200, await loadDaily(dir, date, who || undefined, { read: url.searchParams.get('read') === '1', readers: replyReaders() }))
   }
 
   // 1 日の進行を作る・足す・直す・消す（日ごとのファイルに書き、git リポジトリなら commit）
