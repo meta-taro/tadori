@@ -274,6 +274,8 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     const row = page.locator('.daily-entry').filter({ has: page.locator(`[data-entry="${entry.id}"]`) })
     await expect(row.locator('.reply-chip')).toHaveText('返事あり：B さん 10/30 10:05')
     await expect(row.locator('.reply-chip')).toHaveClass(/ok/)
+    // 描き直しの読み込みが試験の終わりをまたいで差し替えに入らないよう、外してから終える
+    await page.unrouteAll({ behavior: 'ignoreErrors' })
   })
 
   test('デスクトップアプリの窓では、リンクを押すといつものブラウザの小さな窓で開き、Ctrl＋クリックならふつうのタブで開く', async ({ page }) => {
