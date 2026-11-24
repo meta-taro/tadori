@@ -68,6 +68,8 @@ function renderChrome(key) {
   })
   renderWhoFilter()
   renderNavBadges(waits)
+  // 狭い窓では案内が横に送る 1 段になるので、開いている画面の案内を見える所へ寄せる（件数の札を足して幅が決まってから）
+  revealCurrentNav()
 }
 
 /** 上の帯の「担当」：人の表と WBS の担当から選ぶ。選ぶと、どの画面もその人の分だけになる */
@@ -89,6 +91,20 @@ document.addEventListener('click', e => {
 })
 // エージェントが専用カーソルで人を切り替えたとき（agent.js の filter）
 window.addEventListener('tadori-who', () => route())
+
+/**
+ * 狭い窓で案内が横に送る 1 段になっているとき、開いている画面の案内が段の真ん中に来るまで送る。
+ * 段が横に余っていない（広い窓・縦の列）ときは何もしない
+ */
+function revealCurrentNav() {
+  const strip = document.querySelector('aside')
+  const current = document.querySelector('nav a[aria-current="page"]')
+  if (!strip || !(current instanceof HTMLElement) || strip.scrollWidth <= strip.clientWidth) return
+  const stripBox = strip.getBoundingClientRect()
+  const box = current.getBoundingClientRect()
+  // 段の真ん中に寄せる（両隣の画面の案内も見える）
+  strip.scrollLeft += (box.left + box.width / 2) - (stripBox.left + stripBox.width / 2)
+}
 
 /**
  * 左メニューに件数のバッジを出す。0 のときは出さない（全部直せば消える）。

@@ -441,12 +441,7 @@
 
   @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
   @media (max-width: 900px) {
-    .app { grid-template-columns:1fr; }
-    aside { flex-direction:row; align-items:center; flex-wrap:wrap; border-right:none; border-bottom:1px solid var(--hairline); }
-    nav { flex-direction:row; }
-    .aside-foot, .project { display:none; }
     .two, form.add { grid-template-columns:1fr; }
-    main, .topbar { padding-left:16px; padding-right:16px; }
   }
 
   /* ---- MVP で足したもの ---- */
@@ -836,4 +831,21 @@
   .cp-run > summary { display:flex; flex-wrap:wrap; gap:6px 10px; }
   .cp-target { flex-basis:100%; }
   .cp-rules { display:block; overflow-x:auto; }
+}
+
+/* ---- 幅の狭い窓（スマホほどの幅） ----
+   左の案内は上の 1 段に畳み、折り返さずに横へ送る（本文に重ならない）。
+   この塊はファイルの最後に置く：途中で左の列の幅を決め直している所より後でないと、狭い幅でも 2 列のままになる */
+@media (max-width: 760px) {
+  .app { grid-template-columns:1fr; }
+  aside { flex-direction:row; align-items:center; gap:6px; padding:6px 12px; border-right:none; border-bottom:1px solid var(--hairline);
+    overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; }
+  aside .brand { flex:none; padding:4px 6px 4px 0; }
+  .aside-foot, .project { display:none; }
+  nav { flex-direction:row; flex:none; gap:2px; }
+  .nav-bottom { margin-top:0; padding-left:6px; border-left:1px solid var(--hairline); }
+  nav a { padding:6px 9px; }
+  nav a[aria-current="page"] { box-shadow:inset 0 -2px 0 var(--accent); }
+  main, .topbar { padding-left:16px; padding-right:16px; }
+  .topbar .jump { flex-basis:100%; max-width:none; min-width:0; }
 }

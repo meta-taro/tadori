@@ -18,6 +18,27 @@ async function openDaily(page: Page): Promise<void> {
   await expect(page.locator('.daily-preview h3').first()).toContainText('10/30')
 }
 
+test.describe('幅の狭い窓', () => {
+  test('左の案内は上に 1 行で畳まれ、本文に重ならず、ページが横に動かない', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await page.goto('/#daily')
+    await expect(page.locator('#view h1').first()).toBeVisible()
+    const aside = await page.locator('aside').boundingBox()
+    const main = await page.locator('.main').boundingBox()
+    // 左の案内は窓の幅いっぱいの上の段になり、本文はその下から始まる
+    expect(aside?.width ?? 0).toBeGreaterThan(380)
+    expect(main?.x ?? -1).toBe(0)
+    expect(main?.y ?? 0).toBeGreaterThanOrEqual((aside?.y ?? 0) + (aside?.height ?? 0) - 1)
+    // 案内は 1 行（折り返さず横に送る）
+    expect(aside?.height ?? 999).toBeLessThan(70)
+    // ページ全体は横にはみ出さない
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    // 開いている画面の案内は、上の段の見える所にある
+    const current = await page.locator('nav a[aria-current="page"]').boundingBox()
+    expect((current?.x ?? -1) + (current?.width ?? 0)).toBeLessThanOrEqual(390)
+  })
+})
+
 test.describe('上の帯と左の列は動かない', () => {
   test('中身が長い画面でスクロールしても、上の帯は窓の上に残り、動くのは上の帯の下の中身だけ', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 600 })
