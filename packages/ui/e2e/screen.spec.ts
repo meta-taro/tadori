@@ -302,6 +302,30 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     await expect(link).toHaveAttribute('title', /Ctrl＋クリック/)
   })
 
+  test('小さな窓の命令を持たない古いアプリでは、リンクを押すとふつうのタブで開き、断りの知らせは出さない', async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { __invoked: string[], __TAURI__: unknown }
+      w.__invoked = []
+      const win = new Proxy({}, { get: () => () => Promise.resolve(false) })
+      w.__TAURI__ = {
+        window: { getCurrentWindow: () => win },
+        core: { invoke: (command: string, args?: { url?: string }) => {
+          w.__invoked.push(`${command} ${args?.url ?? ''}`.trim())
+          return command === 'peek_external' ? Promise.reject(new Error(`${command} not allowed. Command not found`)) : Promise.resolve([])
+        } },
+      }
+    })
+    await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: '古いアプリで課題を見た', links: [{ label: '古い課題', url: 'https://tracker.example.com/view/A-2' }] },
+    })
+    await openDaily(page)
+    await page.locator('.daily-entry .daily-link', { hasText: '古い課題 ↗' }).first().click()
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __invoked: string[] }).__invoked.filter(c => c.includes('A-2'))))
+      .toEqual(['peek_external https://tracker.example.com/view/A-2', 'open_external https://tracker.example.com/view/A-2'])
+    await expect(page.getByText('Command not found')).toHaveCount(0)
+  })
+
   test('足した行には最後に直した時刻を「HH:MM 更新」で出し、古いままの待ちの行には印と件数の知らせを出す', async ({ page }) => {
     const res = await page.request.post('/api/daily/2026-10-30/entries', {
       headers: { 'x-tadori': '1', 'content-type': 'application/json' },

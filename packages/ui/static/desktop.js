@@ -35,7 +35,11 @@ export function initDesktop() {
     const link = e.target instanceof Element ? e.target.closest('a[data-external]') : null
     if (!(link instanceof HTMLAnchorElement)) return
     e.preventDefault()
-    invoke(inBrowser ? 'open_external' : 'peek_external', { url: link.href }).catch(error => toast(String(error)))
+    const url = link.href
+    const openTab = () => invoke('open_external', { url }).catch(error => toast(String(error)))
+    if (inBrowser) { void openTab(); return }
+    // 小さな窓の命令を持たない古いアプリ（画面だけ新しい）でも、ふつうのタブで開けるようにする
+    invoke('peek_external', { url }).catch(openTab)
   }
   document.addEventListener('click', e => openLink(e, e.ctrlKey || e.metaKey || e.shiftKey))
   document.addEventListener('auxclick', e => { if (e.button === 1) openLink(e, true) })
