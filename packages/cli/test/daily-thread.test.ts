@@ -77,6 +77,8 @@ describe('返事を読む口の差し方', () => {
     expect(replyReaders({}).map(r => r.service)).toEqual([])
     expect(replyReaders({ TADORI_SLACK_TOKEN: '  ' }).map(r => r.service)).toEqual([])
     expect(replyReaders({ TADORI_SLACK_TOKEN: 'xoxb-test' }).map(r => r.service)).toEqual(['slack'])
+    expect(replyReaders({ TADORI_DISCORD_TOKEN: 'bot-test' }).map(r => r.service)).toEqual(['discord'])
+    expect(replyReaders({ TADORI_SLACK_TOKEN: 'xoxb-test', TADORI_DISCORD_TOKEN: 'bot-test' }).map(r => r.service)).toEqual(['slack', 'discord'])
   })
 
   test('1 日の進行は、読む口を渡したときだけ確かめて replies に入れる（渡さなければチャットへつながない）', async () => {
