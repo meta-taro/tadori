@@ -2,6 +2,7 @@ import './i18n.js'
 import {
   BADGE_TONES, buildDaily, checkReply, carriedOver, checkMarkOf, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
   parseThread, readAloud, THREAD_SERVICE_NAMES, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection, type ReplyCheck, type ReplyReader,
+  shortOf, type Item, type Task,
 } from '@tadori/core'
 import { checkMarkText, checkTagsOf, dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
@@ -25,7 +26,7 @@ export interface Daily {
   /** 画面の頭に出す説明（案件の daily-format.tsv の intro。空なら画面の既定の説明） */
   readonly intro: string
   /** 文の中に出る WBS・課題の書き方と、画面での飛び先（画面が文字を押せるリンクにする。文そのものには URL を足さない） */
-  readonly links: readonly { readonly text: string; readonly href: string }[]
+  readonly links: readonly DailyTextLink[]
   /** 文の中の印の書き方（例：［済］）。画面が小さな札の見た目にする */
   readonly tags: readonly string[]
   /** 担当で絞っていないときに、行の頭に付く担当名の書き方（例：設計担当：）。画面が札の見た目にする。絞っているときは空 */
@@ -44,6 +45,24 @@ export interface Daily {
   readonly threads: Readonly<Record<string, string>>
   /** 待ちのスレッドに返事が来たか（行の ID → 答え）。読む口を渡して確かめたときだけ入る。本文は持たない */
   readonly replies: Readonly<Record<string, ReplyCheck>>
+  /**
+   * 課題の正本の工程表の行（課題 ID → 名前と URL）。案件の daily-format.tsv の issue_link_field に書いた列から読む。
+   * 画面は、課題の付いた行と課題ごとの要約に「名前 ↗」を出す
+   */
+  readonly issueLinks: Readonly<Record<string, { readonly label: string; readonly url: string }>>
+  /** issue_link_field を決めているのに、その列に URL の無い課題（台帳に無い課題も含む）。決めていなければ空 */
+  readonly missingIssueLinks: readonly string[]
+}
+
+/**
+ * 文の中の WBS・課題の書き方と飛び先。external＝正本（外のページ）へ飛ぶ。
+ * assumed＝正本の工程表に行の無い作業（ほかの作業には正本の URL があるのに、この作業には無い。想定で置いた作業）
+ */
+export interface DailyTextLink {
+  readonly text: string
+  readonly href: string
+  readonly external?: boolean
+  readonly assumed?: boolean
 }
 
 export interface DailyMark {
@@ -68,9 +87,19 @@ const pad2 = (n: number) => String(n).padStart(2, '0')
 export const localStamp = (now: Date = new Date()): string =>
   `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}T${pad2(now.getHours())}:${pad2(now.getMinutes())}`
 
-/** 行がつながる WBS と課題の、文の中の書き方 → 画面の飛び先（WBS はプロダクトのその行、課題はつながりを辿る） */
-export function linksOf(entries: readonly DailyEntry[], format: DailyFormat): Daily['links'] {
-  const wbs = [...new Set(entries.flatMap(e => e.wbs))].map(id => ({ text: wbsLabel(id, format), href: `#browse-${id}` }))
+/**
+ * 行がつながる WBS と課題の、文の中の書き方 → 画面の飛び先。
+ * WBS は、正本の工程表の行の URL（wbs.tsv の url 列）があればそこへ、無ければプロダクトのその行へ。課題はつながりを辿る
+ */
+export function linksOf(entries: readonly DailyEntry[], format: DailyFormat, tasks: readonly Task[] = []): Daily['links'] {
+  const urlOf = new Map(tasks.flatMap(task => (task.url ? [[task.id, task.url] as const] : [])))
+  // 正本の URL を持つ作業が 1 つでもある案件だけ、URL の無い作業を「想定」と見分ける（どれにも無い案件では印を出さない）
+  const hasSource = urlOf.size > 0
+  const wbs = [...new Set(entries.flatMap(e => e.wbs))].map((id): DailyTextLink => {
+    const url = urlOf.get(id)
+    if (url) return { text: wbsLabel(id, format), href: url, external: true }
+    return { text: wbsLabel(id, format), href: `#browse-${id}`, ...(hasSource ? { assumed: true } : {}) }
+  })
   const issues = [...new Set(entries.flatMap(e => (e.issue ? [e.issue] : [])))].map(id => ({ text: id, href: `#trace-${id}` }))
   return [...wbs, ...issues]
 }
@@ -110,6 +139,22 @@ async function mergedEntries(dir: string, date: string): Promise<{ entries: Dail
   return { entries: mergeDaily(existing, await freshEntries(dir, date)), saved: existing.length > 0 }
 }
 
+/** 行に付いた課題の、正本の工程表の行（案件が issue_link_field で列を決めたときだけ） */
+export function issueLinksOf(items: readonly Item[], entries: readonly DailyEntry[], format: DailyFormat): Pick<Daily, 'issueLinks' | 'missingIssueLinks'> {
+  const field = format.issue_link_field.trim()
+  if (!field) return { issueLinks: {}, missingIssueLinks: [] }
+  const ids = [...new Set(entries.flatMap(e => (e.issue ? [e.issue] : [])))]
+  const urlOf = (id: string) => {
+    const value = (items.find(i => i.id === id)?.fields[field] ?? '').trim()
+    return /^https?:\/\//i.test(value) ? value : ''
+  }
+  const label = format.issue_link_label.trim() || 'WBS'
+  return {
+    issueLinks: Object.fromEntries(ids.flatMap(id => (urlOf(id) ? [[id, { label, url: urlOf(id) }] as const] : []))),
+    missingIssueLinks: ids.filter(id => !urlOf(id)),
+  }
+}
+
 const visible = (e: DailyEntry) => e.origin !== 'removed'
 const mine = (who?: string) => (e: DailyEntry) => !who || ownersOf(e.who).includes(who)
 
@@ -143,7 +188,7 @@ export async function loadDaily(dir: string, date: string, who?: string, view: D
   const threads = Object.fromEntries(threaded.map(({ id, thread }) => [id, THREAD_SERVICE_NAMES[thread.service]]))
   const readers = view.readers
   const replies = readers ? Object.fromEntries(await Promise.all(threaded.map(async ({ id, thread }) => [id, await checkReply(thread, readers)] as const))) : {}
-  return { date, threads, replies, text: formatEntries(spoken, project, date, format, { showWho: !who, marks: markById, runs }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
+  return { date, threads, replies, text: formatEntries(spoken, project, date, format, { showWho: !who, marks: markById, runs }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format, project.tasks), ...issueLinksOf(project.items, shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
     whoMarks: who ? [] : [...new Set(shown.map(e => whoMark(e.who, format)).filter(Boolean))],
     stale: { ids: staleWaits(shown, view.now ?? new Date(), staleRuleOf(format)).map(e => e.id), hours: staleRuleOf(format).hours }, marks }
 }
@@ -347,7 +392,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
 async function withIssueHead(dir: string, entry: DailyEntry): Promise<DailyEntry> {
   if (!entry.issue || entry.text.startsWith(`${entry.issue} `) || entry.text === entry.issue) return entry
   const item = (await loadProject(dir)).items.find(i => i.id === entry.issue)
-  const name = item ? (item.fields.short || item.title) : ''
+  const name = item ? (shortOf(item.id, item.fields.short) || item.title) : ''
   return { ...entry, text: `${entry.issue} ${name ? `${name} ` : ''}${entry.text}` }
 }
 

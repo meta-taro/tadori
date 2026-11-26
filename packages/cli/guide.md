@@ -43,7 +43,7 @@ The plan table is `ledger/wbs.tsv`. To call it something else on the screen (e.g
 Columns of `ledger/wbs.tsv`: `id` (starts with W), `phase` (phase ID), `name`, `start`, `end` (YYYY-MM-DD), `status` (an ID from `.tadori/statuses.tsv`; a name from there also works).
 
 The order of `.tadori/statuses.tsv` matters: the 1st row means "not started yet", and a status with tone `ok` means "done". Every other status counts as started and not done (so it can show days late). A status that is not in the table counts the same way, and `tadori check` and the Product screen list it.
-Optional columns: `owner` and `issue` (the ID of the issue this work is for). They are used for each person's daily progress (topic: daily).
+Optional columns: `owner`, `issue` (the ID of the issue this work is for) and `url` (the URL of this work's row in the source WBS). They are used for each person's daily progress (topic: daily). Work with a `url` links from the WBS tag in the daily progress to that row in the source WBS. When some work has a `url`, work without one is shown as assumed (not in the source WBS).
 WBS tasks can also be traced as ledger rows (kind `W`). Do not copy them into the ledger.
 
 **md-business verification sheets are read directly.** List them in `.tadori/sheets.tsv` (columns `path kind id title refs`) and each row of the sheet becomes a ledger row, without copying:
@@ -205,6 +205,7 @@ The day a status changed is read from the WBS git history (the content of each c
 | `today_label`, `next_label`, `consult_label` | `Today`, `Next working day`, `Questions` | names used to split the notes when `per-section` |
 | `upkeep` | `Ledger upkeep` | heading for adding or editing ledger rows (after things to discuss, before the notes; kept apart from today's work) |
 | `upkeep_mode` | `show` | whether to show ledger upkeep (`show`, `hide`) |
+| `issue_link_field`, `issue_link_label` | (empty), `WBS` | the ledger column holding the URL of an issue's row in the source WBS, and the link's name. When set, lines with that issue and the issue's summary show "WBS ↗", and issues without a URL are reported on the screen and in `tadori nudge` (summary) |
 | `tag_done`, `tag_doing`, `tag_plan`, `tag_wait`, `tag_upkeep`, `tag_checked` | `Done`, `In progress`, `Planned`, `Waiting`, `Upkeep`, `Checked` | words for the mark at the start of a line (empty means that mark is not shown). The mark follows where the line came from: changed to done today = done, changed to an in-between status = doing, next working day = plan, ledger upkeep = upkeep, check log = checked. For a line waiting on someone else's reply or review, a person or agent sets wait (it then counts as a waiting line, including the staleness check). People and agents can change it per line |
 | `tag_format` | `[{tag}] ` | how the mark is written |
 | `who_format` | `{who}: ` | how the owner name is written at the start of a line in text not filtered by owner (everyone's). Empty means it is not added |

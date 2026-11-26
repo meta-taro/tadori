@@ -105,9 +105,16 @@ async function staleWaitShortfall(dir: string, request: NudgeRequest): Promise<s
   return [shortfall, ...replyLines(checked)].join(t('. '))
 }
 
+/** その日の 1 日の進行で、正本の WBS の行が台帳に無い課題（案件が issue_link_field を決めたときだけ）。無ければ空 */
+async function missingIssueLinkText(dir: string, today: string): Promise<string> {
+  const { missingIssueLinks } = await loadDaily(dir, today)
+  if (!missingIssueLinks.length) return ''
+  return t('The source WBS row is not in the ledger for these issues in the daily progress for today: {ids}. Find the row in the source WBS and write its URL in the ledger', { ids: missingIssueLinks.join(', ') })
+}
+
 export async function nudge(dir: string, request: NudgeRequest): Promise<Nudge> {
   const at = (request.at ?? '').trim()
-  if (!at) return { ok: true, block: false, text: await summaryText(dir, request.today) }
+  if (!at) return { ok: true, block: false, text: [await summaryText(dir, request.today), await missingIssueLinkText(dir, request.today)].filter(Boolean).join('\n') }
   const project = await loadProject(dir)
   const checkpoint = checkpointsOf(project).find(c => c.id === at)
   if (!checkpoint) return { ok: false, block: false, text: t('The checkpoint "{at}" is not defined ({allowed})', { at, allowed: checkpointsOf(project).map(c => c.id).join(' / ') }) }

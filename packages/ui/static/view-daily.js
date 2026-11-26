@@ -27,6 +27,10 @@ let threadNames = /** @type {Readonly<Record<string, string>>} */ ({})
 let threadReplies = /** @type {import('./types').Daily['replies']} */ ({})
 /** 行のしるし（server が、行につないだチェックの記録から決めたもの）。行の ID → しるし */
 let marks = /** @type {Map<string, import('./types').Daily['marks'][number]>} */ (new Map())
+/** 課題の正本の工程表の行（課題 ID → 名前と URL）。案件が daily-format.tsv の issue_link_field で列を決めたときだけ入る */
+let issueLinks = /** @type {import('./types').Daily['issueLinks']} */ ({})
+/** WBS の作業の、正本の工程表の行の URL（作業 ID → URL）。どれにも無い案件では空 */
+let taskUrls = /** @type {Map<string, string>} */ (new Map())
 
 const MARK_LOOK = /** @type {const} */ ({ ok: ['ok', 'Check recorded'], open: ['hole', 'Check has open misses'], missing: ['wait', 'No check record'] })
 
@@ -139,8 +143,16 @@ function entryRow(entry, no, origins = {}, isAll = true, isSummary = entry.secti
   const badge = ORIGIN_LABEL[entry.origin] ? `<span class="chip mono">${esc(t(ORIGIN_LABEL[entry.origin] ?? ''))}</span>` : ''
   // 課題は「つながりを辿る」へ、WBS は「プロダクト」のその行へ（会議の場で、その場から開けるように）
   const issue = entry.issue ? `<a class="cond mono" href="#trace-${encodeURIComponent(entry.issue)}" title="${esc(t('Trace from {id}', { id: entry.issue }))}">${esc(entry.issue)}</a>` : ''
-  const wbs = entry.wbs.map(id => idPill(id, `#browse-${encodeURIComponent(id)}`, t('Open {id} in the WBS', { id }))).join('')
+  // WBS は、正本の工程表の行の URL があればその行へ（新しいタブ）、無ければプロダクトのその行へ。ほかの作業に URL がある案件で無い作業は「想定」と出す
+  const wbs = entry.wbs.map(id => {
+    const url = webUrl(taskUrls.get(id))
+    if (url) return outLink(id, url, t('Open {id} in the source WBS: {url}', { id, url }), 'mono')
+    const assumed = taskUrls.size ? `<span class="chip wait" title="${esc(t('Not in the source WBS (an assumed task)'))}">${esc(t('Assumed'))}</span>` : ''
+    return idPill(id, `#browse-${encodeURIComponent(id)}`, t('Open {id} in the WBS', { id })) + assumed
+  }).join('')
+  const issueLink = entry.issue ? issueLinks[entry.issue] : undefined
   const origin = originLink(entry.issue ? origins[entry.issue] : undefined)
+    + (issueLink && webUrl(issueLink.url) ? outLink(issueLink.label, webUrl(issueLink.url), t('Open the source WBS row of {id}: {url}', { id: entry.issue ?? '', url: issueLink.url })) : '')
   // 行のバッジ（人かエージェントが書いた札）。本文とは別に、tone の色で出す
   const badges = (entry.badges ?? []).map(b => `<span class="chip ${esc(b.tone)}"><span class="dot"></span>${esc(b.text)}</span>`).join('')
   // 古いままの待ちの行は、会の前に直す行と一目で分かるよう、要注意の札と枠で出す
@@ -226,6 +238,8 @@ export async function renderDaily(view, state) {
   threadNames = daily.threads ?? {}
   threadReplies = daily.replies ?? {}
   marks = new Map((daily.marks ?? []).map(m => [m.id, m]))
+  issueLinks = daily.issueLinks ?? {}
+  taskUrls = new Map(state.tasks.flatMap(task => (task.url ? [[task.id, task.url]] : [])))
   const base = `/api/daily/${encodeURIComponent(date)}`
   view.innerHTML = `
     <h1>${esc(t('Daily progress'))}</h1>
@@ -240,6 +254,7 @@ export async function renderDaily(view, state) {
       </div>
     </div>
     ${stale.ids.size ? `<div class="note daily-stale-note" role="status">${ICON_INFO}<span>${esc(t('{n} waiting rows have not been updated for {hours} hours or more. Update them before the meeting.', { n: stale.ids.size, hours: stale.hours }))}</span></div>` : ''}
+    ${daily.missingIssueLinks?.length ? `<div class="note daily-missing-links" role="status">${ICON_INFO}<span>${esc(t('The source WBS row is not in the ledger for these issues: {ids}. Write its URL in the ledger', { ids: daily.missingIssueLinks.join(', ') }))}</span></div>` : ''}
     ${daily.saved ? '' : `<div class="note">${ICON_INFO}<span>${esc(t('This draft is not saved to the daily file yet. It is saved as soon as you edit or add a row.'))}</span></div>`}
     <div class="panel daily-sheet">
       ${sectionsHtml(daily.entries, state.origins ?? {})}

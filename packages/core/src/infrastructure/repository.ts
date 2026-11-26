@@ -195,6 +195,7 @@ function toTask({ row, line }: NumberedRow, problems: string[]): Task {
     ...(start && end ? { start, end } : {}),
     ...(row.owner?.trim() ? { owner: row.owner.trim() } : {}),
     ...(row.issue?.trim() ? { issue: row.issue.trim() } : {}),
+    ...(/^https?:\/\//i.test(row.url?.trim() ?? '') ? { url: (row.url ?? '').trim() } : {}),
     line,
   }
 }

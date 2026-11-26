@@ -43,6 +43,10 @@ export interface DailyFormat {
   readonly tag_wait: string
   readonly tag_upkeep: string
   readonly tag_checked: string
+  /** 課題（台帳の行）の、正本の工程表の行の URL を書いた列の名前（例：wbs_url）。空なら使わない。書けば、課題の付いた行に「{issue_link_label} ↗」を出し、無い課題を知らせる */
+  readonly issue_link_field: string
+  /** 課題の正本のリンクの名前 */
+  readonly issue_link_label: string
   /** 印の書き方（{tag}＝印の言葉） */
   readonly tag_format: string
   /** 担当で絞っていないときに、読み上げる行の頭に付ける担当名の書き方（{who}＝担当）。空なら付けない */
@@ -88,6 +92,8 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   get tag_wait() { return t('Waiting') },
   get tag_upkeep() { return t('Upkeep') },
   get tag_checked() { return t('Checked') },
+  issue_link_field: '',
+  issue_link_label: 'WBS',
   get tag_format() { return t('[{tag}] ') },
   get who_format() { return t('{who}: ') },
   get badge_format() { return t(' <{badge}>') },

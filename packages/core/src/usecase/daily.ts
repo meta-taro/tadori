@@ -53,11 +53,20 @@ export function nextWorkday(day: string): string {
   return fromUtc(d)
 }
 
+/**
+ * 課題の短い名前（台帳の short 列）。行の頭は「課題番号 短い名前」の形なので、short が課題番号で始まっていれば外す
+ * （外さないと「BL943 BL943 …」と重なる）
+ */
+export function shortOf(id: string, short: string | undefined): string {
+  const text = (short ?? '').trim()
+  return text.startsWith(id) ? text.slice(id.length).replace(/^[\s:：・-]+/, '') : text
+}
+
 /** WBS の行の課題：その行の issue 列に書かれた台帳の行。推測でつながない（書かれていなければ課題なし） */
 function issueOf(project: Project, task: Task): DailyLine['issue'] {
   if (!task.issue) return undefined
   const item = project.items.find(i => i.id === task.issue)
-  const short = item?.fields.short?.trim()
+  const short = item ? shortOf(item.id, item.fields.short) : undefined
   return item ? { id: item.id, kind: item.kind, title: item.title, source: item.source, ...(short ? { short } : {}) } : undefined
 }
 

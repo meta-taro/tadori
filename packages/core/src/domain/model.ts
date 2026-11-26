@@ -43,6 +43,8 @@ export interface Task {
   readonly owner?: string
   /** この作業の課題の ID（wbs.tsv の issue 列。台帳の行の ID。書かなくてもよい）。1 日の進行で、同じ課題の作業を 1 件にまとめる */
   readonly issue?: string
+  /** 正本の工程表（スプレッドシートなど）のこの作業の行の URL（wbs.tsv の url 列。書かなくてもよい）。1 日の進行の WBS の札から正本の行へ飛ぶ。無ければ tadori の中の WBS へ */
+  readonly url?: string
   /** wbs.tsv の何行目か */
   readonly line?: number
 }

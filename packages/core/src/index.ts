@@ -14,7 +14,7 @@ export { summarizeProject, type ProjectSummary, type LateTask, type TaskFact } f
 export { lessonsByFailure, FAILURE_KINDS, type FailureLessons } from './usecase/lessons.js'
 export { validatePhases, validateStatuses } from './usecase/settings.js'
 export { resolvedItems, type ResolvedItem } from './usecase/history.js'
-export { buildDaily, nextWorkday, ownersOf, type DailyLine, type DailySheet, type StatusChange } from './usecase/daily.js'
+export { buildDaily, shortOf, nextWorkday, ownersOf, type DailyLine, type DailySheet, type StatusChange } from './usecase/daily.js'
 export { readStatusChanges } from './infrastructure/status-history.js'
 export { BADGE_TONES, carriedOver, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, memberOf, checkMarkOf, isWaiting, mergeDaily, readAloud, staleWaits, withoutSummaries, type CheckMark, type StaleRule, type BadgeTone, type DailyBadge, type DailyEntry, type DailyLink, type DailyOrigin, type DailySection } from './usecase/daily-entries.js'
 export { isFor, type Member } from './domain/people.js'

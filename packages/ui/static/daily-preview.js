@@ -25,7 +25,7 @@ const escapeRegExp = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/
  * @param {readonly string[]} [whoMarks]
  */
 function inlineHtml(line, links, tags, whoMarks = []) {
-  const byText = new Map(links.map(l => [l.text, l.href]))
+  const byText = new Map(links.map(l => [l.text, l]))
   const words = [...tags, ...whoMarks, ...byText.keys()].filter(Boolean).sort((a, b) => b.length - a.length).map(escapeRegExp)
   // 「表示名：URL」（例：正本：…・QA表：…）は「表示名 ↗」に、名前の無い URL は「リンク ↗」にする。長い言葉を先に当てる
   const pattern = new RegExp([`(?:(${LABEL_PATTERN})：)?(${URL_PATTERN})`, ...words].join('|'), 'g')
@@ -49,7 +49,13 @@ function inlineHtml(line, links, tags, whoMarks = []) {
       // 印の書き方の前後の空白（英語の既定は「[済] 」のように後ろに空白がある）も外してから、括弧を外す
       html += `<span class="daily-pill">${esc(text.trim().replace(/^[［【[]|[］】\]]$/g, '') || text)}</span>`
     } else {
-      html += `<a class="daily-ref mono" href="${esc(byText.get(text))}">${esc(text)}</a>`
+      // 正本の工程表の行へ飛ぶ WBS は新しいタブで開く。正本に無い（想定の）作業は、そうと分かる見た目にする
+      const link = byText.get(text)
+      const href = link?.external ? webUrl(link.href) : link?.href
+      html += link?.external && href
+        ? `<a class="daily-ref mono" href="${esc(href)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(href)}">${esc(text)} ↗</a>`
+        : `<a class="daily-ref mono${link?.assumed ? ' assumed' : ''}" href="${esc(href ?? '')}"${link?.assumed ? ` title="${esc(t('Not in the source WBS (an assumed task)'))}"` : ''}>${esc(text)}</a>`
+
     }
   }
   return html + esc(line.slice(last))

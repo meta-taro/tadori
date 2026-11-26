@@ -34,6 +34,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'In progress': '作業中',
   'Planned': '予定',
   'Waiting': '待ち',
+  'The source WBS row is not in the ledger for these issues in the daily progress for today: {ids}. Find the row in the source WBS and write its URL in the ledger':
+    '今日の 1 日の進行で、次の課題は正本の WBS の行が台帳にありません：{ids}。正本の WBS でその行を探し、台帳に URL を書いてください',
   'Upkeep': '整備',
   'Checked': '確認',
   '[{tag}] ': '［{tag}］',

@@ -849,3 +849,6 @@
   main, .topbar { padding-left:16px; padding-right:16px; }
   .topbar .jump { flex-basis:100%; max-width:none; min-width:0; }
 }
+
+/* 正本の WBS に無い（想定で置いた）作業：破線の下線で見分ける */
+.daily-ref.assumed { text-decoration-style:dashed; }
