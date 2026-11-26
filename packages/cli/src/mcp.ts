@@ -285,7 +285,7 @@ function dailySchemas() {
     thread: { type: 'string', description: t('For a waiting line: the URL of the chat post you are waiting for an answer on (Slack, Discord, Google Chat, Teams, Chatwork or Mattermost). Only the URL is kept, not the text. The screen shows it as a link, and the notes and nudge name the chat. An empty string removes it when editing') },
     issue: { type: 'string', description: t('Issue ID (a ledger row)') },
     note: { type: 'string', description: t('A short remark to add to the notes (read when asked)') },
-    tag: { type: 'string', enum: ['', 'done', 'doing', 'plan', 'upkeep', 'checked'], description: t('Line tag: done = finished / doing = in progress / plan = planned / upkeep = ledger upkeep / checked = checked (empty for no tag)') },
+    tag: { type: 'string', enum: ['', 'done', 'doing', 'plan', 'wait', 'upkeep', 'checked'], description: t('Line tag: done = finished / doing = in progress / plan = planned / wait = waiting for a reply or review / upkeep = ledger upkeep / checked = checked (empty for no tag)') },
   }
   return { SECTION, DATE, ENTRY_FIELDS }
 }

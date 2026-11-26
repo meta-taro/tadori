@@ -10,7 +10,7 @@ export type { Member }
 
 /** today＝今日 / next＝次の作業日 / consult＝相談 */
 /** 行の印の種類（言葉は案件ごとに決める） */
-export const DAILY_TAGS = ['done', 'doing', 'plan', 'upkeep', 'checked'] as const
+export const DAILY_TAGS = ['done', 'doing', 'plan', 'wait', 'upkeep', 'checked'] as const
 
 /** バッジの色の意味（WBS のステータスの tone と同じ並び）。none＝ふつう / wait＝待ち / hole＝要注意 / ok＝よい */
 export const BADGE_TONES = ['none', 'wait', 'hole', 'ok'] as const
@@ -55,7 +55,7 @@ export interface DailyEntry {
   readonly origin: DailyOrigin
   /**
    * 行の印（やり終えたことか、これからのことかを一目で分けるため）。言葉は案件の daily-format.tsv で決める。
-   * done＝やり終えた / doing＝作業中 / plan＝予定 / upkeep＝台帳の整備 / checked＝確かめた
+   * done＝やり終えた / doing＝作業中 / plan＝予定 / wait＝相手の返事やレビューを待っている / upkeep＝台帳の整備 / checked＝確かめた
    */
   readonly tag?: string
   /** 自動の行がどの材料から来たか（作り直したとき同じものを見分ける。例：wbs:today:W-01） */
@@ -210,11 +210,11 @@ export interface StaleRule {
 const HOUR_MS = 60 * 60 * 1000
 
 /**
- * 待ちの行か。待ちと読むのは、人かエージェントが付けた印だけ：tone が wait のバッジか、案件が決めた語（daily-format.tsv の wait_words）を本文に含むか。
+ * 待ちの行か。待ちと読むのは、人かエージェントが付けた印だけ：行の印が wait か、tone が wait のバッジか、案件が決めた語（daily-format.tsv の wait_words）を本文に含むか。
  * tadori は本文の意味を推し量らない（語を決めていない案件では、バッジだけを見る）
  */
 export const isWaiting = (entry: DailyEntry, words: readonly string[]): boolean =>
-  (entry.badges ?? []).some(b => b.tone === 'wait') || words.some(w => w && entry.text.includes(w))
+  entry.tag === 'wait' || (entry.badges ?? []).some(b => b.tone === 'wait') || words.some(w => w && entry.text.includes(w))
 
 /**
  * 古いままの待ちの行（会議の前に直す行）。待ちの行のうち、最後に直してから hours 以上たったもの。

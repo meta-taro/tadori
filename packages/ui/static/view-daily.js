@@ -70,7 +70,7 @@ function readAloud(entries) {
 const ORIGIN_LABEL = { edited: 'Edited', manual: 'Added' }
 // 行の印（やり終えたことか、これからのことか）。文に出す言葉は案件の設定で決まる。画面の選択肢は意味で示す
 /** @type {Array<[string, string]>} */
-const TAGS = [['', 'No tag'], ['done', 'Done'], ['doing', 'In progress'], ['plan', 'Planned'], ['upkeep', 'Ledger upkeep'], ['checked', 'Checked']]
+const TAGS = [['', 'No tag'], ['done', 'Done'], ['doing', 'In progress'], ['plan', 'Planned'], ['wait', 'Waiting'], ['upkeep', 'Ledger upkeep'], ['checked', 'Checked']]
 const tagSelect = (/** @type {DailyEntry} */ entry) => `<select class="inline-select daily-tag" data-tag="${esc(entry.id)}" aria-label="${esc(t('Tag'))}">${TAGS.map(([v, l]) => `<option value="${v}" ${v === (entry.tag ?? '') ? 'selected' : ''}>${esc(t(l))}</option>`).join('')}</select>`
 
 /**

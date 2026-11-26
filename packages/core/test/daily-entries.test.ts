@@ -175,6 +175,11 @@ describe('staleWaits（古いままの待ちの行）', () => {
     expect(staleWaits(entries, now, rule).map(e => e.id)).toEqual(['m1', 'm2'])
   })
 
+  test('行の印が wait（待ち）の行も、待ちの行として古さを見る', () => {
+    const entries = [row('m1', { text: '再レビュー', tag: 'wait', updated: '2026-11-13T10:00' }), row('m2', { text: '再レビュー', tag: 'plan', updated: '2026-11-13T10:00' })]
+    expect(staleWaits(entries, now, rule).map(e => e.id)).toEqual(['m1'])
+  })
+
   test('hours が 0 なら何も返さない', () => {
     expect(staleWaits([row('m1', { text: '確認中', updated: '2026-11-01T00:00' })], now, { ...rule, hours: 0 })).toEqual([])
   })

@@ -40,6 +40,7 @@ export interface DailyFormat {
   readonly tag_done: string
   readonly tag_doing: string
   readonly tag_plan: string
+  readonly tag_wait: string
   readonly tag_upkeep: string
   readonly tag_checked: string
   /** 印の書き方（{tag}＝印の言葉） */
@@ -84,6 +85,7 @@ export const DEFAULT_DAILY_FORMAT: DailyFormat = {
   get tag_done() { return t('Done') },
   get tag_doing() { return t('In progress') },
   get tag_plan() { return t('Planned') },
+  get tag_wait() { return t('Waiting') },
   get tag_upkeep() { return t('Upkeep') },
   get tag_checked() { return t('Checked') },
   get tag_format() { return t('[{tag}] ') },

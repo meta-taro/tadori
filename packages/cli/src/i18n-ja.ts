@@ -33,6 +33,7 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Done': '済',
   'In progress': '作業中',
   'Planned': '予定',
+  'Waiting': '待ち',
   'Upkeep': '整備',
   'Checked': '確認',
   '[{tag}] ': '［{tag}］',
@@ -241,8 +242,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'The places in the source of truth touched by this work. The screen shows "display name ↗" at the end of the line and opens it on click. Not included in the text read aloud; shown in the notes. When editing, pass all of them again':
     'その作業でさわった正本の場所。画面では行の末尾に「表示名 ↗」で出て押すと開く。読み上げる文には入れず、補足に出す。直すときは全件を渡し直す',
   'A short remark to add to the notes (read when asked)': '補足に足す一言（聞かれたら読むもの）',
-  'Line tag: done = finished / doing = in progress / plan = planned / upkeep = ledger upkeep / checked = checked (empty for no tag)':
-    '行の印：done＝やり終えた / doing＝作業中 / plan＝予定 / upkeep＝台帳の整備 / checked＝確かめた（空なら印なし）',
+  'Line tag: done = finished / doing = in progress / plan = planned / wait = waiting for a reply or review / upkeep = ledger upkeep / checked = checked (empty for no tag)':
+    '行の印：done＝やり終えた / doing＝作業中 / plan＝予定 / wait＝相手の返事やレビューを待っている / upkeep＝台帳の整備 / checked＝確かめた（空なら印なし）',
   'Give date as YYYY-MM-DD': 'date は YYYY-MM-DD で渡してください',
   'Note: {warning}': '注意：{warning}',
   'Return a person\'s "daily progress" (Today, Next working day, Questions, Notes) and the list of lines (with [ID]). Pass an owner as who to get only that person\'s lines. It combines a draft built from the inputs (WBS status changes, ledger diffs, check records) with lines that people or agents edited. To edit the text or write a question, use daily_update / daily_add.':

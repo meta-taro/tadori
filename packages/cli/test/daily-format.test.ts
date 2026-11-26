@@ -132,6 +132,11 @@ describe('formatEntries の印', () => {
     expect(custom).toContain('1. <DONE> 画面の設計')
   })
 
+  test('相手の返事やレビューを待っている行は［待ち］を出す', () => {
+    const waiting = [{ id: 'm1', who: 'x', section: 'today' as const, text: '指摘を直した', wbs: [], origin: 'manual' as const, tag: 'wait', badges: [{ text: '再レビュー待ち', tone: 'wait' as const }] }]
+    expect(formatEntries(waiting, project, '2026-11-09')).toContain('1. ［待ち］指摘を直した〈再レビュー待ち〉')
+  })
+
   test('印の言葉を空にすると、その印は出さない', () => {
     expect(formatEntries(tagged, project, '2026-11-09', { ...DEFAULT_DAILY_FORMAT, tag_plan: '' })).toContain('2. API の設計')
   })

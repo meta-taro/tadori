@@ -62,6 +62,7 @@ export const JA = {
   'Done': 'やり終えた',
   'In progress': '作業中',
   'Planned': '予定',
+  'Waiting': '待ち',
   'Checked': '確かめた',
   'Tag': '印',
   'Open {label}: {url}': '{label} を開く：{url}',
