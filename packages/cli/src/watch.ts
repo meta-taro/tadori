@@ -1,4 +1,6 @@
 import { watch, type FSWatcher } from 'node:fs'
+import { readdir, stat } from 'node:fs/promises'
+import { join } from 'node:path'
 import type { ServerResponse } from 'node:http'
 import './i18n.js'
 import { t } from '@tadori/core'
@@ -7,6 +9,10 @@ import { t } from '@tadori/core'
 const DEBOUNCE_MS = 300
 /** 途中の網の機器に切られないよう、ときどき空の行を送る */
 const HEARTBEAT_MS = 25_000
+/** 見張りの知らせが届かない置き場所（同期のフォルダ・網の向こうのドライブなど）でも拾えるよう、ときどき TSV の更新時刻を見比べる */
+const POLL_MS = 2_000
+/** 見比べるときに入らないフォルダ */
+const SKIP_DIRS = new Set(['.git', 'node_modules'])
 
 export interface ChangeNotifier {
   /** 画面を 1 つつなぐ（/api/events） */
@@ -21,6 +27,24 @@ const isProjectTsv = (name: string | null): boolean => {
   if (!name) return true // 名前が分からないときは、念のため知らせる
   const path = name.replace(/\\/g, '/')
   return path.endsWith('.tsv') && !path.split('/').includes('.git')
+}
+
+/** 案件の TSV の、場所・更新時刻・大きさを並べた印（変わったかを見比べるため）。読めないフォルダは飛ばす */
+export async function tsvSignature(dir: string): Promise<string> {
+  const parts: string[] = []
+  const walk = async (folder: string): Promise<void> => {
+    // 読めないフォルダ（権限・消えた途中）は見比べから外すだけで、見張りは止めない
+    const entries = await readdir(folder, { withFileTypes: true }).catch(() => [])
+    for (const entry of entries) {
+      const path = join(folder, entry.name)
+      if (entry.isDirectory()) { if (!SKIP_DIRS.has(entry.name)) await walk(path); continue }
+      if (!entry.name.endsWith('.tsv')) continue
+      const info = await stat(path).catch(() => undefined)
+      if (info) parts.push(`${path}|${info.mtimeMs}|${info.size}`)
+    }
+  }
+  await walk(dir)
+  return parts.sort().join('\n')
 }
 
 /**
@@ -47,6 +71,21 @@ export function watchProject(dir: string): ChangeNotifier {
     process.stderr.write(`${t('tadori serve: cannot watch the project folder (the screen reloads only when you return to it): {reason}', { reason: error instanceof Error ? error.message : String(error) })}\n`)
   }
 
+  // OS の見張りの知らせが来ない置き場所のための見比べ（画面がつながっているときだけ）
+  let last: string | undefined
+  let polling = false
+  const poll = setInterval(() => {
+    if (!clients.size || polling) return
+    polling = true
+    void tsvSignature(dir).then(signature => {
+      if (last !== undefined && signature !== last) {
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(broadcast, DEBOUNCE_MS)
+      }
+      last = signature
+    }).finally(() => { polling = false })
+  }, POLL_MS)
+
   const heartbeat = setInterval(() => { for (const res of clients) res.write(': keep-alive\n\n') }, HEARTBEAT_MS)
 
   return {
@@ -64,6 +103,7 @@ export function watchProject(dir: string): ChangeNotifier {
     close() {
       if (timer) clearTimeout(timer)
       clearInterval(heartbeat)
+      clearInterval(poll)
       watcher?.close()
       for (const res of clients) res.end()
       clients.clear()

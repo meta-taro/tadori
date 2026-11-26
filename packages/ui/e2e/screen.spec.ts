@@ -222,6 +222,19 @@ test.describe('1 日の進行の行のリンクと担当', () => {
     await page.locator('#who-filter').selectOption('')
   })
 
+  test('印の選び欄にカーソルが残っていても、エージェントが行を足せば、読み直さずに画面に出る', async ({ page }) => {
+    await openDaily(page)
+    // 印を選んだあとのように、画面の欄（打っている途中ではないもの）にカーソルを残す
+    await page.locator('.daily-entry .daily-tag').first().focus()
+    const res = await page.request.post('/api/daily/2026-10-30/entries', {
+      headers: { 'x-tadori': '1', 'content-type': 'application/json' },
+      data: { section: 'today', who: '設計担当', text: 'エージェントがほかで書いた行' },
+    })
+    expect(res.ok()).toBe(true)
+    // 見張りの知らせ（TSV が変わった）で読み直す。押し直しも窓の切り替えもしない
+    await expect(page.locator('.daily-preview')).toContainText('エージェントがほかで書いた行')
+  })
+
   test('links を付けた行は、行の末尾に「表示名 ↗」を出し、押すと新しいタブで開く。URL は文字に出さない', async ({ page }) => {
     const res = await page.request.post('/api/daily/2026-10-30/entries', {
       headers: { 'x-tadori': '1', 'content-type': 'application/json' },

@@ -194,9 +194,14 @@ void warnIfServerStale(byId('summary'))
  * 画面の欄に打っている途中なら、その欄から離れたときに読み直す（打っている文字を消さないため）。
  */
 let reloadPending = false
+/**
+ * 欄に打ちかけの文字があるか（読み直すと消える）。選び欄・日付・打ち終えた欄は待たない（カーソルが残っているだけで、ずっと読み直さなくなるため）
+ * @param {Element} el
+ */
+const isTyping = el => (el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !['checkbox', 'radio', 'date', 'button', 'submit'].includes(el.type))) && el.value !== el.defaultValue
 function reloadFromElsewhere() {
   const el = document.activeElement
-  if (el && view.contains(el) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) { reloadPending = true; return }
+  if (el && view.contains(el) && isTyping(el)) { reloadPending = true; return }
   reload().then(() => toast(t('Applied changes made in another app'), 2000))
 }
 view.addEventListener('focusout', () => { if (reloadPending) { reloadPending = false; setTimeout(reloadFromElsewhere, 0) } })
