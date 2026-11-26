@@ -195,7 +195,7 @@ describe('saveSettings', () => {
     const second = await saveSettings(dir, { phases: [{ id: 'bd', name: '基本設計', order: 1 }, { id: 'dd', name: '詳細設計', order: 2 }] }, '2 回目')
     expect(second).toMatchObject({ committed: true, unpushed: 1 })
     await rm(remote, { recursive: true, force: true })
-  })
+  }, 20_000) // git を何度も起こす（clone・commit・push）ので、ほかの試験と並んで重いときは 5 秒を超えることがある
 
   test('案件がそれ自身の git リポジトリなら、変えたファイルを commit する', async () => {
     await writeMinimalProject()
