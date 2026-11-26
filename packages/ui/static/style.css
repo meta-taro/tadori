@@ -852,3 +852,8 @@
 
 /* 正本の WBS に無い（想定で置いた）作業：破線の下線で見分ける */
 .daily-ref.assumed { text-decoration-style:dashed; }
+
+/* 1 日の進行の課題ごと：工程の位置と今の 1 行 */
+.daily-issue .issue-steps { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0; }
+.daily-issue .issue-now { margin:4px 0 8px; }
+.daily-issue h3 { font-size:13px; margin:10px 0 4px; }

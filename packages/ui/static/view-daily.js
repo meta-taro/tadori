@@ -4,6 +4,7 @@
 import { t } from './i18n.js'
 import { api, esc, getWho, ICON_INFO, messageOf, nthIndexOf, toast, toastCommit, webUrl, within, idPill } from './util.js'
 import { previewHtml } from './daily-preview.js'
+import { issueGroupsHtml } from './view-daily-issues.js'
 
 /** @typedef {import('./types').DailyEntry} DailyEntry */
 /** @typedef {import('./types').Origin} Origin */
@@ -18,6 +19,9 @@ const SECTIONS = [['today', 'Today'], ['next', 'Next working day'], ['consult', 
 
 /** 読み上げ（課題ごとの要約だけ）か、詳しく（今までどおりの細かい行）か。会議で読む・聞かれたら引く、を切り替える */
 let readMode = false
+
+/** 人ごと（時系列の欄ごと）か、課題ごと（課題ごとの今の状態と、その課題の行）か。並行する課題を取り違えずに読むため */
+let byIssue = false
 
 /** 古いままの待ちの行（server が案件の stale_hours・wait_words で選んだもの）の ID と、何時間で古いとするか */
 let stale = { ids: /** @type {Set<string>} */ (new Set()), hours: 0 }
@@ -252,12 +256,20 @@ export async function renderDaily(view, state) {
         <button type="button" data-read="1" aria-pressed="${readMode}" class="${readMode ? 'on' : ''}" title="${esc(t('Show only the summary for issues that have one'))}">${esc(t('Read out'))}</button>
         <button type="button" data-read="0" aria-pressed="${!readMode}" class="${readMode ? '' : 'on'}">${esc(t('Details'))}</button>
       </div>
+      <div class="seg" role="group" aria-label="${esc(t('How to group'))}">
+        <button type="button" data-group="person" aria-pressed="${!byIssue}" class="${byIssue ? '' : 'on'}">${esc(t('By section'))}</button>
+        <button type="button" data-group="issue" aria-pressed="${byIssue}" class="${byIssue ? 'on' : ''}" title="${esc(t('For each issue, show where it is now and its rows together'))}">${esc(t('By issue'))}</button>
+      </div>
     </div>
     ${stale.ids.size ? `<div class="note daily-stale-note" role="status">${ICON_INFO}<span>${esc(t('{n} waiting rows have not been updated for {hours} hours or more. Update them before the meeting.', { n: stale.ids.size, hours: stale.hours }))}</span></div>` : ''}
     ${daily.missingIssueLinks?.length ? `<div class="note daily-missing-links" role="status">${ICON_INFO}<span>${esc(t('The source WBS row is not in the ledger for these issues: {ids}. Write its URL in the ledger', { ids: daily.missingIssueLinks.join(', ') }))}</span></div>` : ''}
     ${daily.saved ? '' : `<div class="note">${ICON_INFO}<span>${esc(t('This draft is not saved to the daily file yet. It is saved as soon as you edit or add a row.'))}</span></div>`}
     <div class="panel daily-sheet">
-      ${sectionsHtml(daily.entries, state.origins ?? {})}
+      ${byIssue ? issueGroupsHtml(daily.entries, {
+        row: (e, no) => entryRow(e, no, state.origins ?? {}, !getWho()),
+        items: state.items, tasks: state.tasks, statuses: state.statuses, issueLinks,
+        tagWord: tag => t(TAGS.find(([value]) => value === tag)?.[1] ?? tag),
+      }) : sectionsHtml(daily.entries, state.origins ?? {})}
       <form class="add" id="daily-add">
         <label>${esc(t('Section'))}<select name="section">${SECTIONS.map(([id, label]) => `<option value="${id}" ${id === 'consult' ? 'selected' : ''}>${esc(t(label))}</option>`).join('')}</select></label>
         <label>${esc(t('Owner'))}<input name="who" value="${esc(getWho())}" maxlength="100"></label>
@@ -272,6 +284,10 @@ export async function renderDaily(view, state) {
   dateInput.addEventListener('change', () => { if (dateInput.value) { date = dateInput.value; rerender() } })
   view.querySelectorAll('[data-read]').forEach(button => button.addEventListener('click', () => {
     readMode = /** @type {HTMLElement} */ (button).dataset.read === '1'
+    rerender()
+  }))
+  view.querySelectorAll('[data-group]').forEach(button => button.addEventListener('click', () => {
+    byIssue = /** @type {HTMLElement} */ (button).dataset.group === 'issue'
     rerender()
   }))
   within(view, '#daily-generate').addEventListener('click', () => write(`${base}/generate`, 'POST', {}, t('the daily draft'), rerender))

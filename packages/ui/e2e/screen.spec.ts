@@ -922,6 +922,27 @@ test.describe('承認のあとの変更と、一覧に無い状態', () => {
 })
 
 test.describe('1 日の進行：課題ごとの要約', () => {
+  test('「課題ごと」では、課題ごとに見出し（課題番号・今の 1 行）と、その課題の今日・次の作業日の行をまとめて出す', async ({ page }) => {
+    const post = (data: Record<string, unknown>) => page.request.post('/api/daily/2026-10-30/entries', { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data })
+    expect((await post({ who: '設計担当', section: 'today', issue: 'F-02', text: '指摘を直した', tag: 'done' })).ok()).toBe(true)
+    expect((await post({ who: '設計担当', section: 'today', issue: 'F-02', text: '再レビューを頼んだ', tag: 'wait' })).ok()).toBe(true)
+    expect((await post({ who: '設計担当', section: 'next', issue: 'F-02', text: '再レビューの指摘を直す', tag: 'plan' })).ok()).toBe(true)
+    await openDaily(page)
+    await page.getByRole('button', { name: '課題ごと' }).click()
+    const group = page.locator('.daily-issue[data-issue="F-02"]')
+    await expect(group.locator('h2')).toContainText('F-02')
+    // 今の 1 行は、いちばん新しく直した行（ここでは最後に足した次の作業日の行）
+    await expect(group.locator('.issue-now')).toContainText('再レビューの指摘を直す')
+    await expect(group.locator('.daily-text[value$=" 指摘を直した"]')).toHaveCount(1)
+    await expect(group.locator('.daily-text[value$="再レビューを頼んだ"]')).toHaveCount(1)
+    await expect(group.locator('h3')).toContainText(['今日', '次の作業日'])
+    // 課題の付いていない行は最後にまとめる
+    await expect(page.locator('.daily-issue').last()).toHaveAttribute('data-issue', '')
+    // 欄ごとへ戻す
+    await page.getByRole('button', { name: '欄ごと' }).click()
+    await expect(page.locator('.daily-section[data-section="today"]')).toHaveCount(1)
+  })
+
   test('要約は今日の上に出し、「読み上げ」では要約のある課題の細かい行をたたむ。「詳しく」で戻る', async ({ page }) => {
     const post = (data: Record<string, unknown>) => page.request.post('/api/daily/2026-10-30/entries', { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data })
     expect((await post({ who: '設計担当', section: 'today', issue: 'Q-1', text: '回答の下書きを作った' })).ok()).toBe(true)
