@@ -20,6 +20,8 @@ const STEP_HEAD = /^【([^】]{1,40})】\s*/
  * @property {readonly import('./types').StatusDef[]} statuses 状態の名前
  * @property {Readonly<Record<string, { label: string, url: string }>>} issueLinks 課題の正本の WBS の行
  * @property {(tag: string) => string} tagWord 行の印の言葉（作業中・待ち など）
+ * @property {Readonly<Record<string, import('./types').Origin>>} origins 台帳の行の正本（課題番号を押すと正本の課題へ）
+ * @property {boolean} useWbsField 案件が issue_link_field を決めているか
  */
 
 /**
@@ -111,8 +113,15 @@ export function issueTree(entries, ctx) {
       const found = steps.find(s => s.key === step.key)
       if (found) found.rows.push(entry); else steps.push({ ...step, rows: [entry] })
     }
-    // 工程の名前の無い行は、その課題の最後にまとめる
-    steps.sort((a, b) => Number(!a.key) - Number(!b.key))
+    // 工程の段は WBS の並び（wbs.tsv の順）に並べる。足した順にしない。WBS に無い【工程名】はそのあと、工程の無い行は最後
+    const orderOf = (/** @type {TreeStep} */ step) => {
+      if (!step.key) return Number.MAX_SAFE_INTEGER
+      const byId = ctx.tasks.findIndex(task => task.id === step.key)
+      if (byId >= 0) return byId
+      const byName = ctx.tasks.findIndex(task => task.name === step.label || task.name.includes(step.label))
+      return byName >= 0 ? byName : Number.MAX_SAFE_INTEGER - 1
+    }
+    steps.sort((a, b) => orderOf(a) - orderOf(b))
     const summary = rows.find(e => e.section === 'summary')
     const waits = rows.filter(isWait)
     /** @type {TreeIssue['kind']} */
@@ -140,7 +149,7 @@ export function focusHtml(entries, ctx) {
   const active = tree.filter(i => i.id && i.kind === 'active')
   const waiting = tree.filter(i => i.kind === 'waiting')
   if (!active.length && !waiting.length) return ''
-  const big = active.map(i => `<li><a class="focus-id mono" href="#trace-${encodeURIComponent(i.id)}">${esc(i.id)}</a> <span class="focus-name">${esc(i.name)}</span></li>`).join('')
+  const big = active.map(i => `<li><span class="focus-id">${issueRefHtml(i.id, ctx.origins, ctx.issueLinks, ctx.useWbsField)}</span> <span class="focus-name">${esc(i.name)}</span></li>`).join('')
   const small = waiting.map(i => {
     const first = i.waits[0]
     return `<li><span class="mono">${esc(i.id)}</span> ${esc(i.name)}${first ? ` <span class="cond">— ${esc(bodyOf(first, i.name))}</span>` : ''}</li>`
@@ -150,6 +159,28 @@ export function focusHtml(entries, ctx) {
     ${big ? `<ul class="focus-active">${big}</ul>` : `<p class="cond">${esc(t('No issue to move today (only waiting ones)'))}</p>`}
     ${small ? `<p class="cond focus-wait-head">${esc(t('Waiting (not moved today)'))}</p><ul class="focus-waiting">${small}</ul>` : ''}
   </div>`
+}
+
+/**
+ * 課題の参照：正本の課題番号（台帳の source の場所。押すと正本の課題へ）・WBS ↗（正本の WBS の行）・台帳（tadori の中の行。小さく）。
+ * 正本の設定が無い課題は、今までどおり課題 ID で tadori の中の行へ飛ぶ
+ * @param {string} id 台帳の課題 ID
+ * @param {Readonly<Record<string, import('./types').Origin>>} origins 台帳の行の正本（sources.tsv）
+ * @param {Readonly<Record<string, { label: string, url: string }>>} links 課題の正本の WBS の行（issue_link_field）
+ * @param {boolean} [useWbsField] 案件が issue_link_field を決めているか（決めていて URL が無いときは「WBS 未登録」と出す）
+ */
+export function issueRefHtml(id, origins, links, useWbsField = false) {
+  const origin = origins[id]
+  const url = webUrl(origin?.url)
+  const trace = `#trace-${encodeURIComponent(id)}`
+  const main = url
+    ? `<a class="issue-ref mono" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open the issue in the source of truth: {url}', { url }))}">${esc(origin?.place || id)} ↗</a>`
+    : `<a class="issue-ref mono" href="${trace}" title="${esc(t('Trace from {id}', { id }))}">${esc(id)}</a>`
+  const wbs = links[id] && webUrl(links[id].url)
+    ? sourceLink(links[id])
+    : useWbsField ? `<span class="chip wait" title="${esc(t('The source WBS row is not in the ledger'))}">${esc(t('WBS not set'))}</span>` : ''
+  const ledger = url ? `<a class="issue-ledger cond" href="${trace}" title="${esc(t('Trace from {id}', { id }))}">${esc(t('Ledger'))}</a>` : ''
+  return `<span class="issue-refs">${main}${wbs}${ledger}</span>`
 }
 
 /** @param {{ label: string, url: string } | undefined} link */
@@ -168,7 +199,7 @@ function headHtml(issue, ctx) {
   const now = issue.summary ?? issue.latest
   const word = !issue.summary && now?.tag ? ctx.tagWord(now.tag) : ''
   const label = issue.summary ? t('Summary') : t('Now')
-  return `<h2><a class="mono" href="#trace-${encodeURIComponent(issue.id)}" title="${esc(t('Trace from {id}', { id: issue.id }))}">${esc(issue.id)}</a> ${esc(issue.name)} ${sourceLink(issue.link)}</h2>
+  return `<h2>${issueRefHtml(issue.id, ctx.origins, ctx.issueLinks, ctx.useWbsField)} ${esc(issue.name)}</h2>
     ${now ? `<p class="issue-now"><span class="cond">${esc(label)}</span> ${word ? `<span class="daily-pill">${esc(word)}</span>` : ''}${esc(bodyOf(now, issue.name))}</p>` : ''}`
 }
 
@@ -225,7 +256,7 @@ function lineOf(entry, name, ctx) {
  */
 export function issueTreeHtml(entries, ctx) {
   return `<div class="daily-tree">${ordered(issueTree(entries, ctx)).map(issue => {
-    const head = issue.id ? `<span class="mono">${esc(issue.id)}</span> ${esc(issue.name)} ${sourceLink(issue.link)}` : esc(t('Rows without an issue'))
+    const head = issue.id ? `${issueRefHtml(issue.id, ctx.origins, ctx.issueLinks, ctx.useWbsField)} ${esc(issue.name)}` : esc(t('Rows without an issue'))
     const summary = issue.summary ? `<li class="tree-summary"><span class="cond">${esc(t('Summary'))}</span> ${esc(bodyOf(issue.summary, issue.name))}</li>` : ''
     const steps = issue.steps.map(step => {
       const rows = PARTS.flatMap(([section]) => step.rows.filter(e => e.section === section)).map(e => {
@@ -249,7 +280,11 @@ export function issueTreeHtml(entries, ctx) {
 export function issueTreeText(entries, ctx) {
   return ordered(issueTree(entries, ctx)).map(issue => {
     const url = webUrl(issue.link?.url)
-    const head = issue.id ? `■ ${issue.id} ${issue.name}${url ? `（${issue.link?.label ?? 'WBS'}：${url}）` : ''}` : `■ ${t('Rows without an issue')}`
+    // 課題番号は正本の番号（台帳の source の場所）があればそれ。正本の課題と WBS の URL を添える
+    const origin = ctx.origins[issue.id]
+    const sourceUrl = webUrl(origin?.url)
+    const refs = [sourceUrl ? `${origin?.name || t('Source')}：${sourceUrl}` : '', url ? `${issue.link?.label ?? 'WBS'}：${url}` : ''].filter(Boolean).join(' ／ ')
+    const head = issue.id ? `■ ${origin?.place || issue.id} ${issue.name}${refs ? `（${refs}）` : ''}` : `■ ${t('Rows without an issue')}`
     const summary = issue.summary ? [`  ${t('Summary')}：${bodyOf(issue.summary, issue.name)}`] : []
     const steps = issue.steps.flatMap(step => [
       `  ・${step.key ? `${step.label}${step.status ? `（${step.status}）` : ''}` : t('Other work')}`,

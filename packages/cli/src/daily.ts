@@ -52,6 +52,8 @@ export interface Daily {
   readonly issueLinks: Readonly<Record<string, { readonly label: string; readonly url: string }>>
   /** issue_link_field を決めているのに、その列に URL の無い課題（台帳に無い課題も含む）。決めていなければ空 */
   readonly missingIssueLinks: readonly string[]
+  /** 課題の正本の WBS の列の名前（案件の issue_link_field。決めていなければ空） */
+  readonly issueLinkField: string
 }
 
 /**
@@ -140,9 +142,9 @@ async function mergedEntries(dir: string, date: string): Promise<{ entries: Dail
 }
 
 /** 行に付いた課題の、正本の工程表の行（案件が issue_link_field で列を決めたときだけ） */
-export function issueLinksOf(items: readonly Item[], entries: readonly DailyEntry[], format: DailyFormat): Pick<Daily, 'issueLinks' | 'missingIssueLinks'> {
+export function issueLinksOf(items: readonly Item[], entries: readonly DailyEntry[], format: DailyFormat): Pick<Daily, 'issueLinks' | 'missingIssueLinks' | 'issueLinkField'> {
   const field = format.issue_link_field.trim()
-  if (!field) return { issueLinks: {}, missingIssueLinks: [] }
+  if (!field) return { issueLinks: {}, missingIssueLinks: [], issueLinkField: '' }
   const ids = [...new Set(entries.flatMap(e => (e.issue ? [e.issue] : [])))]
   const urlOf = (id: string) => {
     const value = (items.find(i => i.id === id)?.fields[field] ?? '').trim()
@@ -152,6 +154,7 @@ export function issueLinksOf(items: readonly Item[], entries: readonly DailyEntr
   return {
     issueLinks: Object.fromEntries(ids.flatMap(id => (urlOf(id) ? [[id, { label, url: urlOf(id) }] as const] : []))),
     missingIssueLinks: ids.filter(id => !urlOf(id)),
+    issueLinkField: field,
   }
 }
 

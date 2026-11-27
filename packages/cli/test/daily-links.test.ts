@@ -26,13 +26,14 @@ describe('課題の正本の WBS の行（issue_link_field）', () => {
   test('決めた列の URL を課題ごとに出し、URL の無い課題（台帳に無い課題も）を挙げる', () => {
     const format = { ...DEFAULT_DAILY_FORMAT, issue_link_field: 'wbs_url' }
     expect(issueLinksOf(items, entries, format)).toEqual({
+      issueLinkField: 'wbs_url',
       issueLinks: { BL943: { label: 'WBS', url: 'https://sheets.example.com/wbs#range=A7' } },
       missingIssueLinks: ['BL950', 'BL999'],
     })
   })
 
   test('列を決めていない案件では、何も出さず、知らせもしない', () => {
-    expect(issueLinksOf(items, entries, DEFAULT_DAILY_FORMAT)).toEqual({ issueLinks: {}, missingIssueLinks: [] })
+    expect(issueLinksOf(items, entries, DEFAULT_DAILY_FORMAT)).toEqual({ issueLinks: {}, missingIssueLinks: [], issueLinkField: '' })
   })
 })
 

@@ -4,7 +4,7 @@
 import { t } from './i18n.js'
 import { api, esc, getWho, ICON_INFO, messageOf, nthIndexOf, toast, toastCommit, webUrl, within, idPill } from './util.js'
 import { previewHtml } from './daily-preview.js'
-import { focusHtml, issueGroupsHtml, issueTreeHtml, issueTreeText } from './view-daily-issues.js'
+import { focusHtml, issueGroupsHtml, issueRefHtml, issueTreeHtml, issueTreeText } from './view-daily-issues.js'
 
 /** @typedef {import('./types').DailyEntry} DailyEntry */
 /** @typedef {import('./types').Origin} Origin */
@@ -38,6 +38,8 @@ let threadReplies = /** @type {import('./types').Daily['replies']} */ ({})
 let marks = /** @type {Map<string, import('./types').Daily['marks'][number]>} */ (new Map())
 /** 課題の正本の工程表の行（課題 ID → 名前と URL）。案件が daily-format.tsv の issue_link_field で列を決めたときだけ入る */
 let issueLinks = /** @type {import('./types').Daily['issueLinks']} */ ({})
+/** 案件が課題の正本の WBS の列（issue_link_field）を決めているか */
+let useWbsField = false
 /** WBS の作業の、正本の工程表の行の URL（作業 ID → URL）。どれにも無い案件では空 */
 let taskUrls = /** @type {Map<string, string>} */ (new Map())
 
@@ -151,7 +153,8 @@ function originLink(origin) {
 function entryRow(entry, no, origins = {}, isAll = true, isSummary = entry.section === 'summary') {
   const badge = ORIGIN_LABEL[entry.origin] ? `<span class="chip mono">${esc(t(ORIGIN_LABEL[entry.origin] ?? ''))}</span>` : ''
   // 課題は「つながりを辿る」へ、WBS は「プロダクト」のその行へ（会議の場で、その場から開けるように）
-  const issue = entry.issue ? `<a class="cond mono" href="#trace-${encodeURIComponent(entry.issue)}" title="${esc(t('Trace from {id}', { id: entry.issue }))}">${esc(entry.issue)}</a>` : ''
+  // 課題番号は正本の課題へ（正本の設定があれば）。WBS ↗ と、tadori の中の行へ行く小さな口も並べる
+  const issue = entry.issue ? issueRefHtml(entry.issue, origins, issueLinks, useWbsField) : ''
   // WBS は、正本の工程表の行の URL があればその行へ（新しいタブ）、無ければプロダクトのその行へ。ほかの作業に URL がある案件で無い作業は「想定」と出す
   const wbs = entry.wbs.map(id => {
     const url = webUrl(taskUrls.get(id))
@@ -159,9 +162,9 @@ function entryRow(entry, no, origins = {}, isAll = true, isSummary = entry.secti
     const assumed = taskUrls.size ? `<span class="chip wait" title="${esc(t('Not in the source WBS (an assumed task)'))}">${esc(t('Assumed'))}</span>` : ''
     return idPill(id, `#browse-${encodeURIComponent(id)}`, t('Open {id} in the WBS', { id })) + assumed
   }).join('')
-  const issueLink = entry.issue ? issueLinks[entry.issue] : undefined
-  const origin = originLink(entry.issue ? origins[entry.issue] : undefined)
-    + (issueLink && webUrl(issueLink.url) ? outLink(issueLink.label, webUrl(issueLink.url), t('Open the source WBS row of {id}: {url}', { id: entry.issue ?? '', url: issueLink.url })) : '')
+  // 正本の課題と WBS へのリンクは課題番号の所（issueRefHtml）に出す。ここには、台帳の写しが古いときだけ反映の記録を出す
+  const source = entry.issue ? origins[entry.issue] : undefined
+  const origin = source?.stale ? originLink(source) : ''
   // 行のバッジ（人かエージェントが書いた札）。本文とは別に、tone の色で出す
   const badges = (entry.badges ?? []).map(b => `<span class="chip ${esc(b.tone)}"><span class="dot"></span>${esc(b.text)}</span>`).join('')
   // 古いままの待ちの行は、会の前に直す行と一目で分かるよう、要注意の札と枠で出す
@@ -248,6 +251,7 @@ export async function renderDaily(view, state) {
   threadReplies = daily.replies ?? {}
   marks = new Map((daily.marks ?? []).map(m => [m.id, m]))
   issueLinks = daily.issueLinks ?? {}
+  useWbsField = Boolean(daily.issueLinkField)
   // 並べ方：選んだことがあればそれ、無ければ課題の付いた行がある日は課題ごと（朝会のカンペにそのまま使えるように）
   // 日を替えるたびに決め直す（今日の日付で開いたときに課題が無くても、課題のある日へ移れば課題ごとになる）
   const chosen = pickedGroup ?? savedGroup()
@@ -257,7 +261,7 @@ export async function renderDaily(view, state) {
   /** @type {import('./view-daily-issues.js').IssueContext} */
   const issueContext = {
     row: (e, no) => entryRow(e, no, state.origins ?? {}, !getWho()),
-    items: state.items, tasks: state.tasks, statuses: state.statuses, issueLinks,
+    items: state.items, tasks: state.tasks, statuses: state.statuses, issueLinks, origins: state.origins ?? {}, useWbsField,
     tagWord: tag => t(TAGS.find(([value]) => value === tag)?.[1] ?? tag),
   }
   // 課題ごとのときは、文の形も課題 → 工程 → 行のツリー（読み上げでも詳しくでも同じ形）

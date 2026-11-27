@@ -983,6 +983,12 @@ test.describe('1 日の進行：課題ごとの要約', () => {
     await expect(page.getByRole('button', { name: '課題ごと' })).toHaveAttribute('aria-pressed', 'true')
     const group = page.locator('.daily-issue[data-issue="F-02"]')
     await expect(group.locator('h2')).toContainText('F-02')
+    // 課題番号は正本の課題へ直接飛ぶ（新しいタブ）。tadori の中の行へは小さな「台帳」から
+    await expect(group.locator('h2 .issue-ref')).toHaveAttribute('href', 'https://issues.example.com/lend-v12')
+    await expect(group.locator('h2 .issue-ref')).toHaveAttribute('target', '_blank')
+    await expect(group.locator('h2 .issue-ledger')).toHaveAttribute('href', '#trace-F-02')
+    // 工程の段は WBS の並び（WBS にある作業が先、WBS に無い【工程名】はそのあと）
+    await expect(group.locator('.issue-step-block').first()).toHaveAttribute('data-step', 'W-02')
     // 要約は課題の見出しの直下
     await expect(group.locator('.issue-now')).toContainText('再レビュー待ちです')
     // 工程の段：WBS の作業（状態つき）と、行の頭の【工程名】。同じ工程の今日と次の作業日は 1 つの段にまとまる

@@ -873,3 +873,7 @@
 .daily-issue .issue-waits { margin-top:8px; font-size:12px; opacity:.85; }
 .daily-others > summary { cursor:pointer; margin:12px 0 4px; color:var(--muted, inherit); }
 .daily-tree .tree-waits { font-size:12px; }
+
+/* 課題の参照：正本の課題番号・WBS ↗・台帳（小さく） */
+.issue-refs { display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:6px; }
+.issue-refs .issue-ledger { font-size:11px; }
