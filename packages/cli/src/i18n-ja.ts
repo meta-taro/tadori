@@ -34,6 +34,15 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'In progress': '作業中',
   'Planned': '予定',
   'Waiting': '待ち',
+  'The screen did not answer the capture in time. Check that the tadori screen is open': '画面が時間内に見た目を返しませんでした。tadori の画面が開いているか確かめてください',
+  'The screen the person has open now:': '人がいま開いている画面：',
+  'heading': '見出し',
+  'pressed or current': '押されている・開いている',
+  'selected': '選んでいる値',
+  'area': '範囲',
+  'not found; showing nothing': '見つからないので中身は空',
+  'For capture: return only this part of the screen (a CSS selector, or words in a heading such as Daily progress). Empty for the whole view': 'capture で、画面のこの部分だけを返す（CSS の選び方か、「1 日の進行」のような見出しの語）。空なら画面の中身全体',
+  'After point, click, type, go or filter, wait for the screen and return what it shows (same as capture)': 'point・click・type・go・filter のあと、画面が描き終わるのを待って見た目を返す（capture と同じ）',
   'The source WBS row is not in the ledger for these issues in the daily progress for today: {ids}. Find the row in the source WBS and write its URL in the ledger':
     '今日の 1 日の進行で、次の課題は正本の WBS の行が台帳にありません：{ids}。正本の WBS でその行を探し、台帳に URL を書いてください',
   'Upkeep': '整備',
@@ -279,8 +288,8 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'Return how to use tadori (getting started, writing the ledger and rules, checking, guiding a person on the screen, what agents must follow). Leave topic empty for the list of topics. When you first use tadori, read start and agent-rules.':
     'tadori の使い方を返す（はじめ方・台帳とルールの書き方・確かめ方・画面の案内の仕方・エージェントが守ること）。topic を空にすると話題の一覧。初めて使うときは start と agent-rules を読むこと。',
   'Topic (start, ledger, rules, check, daily, write, screen, links, sources, agent-rules). Empty for the list': '話題（start・ledger・rules・check・daily・write・screen・links・sources・agent-rules）。空なら一覧',
-  'Show things to a person by operating the tadori screen they have open with a dedicated on-screen cursor (the person\'s mouse is not used). action is point, click, type (into a field), go (move to another view), say (a short remark) or filter (filter the screen by person: a name in value, empty for everyone). See how_to screen. You can only press what a person could press on the screen. Windows dialogs cannot be operated, so ask the person.':
-    '人が開いている tadori の画面を、画面の中の専用カーソルで操作して見せる（人のマウスは使わない）。action は point（指す）・click（押す）・type（欄に打つ）・go（画面を移る）・say（一言）・filter（画面を人で絞る。value に人の名前、空なら全員）。使い方は how_to の screen。押せるのは人が画面で押せるものだけ。Windows のダイアログは操作できないので人に頼むこと。',
+  'Show things to a person by operating the tadori screen they have open with a dedicated on-screen cursor (the person\'s mouse is not used). action is point, click, type (into a field), go (move to another view), say (a short remark), filter (filter the screen by person: a name in value, empty for everyone) or capture (return what the screen shows now as text: the view, pressed toggles, selected values and the text; nothing changes). See how_to screen. You can only press what a person could press on the screen. Windows dialogs cannot be operated, so ask the person.':
+    '人が開いている tadori の画面を、画面の中の専用カーソルで操作して見せる（人のマウスは使わない）。action は point（指す）・click（押す）・type（欄に打つ）・go（画面を移る）・say（一言）・filter（画面を人で絞る。value に人の名前、空なら全員）・capture（いまの画面の見た目を文字で返す：開いている画面・押されている切り替え・選んでいる値・中身の文字。何も変えない）。使い方は how_to の screen。押せるのは人が画面で押せるものだけ。Windows のダイアログは操作できないので人に頼むこと。',
   'Text or button name shown on the screen (e.g. Rulesets, File, Search)': '画面に出ている文字・ボタンの名前（例：ルールセット・ファイル・探す）',
   'Text to type for type. For filter, a person\'s name (empty for everyone)': 'type で打つ文字。filter では人の名前（空なら全員）',
   'Where go moves to (e.g. #rules, #trace-F-02)': 'go の移り先（例：#rules・#trace-F-02）',

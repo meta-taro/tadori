@@ -1,4 +1,5 @@
 import './i18n.js'
+import { randomUUID } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { checkUpdate, sourceBuildInfo, type UpdateInfo } from './update-check.js'
 import { CLI_VERSION } from './version.js'
@@ -216,6 +217,11 @@ function serialized<T>(work: () => Promise<T>): Promise<T> {
   return Promise.race([run as Promise<T>, busy])
 }
 
+/** 画面の見た目を待つ時間（画面が裏にあっても答えられる長さ） */
+const CAPTURE_WAIT_MS = 5000
+/** 答えを待っている capture（id → 受け取る関数） */
+const pendingCaptures = new Map<string, (value: unknown) => void>()
+
 async function route(options: ServerOptions, port: number, notifier: ChangeNotifier, req: IncomingMessage, res: ServerResponse): Promise<void> {
   assertLocalHost(req, port)
   const url = new URL(req.url ?? '/', 'http://localhost')
@@ -225,6 +231,29 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
   if (req.method === 'GET' && url.pathname === '/api/events') {
     notifier.attach(res)
     return
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/capture') {
+    // 人が開いている画面の今の見た目を、文字で返す（エージェントが画面を確かめるため。画面は何も変えない）
+    assertWriteAllowed(req)
+    const body = await readJson(req) as { area?: unknown }
+    const area = typeof body?.area === 'string' ? body.area.slice(0, 200) : ''
+    const id = randomUUID()
+    const waiting = new Promise<unknown>((resolve, reject) => {
+      const timer = setTimeout(() => { pendingCaptures.delete(id); reject(new HttpError(504, t('The screen did not answer the capture in time. Check that the tadori screen is open'))) }, CAPTURE_WAIT_MS)
+      pendingCaptures.set(id, value => { clearTimeout(timer); pendingCaptures.delete(id); resolve(value) })
+    })
+    const screens = notifier.send('capture', { id, area })
+    if (!screens) { pendingCaptures.get(id)?.(undefined); throw new HttpError(409, t('No tadori screen is open. Open the screen, then send again')) }
+    return sendJson(res, 200, { screens, capture: await waiting })
+  }
+
+  if (req.method === 'POST' && url.pathname.startsWith('/api/capture/')) {
+    // 画面からの答え（上の capture で配った id ごと）
+    assertWriteAllowed(req)
+    const answer = pendingCaptures.get(decodeURIComponent(url.pathname.slice('/api/capture/'.length)))
+    if (answer) answer(await readJson(req))
+    return sendJson(res, 200, { ok: Boolean(answer) })
   }
 
   if (req.method === 'POST' && url.pathname === '/api/agent') {

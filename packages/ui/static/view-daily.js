@@ -4,7 +4,7 @@
 import { t } from './i18n.js'
 import { api, esc, getWho, ICON_INFO, messageOf, nthIndexOf, toast, toastCommit, webUrl, within, idPill } from './util.js'
 import { previewHtml } from './daily-preview.js'
-import { issueGroupsHtml } from './view-daily-issues.js'
+import { issueGroupsHtml, issueTreeHtml, issueTreeText } from './view-daily-issues.js'
 
 /** @typedef {import('./types').DailyEntry} DailyEntry */
 /** @typedef {import('./types').Origin} Origin */
@@ -21,7 +21,10 @@ const SECTIONS = [['today', 'Today'], ['next', 'Next working day'], ['consult', 
 let readMode = false
 
 /** 人ごと（時系列の欄ごと）か、課題ごと（課題ごとの今の状態と、その課題の行）か。並行する課題を取り違えずに読むため */
-let byIssue = false
+let byIssue = /** @type {boolean | undefined} */ (undefined)
+/** 並べ方を覚えておく所（その PC の画面だけ。覚えられない環境では、その日の行に課題があれば課題ごと） */
+const GROUP_KEY = 'tadori.daily.group'
+const savedGroup = () => { try { return localStorage.getItem(GROUP_KEY) } catch { return null } }
 
 /** 古いままの待ちの行（server が案件の stale_hours・wait_words で選んだもの）の ID と、何時間で古いとするか */
 let stale = { ids: /** @type {Set<string>} */ (new Set()), hours: 0 }
@@ -243,8 +246,18 @@ export async function renderDaily(view, state) {
   threadReplies = daily.replies ?? {}
   marks = new Map((daily.marks ?? []).map(m => [m.id, m]))
   issueLinks = daily.issueLinks ?? {}
+  // 並べ方：選んだことがあればそれ、無ければ課題の付いた行がある日は課題ごと（朝会のカンペにそのまま使えるように）
+  if (byIssue === undefined) byIssue = savedGroup() ? savedGroup() === 'issue' : daily.entries.some(e => e.issue)
   taskUrls = new Map(state.tasks.flatMap(task => (task.url ? [[task.id, task.url]] : [])))
   const base = `/api/daily/${encodeURIComponent(date)}`
+  /** @type {import('./view-daily-issues.js').IssueContext} */
+  const issueContext = {
+    row: (e, no) => entryRow(e, no, state.origins ?? {}, !getWho()),
+    items: state.items, tasks: state.tasks, statuses: state.statuses, issueLinks,
+    tagWord: tag => t(TAGS.find(([value]) => value === tag)?.[1] ?? tag),
+  }
+  // 課題ごとのときは、文の形も課題 → 工程 → 行のツリー（読み上げでも詳しくでも同じ形）
+  const copyText = byIssue ? issueTreeText(daily.entries, issueContext) : daily.text
   view.innerHTML = `
     <h1>${esc(t('Daily progress'))}</h1>
     <p class="lede">${daily.intro ? esc(daily.intro) : esc(t('Daily progress per person. The draft is built from WBS status changes, ledger changes and the check log. Edit the text in place; edited, added and removed rows stay even when the draft is rebuilt.'))}</p>
@@ -265,11 +278,7 @@ export async function renderDaily(view, state) {
     ${daily.missingIssueLinks?.length ? `<div class="note daily-missing-links" role="status">${ICON_INFO}<span>${esc(t('The source WBS row is not in the ledger for these issues: {ids}. Write its URL in the ledger', { ids: daily.missingIssueLinks.join(', ') }))}</span></div>` : ''}
     ${daily.saved ? '' : `<div class="note">${ICON_INFO}<span>${esc(t('This draft is not saved to the daily file yet. It is saved as soon as you edit or add a row.'))}</span></div>`}
     <div class="panel daily-sheet">
-      ${byIssue ? issueGroupsHtml(daily.entries, {
-        row: (e, no) => entryRow(e, no, state.origins ?? {}, !getWho()),
-        items: state.items, tasks: state.tasks, statuses: state.statuses, issueLinks,
-        tagWord: tag => t(TAGS.find(([value]) => value === tag)?.[1] ?? tag),
-      }) : sectionsHtml(daily.entries, state.origins ?? {})}
+      ${byIssue ? issueGroupsHtml(daily.entries, issueContext) : sectionsHtml(daily.entries, state.origins ?? {})}
       <form class="add" id="daily-add">
         <label>${esc(t('Section'))}<select name="section">${SECTIONS.map(([id, label]) => `<option value="${id}" ${id === 'consult' ? 'selected' : ''}>${esc(t(label))}</option>`).join('')}</select></label>
         <label>${esc(t('Owner'))}<input name="who" value="${esc(getWho())}" maxlength="100"></label>
@@ -278,7 +287,7 @@ export async function renderDaily(view, state) {
       </form>
     </div>
     <h2>${esc(t('Text (with notes)'))}</h2>
-    <div class="panel daily-preview">${previewHtml(daily.text, daily.links ?? [], daily.tags ?? [], daily.whoMarks ?? [], daily.entries ?? [])}</div>`
+    <div class="panel daily-preview">${byIssue ? issueTreeHtml(daily.entries, issueContext) : previewHtml(daily.text, daily.links ?? [], daily.tags ?? [], daily.whoMarks ?? [], daily.entries ?? [])}</div>`
 
   const dateInput = /** @type {HTMLInputElement} */ (within(view, '#daily-date'))
   dateInput.addEventListener('change', () => { if (dateInput.value) { date = dateInput.value; rerender() } })
@@ -288,6 +297,7 @@ export async function renderDaily(view, state) {
   }))
   view.querySelectorAll('[data-group]').forEach(button => button.addEventListener('click', () => {
     byIssue = /** @type {HTMLElement} */ (button).dataset.group === 'issue'
+    try { localStorage.setItem(GROUP_KEY, byIssue ? 'issue' : 'section') } catch { /* 覚えられなくても、いまの画面は切り替える */ }
     rerender()
   }))
   within(view, '#daily-generate').addEventListener('click', () => write(`${base}/generate`, 'POST', {}, t('the daily draft'), rerender))
@@ -308,7 +318,7 @@ export async function renderDaily(view, state) {
   })
   within(view, '#daily-copy').addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText(daily.text)
+      await navigator.clipboard.writeText(copyText)
       toast(t('Copied the text'), 2000)
     } catch {
       toast(t('Could not copy. Select the text below and copy it.'))

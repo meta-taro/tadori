@@ -857,3 +857,10 @@
 .daily-issue .issue-steps { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0; }
 .daily-issue .issue-now { margin:4px 0 8px; }
 .daily-issue h3 { font-size:13px; margin:10px 0 4px; }
+
+/* 1 日の進行のツリー（課題 → 工程 → 行） */
+.daily-issue .issue-step { font-size:14px; margin:12px 0 2px; }
+.daily-issue h4 { font-size:12px; margin:6px 0 2px; color:var(--muted, inherit); }
+.daily-tree .tree-issue h3 { margin:12px 0 4px; }
+.daily-tree ul { margin:2px 0 2px 18px; padding:0; }
+.daily-tree .tree-step { margin:4px 0; }

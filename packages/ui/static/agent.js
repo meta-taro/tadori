@@ -263,10 +263,54 @@ async function run(command, toast) {
  */
 export function initAgent(events, toast) {
   let queue = Promise.resolve()
+  // エージェントが画面の今の見た目を確かめる（文字で返す。画面は何も変えない）。指示の列に並べ、押した・移ったあとの姿を返す
+  events.addEventListener('capture', (/** @type {MessageEvent<string>} */ e) => {
+    /** @type {{ id: string, area?: string }} */
+    let request
+    try { request = JSON.parse(e.data) } catch { return }
+    queue = queue.then(() => fetch(`/api/capture/${encodeURIComponent(request.id)}`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-tadori': '1' }, body: JSON.stringify(snapshot(request.area ?? '')),
+    })).then(() => undefined, () => undefined)
+  })
   events.addEventListener('agent', (/** @type {MessageEvent<string>} */ e) => {
     /** @type {import('./types').AgentAction} */
     let command
     try { command = JSON.parse(e.data) } catch { return } // 壊れた知らせは捨てる（サーバーが検査済みの形しか流さない）
     queue = queue.then(() => run(command, toast)).catch(error => toast(t('The agent action failed: {error}', { error: messageOf(error) })))
   })
+}
+
+/** 文字の上限（大きな画面でもエージェントの文脈を埋めないように） */
+const MAX_CAPTURE = 20000
+
+/**
+ * 画面の今の見た目を文字にする：開いている画面・見出し・押されている切り替え・選んでいる値・中身の文字
+ * @param {string} area 中身を返す範囲（CSS の選び方か、見出しの文字）。空なら画面の中身全体
+ */
+export function snapshot(area) {
+  const view = document.getElementById('view')
+  /** @type {Element | null} */
+  let root = view
+  if (area) {
+    try { root = document.querySelector(area) } catch { root = null }
+    if (!root) root = [...document.querySelectorAll('#view h1, #view h2, #view h3')].find(h => h.textContent?.includes(area))?.closest('section, .panel') ?? null
+  }
+  const pressed = [...document.querySelectorAll('[aria-pressed="true"], [aria-current="page"], .seg .on')].map(el => el.textContent?.trim()).filter(Boolean)
+  const selects = [...document.querySelectorAll('select')].filter(el => el.id || el.getAttribute('aria-label')).map(el => {
+    const select = /** @type {HTMLSelectElement} */ (el)
+    return `${select.getAttribute('aria-label') || select.id}=${select.selectedOptions[0]?.textContent?.trim() ?? ''}`
+  })
+  const text = (root instanceof HTMLElement ? root.innerText : '').replace(/\n{3,}/g, '\n\n').trim()
+  return {
+    hash: location.hash || '#',
+    title: document.title,
+    heading: view?.querySelector('h1')?.textContent?.trim() ?? '',
+    pressed: [...new Set(pressed)],
+    selects,
+    area: area || '',
+    found: Boolean(root),
+    text: text.length > MAX_CAPTURE ? `${text.slice(0, MAX_CAPTURE)}\n…` : text,
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }
 }

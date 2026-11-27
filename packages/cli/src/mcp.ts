@@ -373,8 +373,50 @@ async function howToText(options: McpOptions, topic: string): Promise<ToolResult
   return text(result.text, result.isError)
 }
 
-/** 画面の中の専用カーソルへ指示を送る（人のマウスは使わない）。中身の検査はサーバーが行う */
-async function sendToScreen(screenUrl: string, args: Record<string, unknown>): Promise<ToolResult> {
+/** 押した・移ったあと、画面が描き終わるのを待ってから見た目を取る */
+const AFTER_ACTION_MS = 1200
+
+/** 画面の今の見た目（文字）を取り、エージェントが読む形にする */
+async function captureScreen(screenUrl: string, area: string): Promise<ToolResult> {
+  let res: Response
+  try {
+    res = await fetch(`${screenUrl}/api/capture`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-tadori': '1', 'x-tadori-lang': currentLangHeader() },
+      body: JSON.stringify({ area }),
+    })
+  } catch {
+    return text(t('tadori is not running ({url}). Open the desktop app or start it with tadori serve', { url: screenUrl }), true)
+  }
+  const body = await res.json().catch(() => ({})) as { error?: string; capture?: Record<string, unknown> }
+  if (!res.ok || !body.capture) return text(body.error ?? t('Could not reach the screen ({status})', { status: res.status }), true)
+  const c = body.capture
+  const list = (v: unknown) => (Array.isArray(v) ? v.join(' / ') : '')
+  return text([
+    t('The screen the person has open now:'),
+    `- hash: ${String(c.hash ?? '')}  ${t('heading')}: ${String(c.heading ?? '')}  (${String(c.width ?? '')}×${String(c.height ?? '')})`,
+    `- ${t('pressed or current')}: ${list(c.pressed)}`,
+    `- ${t('selected')}: ${list(c.selects)}`,
+    ...(c.area ? [`- ${t('area')}: ${String(c.area)}${c.found ? '' : ` (${t('not found; showing nothing')})`}`] : []),
+    '',
+    String(c.text ?? ''),
+  ].join('\n'))
+}
+
+/** 画面の中の専用カーソルへ指示を送る（人のマウスは使わない）。中身の検査はサーバーが行う。capture なら見た目を返す */
+async function sendToScreen(screenUrl: string, input: Record<string, unknown>): Promise<ToolResult> {
+  const { capture, area, ...args } = input
+  const areaText = typeof area === 'string' ? area : ''
+  if (args.action === 'capture') return captureScreen(screenUrl, areaText)
+  const sent = await deliverToScreen(screenUrl, args)
+  if (sent.isError || capture !== true) return sent
+  await new Promise(resolve => setTimeout(resolve, AFTER_ACTION_MS))
+  const seen = await captureScreen(screenUrl, areaText)
+  const body = (result: ToolResult) => result.content.map(c => c.text).join('\n')
+  return text(`${body(sent)}\n\n${body(seen)}`, seen.isError)
+}
+
+async function deliverToScreen(screenUrl: string, args: Record<string, unknown>): Promise<ToolResult> {
   let res: Response
   try {
     res = await fetch(`${screenUrl}/api/agent`, {
@@ -415,12 +457,14 @@ function buildTools(options: McpOptions): Tool[] {
   }, {
     name: 'screen',
     description: t('Show things to a person by operating the tadori screen they have open with a dedicated on-screen cursor (the person\'s mouse is not used). '
-      + 'action is point, click, type (into a field), go (move to another view), say (a short remark) or filter (filter the screen by person: a name in value, empty for everyone). See how_to screen. '
+      + 'action is point, click, type (into a field), go (move to another view), say (a short remark), filter (filter the screen by person: a name in value, empty for everyone) or capture (return what the screen shows now as text: the view, pressed toggles, selected values and the text; nothing changes). See how_to screen. '
       + 'You can only press what a person could press on the screen. Windows dialogs cannot be operated, so ask the person.'),
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['point', 'click', 'type', 'go', 'say', 'filter'] },
+        action: { type: 'string', enum: ['point', 'click', 'type', 'go', 'say', 'filter', 'capture'] },
+        area: { type: 'string', description: t('For capture: return only this part of the screen (a CSS selector, or words in a heading such as Daily progress). Empty for the whole view') },
+        capture: { type: 'boolean', description: t('After point, click, type, go or filter, wait for the screen and return what it shows (same as capture)') },
         target: { type: 'string', description: t('Text or button name shown on the screen (e.g. Rulesets, File, Search)') },
         value: { type: 'string', description: t('Text to type for type. For filter, a person\'s name (empty for everyone)') },
         hash: { type: 'string', description: t('Where go moves to (e.g. #rules, #trace-F-02)') },
