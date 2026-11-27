@@ -1,6 +1,6 @@
 [package]
 name = "tadori-desktop"
-version = "0.2.28"
+version = "0.2.29"
 description = "tadori のデスクトップアプリ"
 edition = "2021"
 publish = false
