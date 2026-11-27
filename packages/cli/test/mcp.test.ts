@@ -172,6 +172,25 @@ describe('MCP の version', () => {
     }
   })
 
+  test('つないだあとに組み直されたら、このプロセスはまだ前の組みで動いているので、つなぎ直すよう添える', async () => {
+    const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const dir = await mkdtemp(join(tmpdir(), 'tadori-build-'))
+    try {
+      await writeFile(join(dir, 'build-info.json'), JSON.stringify({ builtAt: '2026-11-27T07:00:00.000Z', commit: 'aaaaaaa' }), 'utf8')
+      const h = createMcpHandler({ glossaryPath: GLOSSARY, version: '0.2.27', buildDir: dir, sourceDirs: [] })
+      const call = async () => ((await h({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'version', arguments: {} } }) as { result: ToolResult }).result.content.at(0)?.text ?? '')
+      expect(await call()).not.toContain('つなぎ直')
+      await writeFile(join(dir, 'build-info.json'), JSON.stringify({ builtAt: '2026-11-27T08:30:00.000Z', commit: 'bbbbbbb' }), 'utf8')
+      const text = await call()
+      expect(text).toContain('まだ aaaaaaa（2026-11-27T07:00:00.000Z）で組んだコードで動いています')
+      expect(text).toContain('bbbbbbb を使うには MCP をつなぎ直してください')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   test('元のコードが組んだあとに変わっていれば、組み直してつなぎ直す手順を添える', async () => {
     const { mkdtemp, rm, writeFile } = await import('node:fs/promises')
     const { tmpdir } = await import('node:os')

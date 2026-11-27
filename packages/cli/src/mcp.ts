@@ -70,11 +70,19 @@ export interface McpOptions {
  * いま動いている MCP の版・組んだ commit・組んだ日時。元のコードが組んだあとに変わっていれば、組み直してつなぎ直す手順を添える。
  * 古い MCP のプロセスが残っていると、新しい直しが効いていないのか、そろっているのかを見分けられないため
  */
+/**
+ * この MCP のプロセスが動かしているコードの組み（最初に読んだもの）。build-info.json はあとから組み直されて変わるので、
+ * ファイルだけを見ると「組み直したのに、つなぎ直していない」古いプロセスを見分けられない
+ */
+const runningBuilds = new Map<string, Awaited<ReturnType<typeof readBuildInfo>>>()
+
 async function buildOf(options: McpOptions): ReturnType<typeof readBuildInfo> {
   const here = dirname(fileURLToPath(import.meta.url))
   const buildDir = options.buildDir ?? here
   const sourceDirs = options.sourceDirs ?? [resolve(here, '../src'), resolve(here, '../../core/src')]
-  return readBuildInfo(buildDir, sourceDirs)
+  const build = await readBuildInfo(buildDir, sourceDirs)
+  if (!runningBuilds.has(buildDir)) runningBuilds.set(buildDir, build)
+  return build
 }
 
 /** 名乗る版（MCP の serverInfo・how_to の 1 行目）。組んだ commit が分かれば「0.0.1+7a08b11」の形で付ける */
@@ -90,6 +98,11 @@ async function versionText(options: McpOptions): Promise<ToolResult> {
     ? t('Built from commit {commit} at {builtAt}', { commit: build.commit, builtAt: build.builtAt })
     : t('The commit it was built from is not known (no build-info.json)'))
   if (build.isStale) lines.push(t('The source changed after this was built. Run pnpm build, then reconnect the MCP (/mcp) to use the new code'))
+  // 動いているプロセスが、いまのファイルより前の組みのまま（組み直したあと、つなぎ直していない）
+  const runningBuild = runningBuilds.get(options.buildDir ?? dirname(fileURLToPath(import.meta.url)))
+  if (runningBuild && runningBuild.builtAt !== build.builtAt) {
+    lines.push(t('This MCP process is still running the code built from {running} at {runningAt}. Reconnect the MCP (/mcp) to use {commit}', { running: runningBuild.commit || '?', runningAt: runningBuild.builtAt || '?', commit: build.commit || '?' }))
+  }
   return text(lines.join('\n'))
 }
 
@@ -569,6 +582,8 @@ export function createMcpHandler(options: McpOptions): (message: JsonRpcMessage)
 
 /** 標準入出力で MCP の口を開く。標準出力は MCP の返事だけに使う（ほかの表示は標準エラーへ） */
 export function serveMcp(options: McpOptions): void {
+  // 立ち上げた時点の組みを覚える（あとで組み直されても、このプロセスはこの組みのコードで動くため）
+  void buildOf(options).catch(() => undefined)
   const handle = createMcpHandler(options)
   const lines = createInterface({ input: process.stdin })
   lines.on('line', line => {
