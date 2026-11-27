@@ -112,8 +112,10 @@ test.describe('1 日の進行：本文の語の印（要点・注意）', () => 
     await expect(issue.locator('.daily-badges mark')).toHaveCount(0)
     await expect(page.locator('.daily-preview mark.daily-hl.hl-note').first()).toHaveText('期限は明日')
     // 印は本文の流れのまま（枠で囲った 1 行にしない）
-    const look = await page.locator('.daily-preview mark.daily-hl.hl-note').first().evaluate(el => { const s = getComputedStyle(el); return `${s.display} ${s.borderTopWidth}` })
-    expect(look).toBe('inline 0px')
+    // （画面が描き直されることがあるので、一度だけ読まずに、そうなるまで待って確かめる）
+    const note = page.locator('.daily-preview mark.daily-hl.hl-note').first()
+    await expect(note).toHaveCSS('display', 'inline')
+    await expect(note).toHaveCSS('border-top-width', '0px')
   })
 })
 
