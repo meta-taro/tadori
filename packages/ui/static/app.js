@@ -185,7 +185,7 @@ async function reloadState(options = {}) {
   } catch (error) {
     if (options.keepUnsaved && isEditing()) { reloadPending = true; return false }
     view.innerHTML = `<h1>${esc(t('Could not read the project'))}</h1><div class="note">${ICON_INFO}<span>${esc(messageOf(error))}${(error instanceof ApiError ? error.problems : []).map(p => `<br>${esc(p)}`).join('')}</span></div>`
-    return true
+    return false
   }
 }
 /** 案件を読み直して描き直す（保存したあとなど、人が自分で変えたとき） @returns {Promise<void>} */
