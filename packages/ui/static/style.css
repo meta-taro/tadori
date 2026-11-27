@@ -897,3 +897,7 @@ mark.daily-hl { color:inherit; background:none; padding:0 1px; border-radius:2px
 mark.daily-hl.key { background:linear-gradient(transparent 50%, var(--marker) 50%); font-weight:600; }
 mark.daily-hl.note { text-decoration:underline wavy var(--late-red); text-underline-offset:3px; text-decoration-thickness:1px; }
 .daily-badges mark.daily-hl { font-size:12px; white-space:nowrap; }
+
+/* 番号のツリー：箇条書きの点を消し、#1-1 の番号を先頭に出す（番号で指して話すため） */
+.daily-tree.numbered ul { list-style:none; margin-left:12px; }
+.daily-tree .tree-no { color:var(--ink-subtle); font-size:12px; margin-right:4px; }

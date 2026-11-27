@@ -27,6 +27,9 @@ let pickedGroup = /** @type {string | undefined} */ (undefined)
 /** 並べ方を覚えておく所（その PC の画面だけ。覚えられない環境では、その日の行に課題があれば課題ごと） */
 const GROUP_KEY = 'tadori.daily.group'
 const savedGroup = () => { try { return localStorage.getItem(GROUP_KEY) } catch { return null } }
+/** 課題ごとのツリーを、箇条書きか番号（#1・#1-1・#1-1-1）で出すか。番号で指して話すため。選んだものは覚えておく */
+const NUMBERS_KEY = 'tadori.daily.numbers'
+const savedNumbers = () => { try { return localStorage.getItem(NUMBERS_KEY) === '1' } catch { return false } }
 
 /** 古いままの待ちの行（server が案件の stale_hours・wait_words で選んだもの）の ID と、何時間で古いとするか */
 let stale = { ids: /** @type {Set<string>} */ (new Set()), hours: 0 }
@@ -283,7 +286,8 @@ export async function renderDaily(view, state) {
     tagWord: tag => t(TAGS.find(([value]) => value === tag)?.[1] ?? tag),
   }
   // 課題ごとのときは、文の形も課題 → 工程 → 行のツリー（読み上げでも詳しくでも同じ形）
-  const copyText = byIssue ? issueTreeText(daily.entries, issueContext) : daily.text
+  const numbered = savedNumbers()
+  const copyText = byIssue ? issueTreeText(daily.entries, issueContext, numbered) : daily.text
   view.innerHTML = `
     <h1>${esc(t('Daily progress'))}</h1>
     <p class="lede">${daily.intro ? esc(daily.intro) : esc(t('Daily progress per person. The draft is built from WBS status changes, ledger changes and the check log. Edit the text in place; edited, added and removed rows stay even when the draft is rebuilt.'))}</p>
@@ -299,6 +303,10 @@ export async function renderDaily(view, state) {
         <button type="button" data-group="person" aria-pressed="${!byIssue}" class="${byIssue ? '' : 'on'}">${esc(t('By section'))}</button>
         <button type="button" data-group="issue" aria-pressed="${byIssue}" class="${byIssue ? 'on' : ''}" title="${esc(t('For each issue, show where it is now and its rows together'))}">${esc(t('By issue'))}</button>
       </div>
+      ${byIssue ? `<div class="seg" role="group" aria-label="${esc(t('How to mark the tree'))}">
+        <button type="button" data-numbers="0" aria-pressed="${!numbered}" class="${numbered ? '' : 'on'}">${esc(t('Bullets'))}</button>
+        <button type="button" data-numbers="1" aria-pressed="${numbered}" class="${numbered ? 'on' : ''}" title="${esc(t('Number the tree (#1, #1-1, #1-1-1) so you can point at a line by its number. Copy text uses the same numbers'))}">${esc(t('Numbers'))}</button>
+      </div>` : ''}
     </div>
     ${stale.ids.size ? `<div class="note daily-stale-note" role="status">${ICON_INFO}<span>${esc(t('{n} waiting rows have not been updated for {hours} hours or more. Update them before the meeting.', { n: stale.ids.size, hours: stale.hours }))}</span></div>` : ''}
     ${mismatchNote(daily.mismatches ?? [])}
@@ -315,12 +323,16 @@ export async function renderDaily(view, state) {
       </form>
     </div>
     <h2>${esc(t('Text (with notes)'))}</h2>
-    <div class="panel daily-preview">${byIssue ? issueTreeHtml(daily.entries, issueContext) : previewHtml(daily.text, daily.links ?? [], daily.tags ?? [], daily.whoMarks ?? [], daily.entries ?? [])}</div>`
+    <div class="panel daily-preview">${byIssue ? issueTreeHtml(daily.entries, issueContext, numbered) : previewHtml(daily.text, daily.links ?? [], daily.tags ?? [], daily.whoMarks ?? [], daily.entries ?? [])}</div>`
 
   const dateInput = /** @type {HTMLInputElement} */ (within(view, '#daily-date'))
   dateInput.addEventListener('change', () => { if (dateInput.value) { date = dateInput.value; rerender() } })
   view.querySelectorAll('[data-read]').forEach(button => button.addEventListener('click', () => {
     readMode = /** @type {HTMLElement} */ (button).dataset.read === '1'
+    rerender()
+  }))
+  view.querySelectorAll('[data-numbers]').forEach(button => button.addEventListener('click', () => {
+    try { localStorage.setItem(NUMBERS_KEY, /** @type {HTMLElement} */ (button).dataset.numbers === '1' ? '1' : '0') } catch { /* 覚えられないときは、箇条書きのまま */ }
     rerender()
   }))
   view.querySelectorAll('[data-group]').forEach(button => button.addEventListener('click', () => {

@@ -335,25 +335,37 @@ function lineOf(entry, name, ctx) {
 }
 
 /**
+ * ツリーの番号（番号で指して話せるように）。課題＝#1、その下の工程＝#1-1、行＝#1-1-1。待ちの段は工程の後ろの番号。
+ * 画面と「文をコピー」で同じ並び・同じ番号になる（どちらも ordered の順で数える）
+ * @param {boolean} numbered
+ * @param {...number} parts
+ */
+const noOf = (numbered, ...parts) => (numbered ? `#${parts.join('-')}` : '')
+
+/**
  * 文の形のツリー（画面に描く HTML）。朝会のカンペにそのまま読める形
  * @param {readonly DailyEntry[]} entries
  * @param {IssueContext} ctx
+ * @param {boolean} [numbered] 箇条書きの代わりに #1・#1-1・#1-1-1 の番号で出す
  */
-export function issueTreeHtml(entries, ctx) {
-  return `<div class="daily-tree">${ordered(issueTree(entries, ctx)).map(issue => {
+export function issueTreeHtml(entries, ctx, numbered = false) {
+  const no = (/** @type {number[]} */ ...parts) => (numbered ? `<span class="tree-no mono">${noOf(true, ...parts)}</span> ` : '')
+  return `<div class="daily-tree${numbered ? ' numbered' : ''}">${ordered(issueTree(entries, ctx)).map((issue, i) => {
+    const n = i + 1
     const head = issue.id ? `${issueRefHtml(issue.id, ctx.origins, ctx.issueLinks, ctx.useWbsField)} ${esc(issue.name)}` : esc(t('Rows without an issue'))
     const summary = issue.summary ? `<li class="tree-summary"><span class="cond">${esc(t('Summary'))}</span> ${highlightedHtml(bodyOf(issue.summary, issue.name), issue.summary)}</li>` : ''
-    const steps = issue.steps.map(step => {
-      const rows = PARTS.flatMap(([section]) => step.rows.filter(e => e.section === section)).map(e => {
+    const steps = issue.steps.map((step, s) => {
+      const rows = PARTS.flatMap(([section]) => step.rows.filter(e => e.section === section)).map((e, r) => {
         const line = lineOf(e, issue.name, ctx)
-        return `<li><span class="cond">${esc(line.section)}</span> ${line.word ? `<span class="daily-pill">${esc(line.word)}</span>` : ''}${highlightedHtml(bodyOf(e, issue.name), e)}${esc(line.text.slice(bodyOf(e, issue.name).length))}</li>`
+        return `<li>${no(n, s + 1, r + 1)}<span class="cond">${esc(line.section)}</span> ${line.word ? `<span class="daily-pill">${esc(line.word)}</span>` : ''}${highlightedHtml(bodyOf(e, issue.name), e)}${esc(line.text.slice(bodyOf(e, issue.name).length))}</li>`
       }).join('')
       const label = step.key ? `${stepLabelHtml(step.label, step.links, step.taskId)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}` : `<span class="cond">${esc(t('Other work'))}</span>`
-      return `<li class="tree-step">${label}<ul>${rows}</ul></li>`
+      return `<li class="tree-step">${no(n, s + 1)}${label}<ul>${rows}</ul></li>`
     }).join('')
-    const waits = issue.waits.length ? `<li class="tree-waits"><span class="cond">${esc(t('Waiting'))}</span><ul>${issue.waits.map(e => `<li class="cond">${highlightedHtml(bodyOf(e, issue.name), e)}${esc(lineOf(e, issue.name, ctx).text.slice(bodyOf(e, issue.name).length))}</li>`).join('')}</ul></li>` : ''
+    const w = issue.steps.length + 1
+    const waits = issue.waits.length ? `<li class="tree-waits">${no(n, w)}<span class="cond">${esc(t('Waiting'))}</span><ul>${issue.waits.map((e, r) => `<li class="cond">${no(n, w, r + 1)}${highlightedHtml(bodyOf(e, issue.name), e)}${esc(lineOf(e, issue.name, ctx).text.slice(bodyOf(e, issue.name).length))}</li>`).join('')}</ul></li>` : ''
     const notToday = issue.kind === 'other' ? ` <span class="chip">${esc(t('Not today'))}</span>` : ''
-    return `<section class="tree-issue" data-issue="${esc(issue.id)}" data-kind="${issue.kind}"><h3>${head}${notToday}</h3><ul>${summary}${steps}${waits}</ul></section>`
+    return `<section class="tree-issue" data-issue="${esc(issue.id)}" data-kind="${issue.kind}"><h3>${no(n)}${head}${notToday}</h3><ul>${summary}${steps}${waits}</ul></section>`
   }).join('')}</div>`
 }
 
@@ -361,25 +373,31 @@ export function issueTreeHtml(entries, ctx) {
  * 文の形のツリー（「文をコピー」で出す文字）。字下げで段を表す
  * @param {readonly DailyEntry[]} entries
  * @param {IssueContext} ctx
+ * @param {boolean} [numbered] 箇条書き（■・・）の代わりに #1・#1-1・#1-1-1 の番号で出す（画面と同じ番号）
  */
-export function issueTreeText(entries, ctx) {
-  return ordered(issueTree(entries, ctx)).map(issue => {
+export function issueTreeText(entries, ctx, numbered = false) {
+  return ordered(issueTree(entries, ctx)).map((issue, i) => {
+    const n = i + 1
     const url = webUrl(issue.link?.url)
     // 課題番号は正本の番号（台帳の source の場所）があればそれ。正本の課題と WBS の URL を添える
     const origin = ctx.origins[issue.id]
     const sourceUrl = webUrl(origin?.url)
     const refs = [sourceUrl ? `${origin?.name || t('Source')}：${sourceUrl}` : '', url ? `${issue.link?.label ?? 'WBS'}：${url}` : ''].filter(Boolean).join(' ／ ')
-    const head = issue.id ? `■ ${placeLabel(origin?.place, issue.id)} ${issue.name}${refs ? `（${refs}）` : ''}` : `■ ${t('Rows without an issue')}`
+    const mark = numbered ? `${noOf(true, n)} ` : '■ '
+    const head = issue.id ? `${mark}${placeLabel(origin?.place, issue.id)} ${issue.name}${refs ? `（${refs}）` : ''}` : `${mark}${t('Rows without an issue')}`
     const summary = issue.summary ? [`  ${t('Summary')}：${bodyOf(issue.summary, issue.name)}`] : []
-    const steps = issue.steps.flatMap(step => [
-      `  ・${step.key ? `${step.label}${step.status ? `（${step.status}）` : ''}${stepLinksText(step.links)}` : t('Other work')}`,
-      ...PARTS.flatMap(([section]) => step.rows.filter(e => e.section === section)).map(e => {
+    const bullet = (/** @type {number[]} */ ...parts) => (numbered ? `${noOf(true, ...parts)} ` : '・')
+    const row = (/** @type {number[]} */ ...parts) => (numbered ? `${noOf(true, ...parts)} ` : '')
+    const steps = issue.steps.flatMap((step, s) => [
+      `  ${bullet(n, s + 1)}${step.key ? `${step.label}${step.status ? `（${step.status}）` : ''}${stepLinksText(step.links)}` : t('Other work')}`,
+      ...PARTS.flatMap(([section]) => step.rows.filter(e => e.section === section)).map((e, r) => {
         const line = lineOf(e, issue.name, ctx)
-        return `    ${line.section}${line.word ? `［${line.word}］` : '：'}${line.text}`
+        return `    ${row(n, s + 1, r + 1)}${line.section}${line.word ? `［${line.word}］` : '：'}${line.text}`
       }),
     ])
-    const waits = issue.waits.length ? [`  ・${t('Waiting')}`, ...issue.waits.map(e => `    ${lineOf(e, issue.name, ctx).text}`)] : []
-    const mark = issue.kind === 'other' ? `（${t('Not today')}）` : ''
-    return [`${head}${mark}`, ...summary, ...steps, ...waits].join('\n')
+    const w = issue.steps.length + 1
+    const waits = issue.waits.length ? [`  ${bullet(n, w)}${t('Waiting')}`, ...issue.waits.map((e, r) => `    ${row(n, w, r + 1)}${lineOf(e, issue.name, ctx).text}`)] : []
+    const notToday = issue.kind === 'other' ? `（${t('Not today')}）` : ''
+    return [`${head}${notToday}`, ...summary, ...steps, ...waits].join('\n')
   }).join('\n\n')
 }

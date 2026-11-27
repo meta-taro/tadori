@@ -1114,6 +1114,17 @@ test.describe('1 日の進行：課題ごとの要約', () => {
     const copied = (await page.evaluate(() => navigator.clipboard.readText())).split(String.fromCharCode(13)).join('') // Windows のクリップボードは改行を CRLF にする
     expect(copied).toContain('■ F-02')
     expect(copied).toContain(['  ・結合試験', '    次の作業日［予定］再レビューの指摘を直す', '  ・待ち', '    再レビューを頼んだ'].join(String.fromCharCode(10)))
+    // 番号に切り替えると、画面のツリーと文をコピーに同じ番号（課題 #n・工程 #n-m・行 #n-m-k。待ちは工程の後ろの番号）
+    await page.getByRole('button', { name: '番号', exact: true }).click()
+    const head = await page.locator('.daily-preview .tree-issue[data-issue="F-02"] h3 .tree-no').textContent()
+    const n = Number(head?.replace('#', ''))
+    expect(n).toBeGreaterThan(0)
+    await expect(page.locator('.daily-preview .tree-issue[data-issue="F-02"] .tree-step .tree-no').first()).toHaveText(`#${n}-1`)
+    await page.locator('#daily-copy').click()
+    const numbered = (await page.evaluate(() => navigator.clipboard.readText())).split(String.fromCharCode(13)).join('')
+    expect(numbered).toContain(`#${n} F-02`)
+    expect(numbered).toContain([`  #${n}-2 結合試験`, `    #${n}-2-1 次の作業日［予定］再レビューの指摘を直す`, `  #${n}-3 待ち`, `    #${n}-3-1 再レビューを頼んだ`].join(String.fromCharCode(10)))
+    await page.getByRole('button', { name: '箇条書き' }).click()
     // 欄ごとへ戻すと、その PC で覚える（開き直しても欄ごと）
     await page.getByRole('button', { name: '欄ごと' }).click()
     await expect(page.locator('.daily-section[data-section="today"]')).toHaveCount(1)
