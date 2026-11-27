@@ -111,6 +111,8 @@ test.describe('上の帯と左の列は動かない', () => {
     await page.goto('/#glossary')
     await expect(page.getByRole('heading', { name: '用語' })).toBeVisible()
     const scroller = page.locator('.main > main')
+    // 用語の一覧が描き終わって、中身が窓より長くなってから送る（描く前に送ると 0 のままで落ちることがあった）
+    await expect.poll(() => scroller.evaluate(el => el.scrollHeight - el.clientHeight)).toBeGreaterThan(600)
     await scroller.evaluate(el => { el.scrollTop = 600 })
     expect(await scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0)
     // ページ全体は動かない（スクロールバーが上の帯にかからない）
