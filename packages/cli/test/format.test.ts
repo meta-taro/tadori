@@ -120,7 +120,7 @@ describe('formatCheck の「承認のあとに変わった」', () => {
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
-  })
+  }, 20_000) // git で commit を何度も作るので、ほかの試験と並んで重いときは 5 秒を超えることがある
 })
 
 describe('formatCheck の statuses.tsv に無い WBS の状態', () => {
