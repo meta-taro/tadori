@@ -71,16 +71,26 @@ test.describe('画面の見た目を返す（capture）', () => {
   test('開いている画面・押されている並べ方・中身の文字を返す。範囲を決めればその部分だけ', async ({ page }) => {
     await openDaily(page)
     await page.getByRole('button', { name: '欄ごと' }).click()
-    const res = await page.request.post('/api/capture', { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data: {} })
-    expect(res.ok()).toBe(true)
-    const { capture } = await res.json() as { capture: { hash: string; heading: string; pressed: string[]; text: string } }
-    expect(capture.hash).toBe('#daily')
+    // capture は開いている画面のうち最初に答えたものを返す。ほかの試験（i18n.spec など）の画面が同時に開いていると
+    // そちらが答えることがあるので、この画面（#daily）が答えるまで聞き直す
+    let capture = { hash: '', heading: '', pressed: [] as string[], text: '' }
+    await expect.poll(async () => {
+      const res = await page.request.post('/api/capture', { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data: {} })
+      if (!res.ok()) return ''
+      capture = (await res.json() as { capture: typeof capture }).capture
+      return `${capture.hash} ${capture.pressed.includes('欄ごと')}`
+    }, { timeout: 15_000 }).toBe('#daily true')
     expect(capture.heading).toBe('1 日の進行')
     expect(capture.pressed).toContain('欄ごと')
     expect(capture.text).toContain('次の作業日')
-    const part = await (await page.request.post('/api/capture', { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data: { area: '.daily-preview' } })).json() as { capture: { found: boolean; text: string } }
-    expect(part.capture.found).toBe(true)
-    expect(part.capture.text).not.toContain('文をコピー')
+    let part = { hash: '', found: false, text: '' }
+    await expect.poll(async () => {
+      const res = await page.request.post('/api/capture', { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data: { area: '.daily-preview' } })
+      if (!res.ok()) return false
+      part = (await res.json() as { capture: typeof part }).capture
+      return part.hash === '#daily' && part.found
+    }, { timeout: 15_000 }).toBe(true)
+    expect(part.text).not.toContain('文をコピー')
   })
 })
 
