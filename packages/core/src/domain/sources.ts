@@ -53,10 +53,25 @@ export interface Origin extends SourceLink {
   readonly stale: boolean
 }
 
+/**
+ * source 列に URL だけを書いた行（正本の表の名前なし）。正本はその URL、場所は URL の最後の部分（課題キーなど）。
+ * 正本の表に無いので「古い」の日数は決まらず、古いとは出さない
+ */
+function bareUrlOrigin(item: Pick<Item, 'source' | 'fields'>): Origin | undefined {
+  const url = item.source.trim()
+  if (!/^https?:\/\/\S+$/i.test(url)) return undefined
+  const last = url.replace(/[?#].*$/, '').replace(/\/+$/, '').split('/').at(-1) ?? ''
+  let place = last
+  try { place = decodeURIComponent(last) } catch { /* 読めない書き方なら、そのまま出す */ }
+  const syncedAt = item.fields.synced_at || undefined
+  const syncedBy = item.fields.synced_by || undefined
+  return { name: '', url, place, ...(syncedAt ? { syncedAt } : {}), ...(syncedBy ? { syncedBy } : {}), stale: false }
+}
+
 /** 行の source 列が正本の設定にあれば、リンクと反映の記録を返す。無ければ undefined */
 export function originOf(item: Pick<Item, 'source' | 'fields'>, sources: readonly SourceDef[], today: string): Origin | undefined {
   const link = sourceLinkOf(item.source, sources)
-  if (!link) return undefined
+  if (!link) return bareUrlOrigin(item)
   const def = sources.find(s => s.name === link.name) as SourceDef
   const syncedAt = item.fields.synced_at || undefined
   const syncedBy = item.fields.synced_by || undefined

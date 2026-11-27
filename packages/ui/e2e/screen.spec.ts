@@ -50,6 +50,23 @@ test.describe('1 日の進行：今日動かす課題', () => {
   })
 })
 
+test.describe('1 日の進行：工程の段の並び', () => {
+  test('【工程名】の段は、足した順ではなく WBS の工程・行の順に並ぶ', async ({ page }) => {
+    const day = '2026-10-27'
+    const post = (data: Record<string, unknown>) => page.request.post(`/api/daily/${day}/entries`, { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data })
+    expect((await post({ who: '設計担当', section: 'today', issue: 'ISS-O', text: '【延滞者の貸出制限】あとの工程の作業', tag: 'doing' })).ok()).toBe(true)
+    expect((await post({ who: '設計担当', section: 'today', issue: 'ISS-O', text: '【要件の整理】前の工程の作業', tag: 'done' })).ok()).toBe(true)
+    await page.goto('/#daily')
+    await expect(page.locator('#daily-date')).toBeVisible()
+    const loaded = page.waitForResponse(res => res.url().includes(`/api/daily?date=${day}`))
+    await page.locator('#daily-date').fill(day)
+    await page.locator('#daily-date').dispatchEvent('change')
+    await loaded
+    const steps = page.locator('.daily-issue[data-issue="ISS-O"] .issue-step')
+    await expect(steps).toHaveText(['要件の整理', '延滞者の貸出制限'])
+  })
+})
+
 test.describe('画面の見た目を返す（capture）', () => {
   test('開いている画面・押されている並べ方・中身の文字を返す。範囲を決めればその部分だけ', async ({ page }) => {
     await openDaily(page)

@@ -30,6 +30,11 @@ describe('isStale（正本から手元へ反映してから日が経っている
 describe('originOf（台帳の行の正本と、手元へ反映した記録）', () => {
   const item = (fields: Record<string, string>, source = '試験シート 15 行目') => ({ id: 'TC-1', kind: 'TC', title: 't', source, refs: [], fields })
 
+  test('source に URL だけを書いた行も正本とし、場所は URL の最後の部分（課題キー）。古いとは出さない', () => {
+    expect(originOf(item({}, 'https://tracker.example.com/view/PRJ-123'), sources, '2026-11-09')).toEqual({ name: '', url: 'https://tracker.example.com/view/PRJ-123', place: 'PRJ-123', stale: false })
+    expect(originOf(item({}, 'docs/a.md'), sources, '2026-11-09')).toBeUndefined()
+  })
+
   test('正本へのリンクに、反映した日時・だれが・古いかを添える', () => {
     expect(originOf(item({ synced_at: '2026-11-08 09:00', synced_by: '検証担当' }), sources, '2026-11-09')).toEqual({
       name: '試験シート', url: 'https://sheets.example.com/abc#range=A15', place: '15 行目', syncedAt: '2026-11-08 09:00', syncedBy: '検証担当', stale: false,

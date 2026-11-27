@@ -18,6 +18,7 @@ const STEP_HEAD = /^【([^】]{1,40})】\s*/
  * @property {readonly import('./types').Item[]} items 台帳の行（課題の短い名前）
  * @property {readonly import('./types').Task[]} tasks WBS の作業（工程の名前と状態）
  * @property {readonly import('./types').StatusDef[]} statuses 状態の名前
+ * @property {readonly import('./types').Phase[]} phases 工程の並び（工程の段を WBS の順に並べる）
  * @property {Readonly<Record<string, { label: string, url: string }>>} issueLinks 課題の正本の WBS の行
  * @property {(tag: string) => string} tagWord 行の印の言葉（作業中・待ち など）
  * @property {Readonly<Record<string, import('./types').Origin>>} origins 台帳の行の正本（課題番号を押すと正本の課題へ）
@@ -100,10 +101,14 @@ function stepOf(entry, name, ctx) {
  * @returns {TreeIssue[]}
  */
 export function issueTree(entries, ctx) {
-  const ids = [...new Set(entries.flatMap(e => (e.issue ? [e.issue] : [])))]
-  return [...ids, ''].flatMap(id => {
-    const rows = entries.filter(e => (e.issue ?? '') === id)
+  // 同じ正本の課題（source の URL が同じ）につながる台帳の ID は、1 つの課題にまとめる（今日動かす課題と待ちに分かれて 2 度出ないように）
+  // 正本の場所（課題キーなど）まで決まっている行だけをまとめる（正本の表の URL だけの行は、どれも同じ URL になるため）
+  const keyOf = (/** @type {string} */ issue) => (issue ? (ctx.origins[issue]?.place ? webUrl(ctx.origins[issue]?.url) : '') || issue : '')
+  const keys = [...new Set(entries.flatMap(e => (e.issue ? [keyOf(e.issue)] : [])))]
+  return [...keys, ''].flatMap(key => {
+    const rows = entries.filter(e => keyOf(e.issue ?? '') === key)
     if (!rows.length) return []
+    const id = rows.find(e => e.issue)?.issue ?? ''
     const item = id ? ctx.items.find(i => i.id === id) : undefined
     const name = item ? (item.fields.short || item.title) : ''
     /** @type {TreeStep[]} */
@@ -114,12 +119,23 @@ export function issueTree(entries, ctx) {
       if (found) found.rows.push(entry); else steps.push({ ...step, rows: [entry] })
     }
     // 工程の段は WBS の並び（wbs.tsv の順）に並べる。足した順にしない。WBS に無い【工程名】はそのあと、工程の無い行は最後
+    // 【工程名】は、この課題の WBS の作業から先に当て（ほかの課題の作業に当てない）、同じ名前を部分一致より先にする
+    const issueIds = new Set(rows.flatMap(e => (e.issue ? [e.issue] : [])))
+    const own = ctx.tasks.filter(task => task.issue && issueIds.has(task.issue))
+    const phaseRank = (/** @type {import('./types').Task} */ task) => {
+      const at = ctx.phases.findIndex(p => p.id === task.phase)
+      return at >= 0 ? at : ctx.phases.length
+    }
+    // 並びの重み：工程（phase）の順 → wbs.tsv の行の順
+    const rank = (/** @type {import('./types').Task} */ task) => phaseRank(task) * 100_000 + ctx.tasks.indexOf(task)
     const orderOf = (/** @type {TreeStep} */ step) => {
       if (!step.key) return Number.MAX_SAFE_INTEGER
-      const byId = ctx.tasks.findIndex(task => task.id === step.key)
-      if (byId >= 0) return byId
-      const byName = ctx.tasks.findIndex(task => task.name === step.label || task.name.includes(step.label))
-      return byName >= 0 ? byName : Number.MAX_SAFE_INTEGER - 1
+      const byId = ctx.tasks.find(task => task.id === step.key)
+      if (byId) return rank(byId)
+      const match = (/** @type {readonly import('./types').Task[]} */ list) =>
+        list.find(task => task.name === step.label) ?? list.find(task => task.name.endsWith(step.label)) ?? list.find(task => task.name.includes(step.label))
+      const byName = match(own) ?? match(ctx.tasks)
+      return byName ? rank(byName) : Number.MAX_SAFE_INTEGER - 1
     }
     steps.sort((a, b) => orderOf(a) - orderOf(b))
     const summary = rows.find(e => e.section === 'summary')
@@ -170,17 +186,31 @@ export function focusHtml(entries, ctx) {
  * @param {boolean} [useWbsField] 案件が issue_link_field を決めているか（決めていて URL が無いときは「WBS 未登録」と出す）
  */
 export function issueRefHtml(id, origins, links, useWbsField = false) {
+  const label = placeLabel(origins[id]?.place, id)
   const origin = origins[id]
   const url = webUrl(origin?.url)
   const trace = `#trace-${encodeURIComponent(id)}`
   const main = url
-    ? `<a class="issue-ref mono" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open the issue in the source of truth: {url}', { url }))}">${esc(origin?.place || id)} ↗</a>`
+    ? `<a class="issue-ref mono" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open the issue in the source of truth: {url}', { url }))}">${esc(label)} ↗</a>`
     : `<a class="issue-ref mono" href="${trace}" title="${esc(t('Trace from {id}', { id }))}">${esc(id)}</a>`
   const wbs = links[id] && webUrl(links[id].url)
     ? sourceLink(links[id])
     : useWbsField ? `<span class="chip wait" title="${esc(t('The source WBS row is not in the ledger'))}">${esc(t('WBS not set'))}</span>` : ''
   const ledger = url ? `<a class="issue-ledger cond" href="${trace}" title="${esc(t('Trace from {id}', { id }))}">${esc(t('Ledger'))}</a>` : ''
   return `<span class="issue-refs">${main}${wbs}${ledger}</span>`
+}
+
+/**
+ * 正本の場所の見せ方：URL を書いた場所は、URL の最後の部分（課題キーなど）。無ければ台帳の ID
+ * @param {string | undefined} place
+ * @param {string} id
+ */
+export function placeLabel(place, id) {
+  const text = (place ?? '').trim()
+  if (!text) return id
+  if (!/^https?:/i.test(text)) return text
+  const last = text.replace(/[?#].*$/, '').replace(/[/]+$/, '').split('/').at(-1) ?? ''
+  try { return decodeURIComponent(last) || id } catch { return last || id }
 }
 
 /** @param {{ label: string, url: string } | undefined} link */
@@ -284,7 +314,7 @@ export function issueTreeText(entries, ctx) {
     const origin = ctx.origins[issue.id]
     const sourceUrl = webUrl(origin?.url)
     const refs = [sourceUrl ? `${origin?.name || t('Source')}：${sourceUrl}` : '', url ? `${issue.link?.label ?? 'WBS'}：${url}` : ''].filter(Boolean).join(' ／ ')
-    const head = issue.id ? `■ ${origin?.place || issue.id} ${issue.name}${refs ? `（${refs}）` : ''}` : `■ ${t('Rows without an issue')}`
+    const head = issue.id ? `■ ${placeLabel(origin?.place, issue.id)} ${issue.name}${refs ? `（${refs}）` : ''}` : `■ ${t('Rows without an issue')}`
     const summary = issue.summary ? [`  ${t('Summary')}：${bodyOf(issue.summary, issue.name)}`] : []
     const steps = issue.steps.flatMap(step => [
       `  ・${step.key ? `${step.label}${step.status ? `（${step.status}）` : ''}` : t('Other work')}`,

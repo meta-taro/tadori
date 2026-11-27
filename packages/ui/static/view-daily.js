@@ -261,7 +261,7 @@ export async function renderDaily(view, state) {
   /** @type {import('./view-daily-issues.js').IssueContext} */
   const issueContext = {
     row: (e, no) => entryRow(e, no, state.origins ?? {}, !getWho()),
-    items: state.items, tasks: state.tasks, statuses: state.statuses, issueLinks, origins: state.origins ?? {}, useWbsField,
+    items: state.items, tasks: state.tasks, statuses: state.statuses, phases: state.phases, issueLinks, origins: state.origins ?? {}, useWbsField,
     tagWord: tag => t(TAGS.find(([value]) => value === tag)?.[1] ?? tag),
   }
   // 課題ごとのときは、文の形も課題 → 工程 → 行のツリー（読み上げでも詳しくでも同じ形）
