@@ -893,9 +893,10 @@
 .issue-refs .issue-ledger { font-size:11px; }
 
 /* 本文の語の印：要点はマーカー（下半分を塗る）、注意は波線の下線。色は要注意の色と同じ系統で、ダークでも読める濃さ */
-mark.daily-hl { color:inherit; background:none; padding:0 1px; border-radius:2px; }
-mark.daily-hl.key { background:linear-gradient(transparent 50%, var(--marker) 50%); font-weight:600; }
-mark.daily-hl.note { text-decoration:underline wavy var(--late-red); text-underline-offset:3px; text-decoration-thickness:1px; }
+/* 印の種類のクラスは hl- を付ける（「note」だけだと、画面の注意書きの枠 .note の見た目が付いて、枠で囲った 1 行に見えた） */
+mark.daily-hl { display:inline; color:inherit; background:none; padding:0 1px; border-radius:2px; }
+mark.daily-hl.hl-key { background:linear-gradient(transparent 50%, var(--marker) 50%); font-weight:600; }
+mark.daily-hl.hl-note { text-decoration:underline wavy var(--late-red); text-underline-offset:3px; text-decoration-thickness:1px; }
 
 /* 番号のツリー：箇条書きの点を消し、#1-1 の番号を先頭に出す（番号で指して話すため） */
 .daily-tree.numbered ul { list-style:none; margin-left:12px; }

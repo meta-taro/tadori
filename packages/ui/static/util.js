@@ -265,7 +265,7 @@ export function highlightedHtml(shown, entry, render = esc) {
   let html = ''
   let last = 0
   for (const s of spans) {
-    html += render(shown.slice(last, s.start)) + `<mark class="daily-hl ${s.kind}">${render(shown.slice(s.start, s.end))}</mark>`
+    html += render(shown.slice(last, s.start)) + `<mark class="daily-hl hl-${s.kind}">${render(shown.slice(s.start, s.end))}</mark>`
     last = s.end
   }
   return html + render(shown.slice(last))

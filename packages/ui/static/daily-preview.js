@@ -99,7 +99,7 @@ function anchoredHtml(line, entries, rest) {
   let last = 0
   for (const s of spans) {
     html += rest(line.slice(last, s.start))
-    if (s.mark) { html += `<mark class="daily-hl ${s.mark}">${rest(line.slice(s.start, s.end))}</mark>`; last = s.end; continue }
+    if (s.mark) { html += `<mark class="daily-hl hl-${s.mark}">${rest(line.slice(s.start, s.end))}</mark>`; last = s.end; continue }
     html += `<a class="daily-anchor" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open {label}: {url}', { label: s.label, url: s.url }))}">${esc(line.slice(s.start, s.end))}</a>`
     last = s.end
   }

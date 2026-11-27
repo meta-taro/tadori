@@ -107,10 +107,13 @@ test.describe('1 日の進行：本文の語の印（要点・注意）', () => 
     await page.locator('#daily-date').dispatchEvent('change')
     await loaded
     const issue = page.locator('.daily-issue[data-issue="ISS-H"]')
-    await expect(issue.locator('.issue-now mark.daily-hl.key')).toHaveText('今日中に終える')
+    await expect(issue.locator('.issue-now mark.daily-hl.hl-key')).toHaveText('今日中に終える')
     // 行の欄の後ろには印の語を並べない（行の続きの 1 行に見えて崩れて見えるため）。印は本文の中のマーカー・下線だけ
     await expect(issue.locator('.daily-badges mark')).toHaveCount(0)
-    await expect(page.locator('.daily-preview mark.daily-hl.note').first()).toHaveText('期限は明日')
+    await expect(page.locator('.daily-preview mark.daily-hl.hl-note').first()).toHaveText('期限は明日')
+    // 印は本文の流れのまま（枠で囲った 1 行にしない）
+    const look = await page.locator('.daily-preview mark.daily-hl.hl-note').first().evaluate(el => { const s = getComputedStyle(el); return `${s.display} ${s.borderTopWidth}` })
+    expect(look).toBe('inline 0px')
   })
 })
 
