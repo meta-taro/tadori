@@ -864,3 +864,12 @@
 .daily-tree .tree-issue h3 { margin:12px 0 4px; }
 .daily-tree ul { margin:2px 0 2px 18px; padding:0; }
 .daily-tree .tree-step { margin:4px 0; }
+
+/* 1 日の進行のいちばん上：今日動かす課題を大きく、待ちは小さく */
+.daily-focus { margin:0 0 12px; }
+.daily-focus .focus-active { list-style:none; margin:4px 0; padding:0; }
+.daily-focus .focus-active li { font-size:22px; font-weight:700; margin:2px 0; }
+.daily-focus .focus-waiting { margin:2px 0 0 18px; padding:0; font-size:12px; }
+.daily-issue .issue-waits { margin-top:8px; font-size:12px; opacity:.85; }
+.daily-others > summary { cursor:pointer; margin:12px 0 4px; color:var(--muted, inherit); }
+.daily-tree .tree-waits { font-size:12px; }

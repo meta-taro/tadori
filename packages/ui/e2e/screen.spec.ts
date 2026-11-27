@@ -22,6 +22,34 @@ async function openDaily(page: Page): Promise<void> {
   await expect(page.locator('.daily-preview')).not.toBeEmpty()
 }
 
+test.describe('1 日の進行：今日動かす課題', () => {
+  test('いちばん上に今日動かす課題を大きく、待ちだけの課題は小さく理由つきで、台帳の整備だけの課題は「今日の課題ではない」にたたむ', async ({ page }) => {
+    const day = '2026-10-28'
+    const post = (data: Record<string, unknown>) => page.request.post(`/api/daily/${day}/entries`, { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data })
+    expect((await post({ who: '設計担当', section: 'today', issue: 'ISS-A', text: '画面を直した', tag: 'doing' })).ok()).toBe(true)
+    expect((await post({ who: '設計担当', section: 'today', issue: 'ISS-A', text: 'レビューの返事を待つ', tag: 'wait' })).ok()).toBe(true)
+    expect((await post({ who: '設計担当', section: 'today', issue: 'ISS-B', text: '先方の回答待ち', tag: 'wait' })).ok()).toBe(true)
+    expect((await post({ who: '設計担当', section: 'upkeep', issue: 'ISS-C', text: '担当外として移した' })).ok()).toBe(true)
+    await page.goto('/#daily')
+    await expect(page.locator('#daily-date')).toBeVisible()
+    const loaded = page.waitForResponse(res => res.url().includes(`/api/daily?date=${day}`))
+    await page.locator('#daily-date').fill(day)
+    await page.locator('#daily-date').dispatchEvent('change')
+    await loaded
+    const focus = page.locator('.daily-focus')
+    await expect(focus.locator('.focus-active li')).toHaveText([/ISS-A/])
+    await expect(focus.locator('.focus-waiting li')).toHaveText([/ISS-B.*先方の回答待ち/])
+    // 待ちの行は本筋の工程に並べず、課題の最後の「待ち」の段へ
+    const a = page.locator('.daily-issue[data-issue="ISS-A"]')
+    await expect(a.locator('.issue-step-block .daily-text')).toHaveCount(1)
+    await expect(a.locator('.issue-waits .daily-text')).toHaveCount(1)
+    // 台帳の整備だけの課題は、たたんだ「今日の課題ではないもの」の中
+    await expect(page.locator('.daily-others summary')).toContainText('今日の課題ではないもの（1 件）')
+    await expect(page.locator('.daily-others .daily-issue[data-issue="ISS-C"]')).toHaveCount(1)
+    await expect(page.locator('.daily-others')).not.toHaveAttribute('open', '')
+  })
+})
+
 test.describe('画面の見た目を返す（capture）', () => {
   test('開いている画面・押されている並べ方・中身の文字を返す。範囲を決めればその部分だけ', async ({ page }) => {
     await openDaily(page)
@@ -960,17 +988,19 @@ test.describe('1 日の進行：課題ごとの要約', () => {
     // 工程の段：WBS の作業（状態つき）と、行の頭の【工程名】。同じ工程の今日と次の作業日は 1 つの段にまとまる
     await expect(group.locator('.issue-step-block[data-step="W-02"] .issue-step')).toContainText('基本設計書の作成')
     const step = group.locator('.issue-step-block[data-step="【結合試験】"]')
-    await expect(step.locator('h4')).toHaveText(['今日', '次の作業日'])
-    await expect(step.locator('.daily-text')).toHaveCount(2)
+    // 待ちの行は本筋の工程に並べず、課題の最後の「待ち」の段へ
+    await expect(step.locator('h4')).toHaveText(['次の作業日'])
+    await expect(step.locator('.daily-text')).toHaveCount(1)
+    await expect(group.locator('.issue-waits .daily-text')).toHaveCount(1)
     // 文の形もツリー：課題 → 要約 → 工程 → 行（欄の言葉と印つき）。【工程名】と課題番号は行の中で繰り返さない
     const tree = page.locator('.daily-preview .tree-issue[data-issue="F-02"]')
     await expect(tree.locator('.tree-summary')).toContainText('再レビュー待ちです')
-    await expect(tree.locator('.tree-step').filter({ hasText: '結合試験' }).locator('li')).toHaveText([/今日\s*待ち\s*再レビューを頼んだ$/, /次の作業日\s*予定\s*再レビューの指摘を直す$/])
+    await expect(tree.locator('.tree-step').filter({ hasText: '結合試験' }).locator('li')).toHaveText([/次の作業日\s*予定\s*再レビューの指摘を直す$/])
     // 文をコピーもツリーの形
     await page.locator('#daily-copy').click()
     const copied = (await page.evaluate(() => navigator.clipboard.readText())).split(String.fromCharCode(13)).join('') // Windows のクリップボードは改行を CRLF にする
     expect(copied).toContain('■ F-02')
-    expect(copied).toContain(['  ・結合試験', '    今日［待ち］再レビューを頼んだ', '    次の作業日［予定］再レビューの指摘を直す'].join(String.fromCharCode(10)))
+    expect(copied).toContain(['  ・結合試験', '    次の作業日［予定］再レビューの指摘を直す', '  ・待ち', '    再レビューを頼んだ'].join(String.fromCharCode(10)))
     // 欄ごとへ戻すと、その PC で覚える（開き直しても欄ごと）
     await page.getByRole('button', { name: '欄ごと' }).click()
     await expect(page.locator('.daily-section[data-section="today"]')).toHaveCount(1)

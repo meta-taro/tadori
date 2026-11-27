@@ -38,8 +38,15 @@ const STEP_HEAD = /^【([^】]{1,40})】\s*/
  * @property {{ label: string, url: string } | undefined} link 正本の WBS の行
  * @property {DailyEntry | undefined} summary 課題ごとの要約
  * @property {DailyEntry | undefined} latest 今の 1 行（要約が無いときの、いちばん新しく直した行）
- * @property {TreeStep[]} steps
+ * @property {TreeStep[]} steps 本筋の工程（今日こちらが手を動かす行。待ちの行は入れない）
+ * @property {DailyEntry[]} waits 待ちの行（相手の返事やレビューを待つ行。本筋とは分けて小さく出す）
+ * @property {'active' | 'waiting' | 'other'} kind 今日動かす課題 / 待ちだけの課題 / それ以外（台帳の整備だけなど、今日の課題ではない）
  */
+
+/** 待ちの行か（印が待ち） */
+const isWait = (/** @type {DailyEntry} */ e) => e.tag === 'wait'
+/** 今日こちらが手を動かす行か（今日・次の作業日・相談で、待ちでないもの） */
+const isWork = (/** @type {DailyEntry} */ e) => (e.section === 'today' || e.section === 'next' || e.section === 'consult') && !isWait(e)
 
 /**
  * 課題の「今」の 1 行：いちばん新しく直した行（直した時刻が無ければ最後の行）。台帳の整備の行は入れない
@@ -99,7 +106,7 @@ export function issueTree(entries, ctx) {
     const name = item ? (item.fields.short || item.title) : ''
     /** @type {TreeStep[]} */
     const steps = []
-    for (const entry of rows.filter(e => e.section !== 'summary')) {
+    for (const entry of rows.filter(e => e.section !== 'summary' && !isWait(e))) {
       const step = stepOf(entry, name, ctx)
       const found = steps.find(s => s.key === step.key)
       if (found) found.rows.push(entry); else steps.push({ ...step, rows: [entry] })
@@ -107,8 +114,42 @@ export function issueTree(entries, ctx) {
     // 工程の名前の無い行は、その課題の最後にまとめる
     steps.sort((a, b) => Number(!a.key) - Number(!b.key))
     const summary = rows.find(e => e.section === 'summary')
-    return [{ id, name, link: id ? ctx.issueLinks[id] : undefined, summary, latest: summary ? undefined : latestOf(rows), steps }]
+    const waits = rows.filter(isWait)
+    /** @type {TreeIssue['kind']} */
+    const kind = !id || rows.some(isWork) ? 'active' : waits.length ? 'waiting' : 'other'
+    return [{ id, name, link: id ? ctx.issueLinks[id] : undefined, summary, latest: summary ? undefined : latestOf(rows), steps, waits, kind }]
   })
+}
+
+/**
+ * 並べる順：今日動かす課題 → 待ちだけの課題 → 課題の無い行 → 今日の課題ではないもの
+ * @param {TreeIssue[]} tree
+ */
+const ordered = tree => [
+  ...tree.filter(i => i.id && i.kind === 'active'), ...tree.filter(i => i.kind === 'waiting'),
+  ...tree.filter(i => !i.id), ...tree.filter(i => i.kind === 'other'),
+]
+
+/**
+ * いちばん上の段：今日動かす課題を大きく、その下に待ちだけの課題を小さく（待ちの理由を 1 行）
+ * @param {readonly DailyEntry[]} entries
+ * @param {IssueContext} ctx
+ */
+export function focusHtml(entries, ctx) {
+  const tree = issueTree(entries, ctx)
+  const active = tree.filter(i => i.id && i.kind === 'active')
+  const waiting = tree.filter(i => i.kind === 'waiting')
+  if (!active.length && !waiting.length) return ''
+  const big = active.map(i => `<li><a class="focus-id mono" href="#trace-${encodeURIComponent(i.id)}">${esc(i.id)}</a> <span class="focus-name">${esc(i.name)}</span></li>`).join('')
+  const small = waiting.map(i => {
+    const first = i.waits[0]
+    return `<li><span class="mono">${esc(i.id)}</span> ${esc(i.name)}${first ? ` <span class="cond">— ${esc(bodyOf(first, i.name))}</span>` : ''}</li>`
+  }).join('')
+  return `<div class="panel daily-focus" role="region" aria-label="${esc(t('Issues to move today'))}">
+    <p class="cond">${esc(t('Issues to move today'))}</p>
+    ${big ? `<ul class="focus-active">${big}</ul>` : `<p class="cond">${esc(t('No issue to move today (only waiting ones)'))}</p>`}
+    ${small ? `<p class="cond focus-wait-head">${esc(t('Waiting (not moved today)'))}</p><ul class="focus-waiting">${small}</ul>` : ''}
+  </div>`
 }
 
 /** @param {{ label: string, url: string } | undefined} link */
@@ -146,7 +187,7 @@ const stepHead = step => (step.key
  */
 export function issueGroupsHtml(entries, ctx) {
   let no = 0
-  return issueTree(entries, ctx).map(issue => {
+  const sections = ordered(issueTree(entries, ctx)).map(issue => {
     const steps = issue.steps.map(step => {
       const parts = PARTS.map(([section, label]) => {
         const list = step.rows.filter(e => e.section === section)
@@ -154,8 +195,14 @@ export function issueGroupsHtml(entries, ctx) {
       }).join('')
       return `<div class="issue-step-block" data-step="${esc(step.key)}">${stepHead(step)}${parts}</div>`
     }).join('')
-    return `<section class="daily-section daily-issue" data-issue="${esc(issue.id)}">${headHtml(issue, ctx)}${steps || `<p class="cond">${esc(t('Nothing'))}</p>`}</section>`
-  }).join('')
+    // 待ちの行は本筋の工程に並べず、課題の最後の小さな段にまとめる
+    const waits = issue.waits.length ? `<div class="issue-waits"><h4>${esc(t('Waiting'))}</h4><ol class="daily-list">${issue.waits.map(e => ctx.row(e, ++no)).join('')}</ol></div>` : ''
+    return { issue, html: `<section class="daily-section daily-issue" data-issue="${esc(issue.id)}" data-kind="${issue.kind}">${headHtml(issue, ctx)}${steps}${waits}${steps || waits ? '' : `<p class="cond">${esc(t('Nothing'))}</p>`}</section>` }
+  })
+  // 今日の課題ではないもの（台帳の整備だけの課題など）は、たたんで最後に出す
+  const others = sections.filter(x => x.issue.kind === 'other')
+  return sections.filter(x => x.issue.kind !== 'other').map(x => x.html).join('')
+    + (others.length ? `<details class="daily-others"><summary>${esc(t('Not today\'s issues ({n})', { n: others.length }))}</summary>${others.map(x => x.html).join('')}</details>` : '')
 }
 
 /**
@@ -177,7 +224,7 @@ function lineOf(entry, name, ctx) {
  * @param {IssueContext} ctx
  */
 export function issueTreeHtml(entries, ctx) {
-  return `<div class="daily-tree">${issueTree(entries, ctx).map(issue => {
+  return `<div class="daily-tree">${ordered(issueTree(entries, ctx)).map(issue => {
     const head = issue.id ? `<span class="mono">${esc(issue.id)}</span> ${esc(issue.name)} ${sourceLink(issue.link)}` : esc(t('Rows without an issue'))
     const summary = issue.summary ? `<li class="tree-summary"><span class="cond">${esc(t('Summary'))}</span> ${esc(bodyOf(issue.summary, issue.name))}</li>` : ''
     const steps = issue.steps.map(step => {
@@ -188,7 +235,9 @@ export function issueTreeHtml(entries, ctx) {
       const label = step.key ? `${esc(step.label)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}` : `<span class="cond">${esc(t('Other work'))}</span>`
       return `<li class="tree-step">${label}<ul>${rows}</ul></li>`
     }).join('')
-    return `<section class="tree-issue" data-issue="${esc(issue.id)}"><h3>${head}</h3><ul>${summary}${steps}</ul></section>`
+    const waits = issue.waits.length ? `<li class="tree-waits"><span class="cond">${esc(t('Waiting'))}</span><ul>${issue.waits.map(e => `<li class="cond">${esc(lineOf(e, issue.name, ctx).text)}</li>`).join('')}</ul></li>` : ''
+    const notToday = issue.kind === 'other' ? ` <span class="chip">${esc(t('Not today'))}</span>` : ''
+    return `<section class="tree-issue" data-issue="${esc(issue.id)}" data-kind="${issue.kind}"><h3>${head}${notToday}</h3><ul>${summary}${steps}${waits}</ul></section>`
   }).join('')}</div>`
 }
 
@@ -198,7 +247,7 @@ export function issueTreeHtml(entries, ctx) {
  * @param {IssueContext} ctx
  */
 export function issueTreeText(entries, ctx) {
-  return issueTree(entries, ctx).map(issue => {
+  return ordered(issueTree(entries, ctx)).map(issue => {
     const url = webUrl(issue.link?.url)
     const head = issue.id ? `■ ${issue.id} ${issue.name}${url ? `（${issue.link?.label ?? 'WBS'}：${url}）` : ''}` : `■ ${t('Rows without an issue')}`
     const summary = issue.summary ? [`  ${t('Summary')}：${bodyOf(issue.summary, issue.name)}`] : []
@@ -209,6 +258,8 @@ export function issueTreeText(entries, ctx) {
         return `    ${line.section}${line.word ? `［${line.word}］` : '：'}${line.text}`
       }),
     ])
-    return [head, ...summary, ...steps].join('\n')
+    const waits = issue.waits.length ? [`  ・${t('Waiting')}`, ...issue.waits.map(e => `    ${lineOf(e, issue.name, ctx).text}`)] : []
+    const mark = issue.kind === 'other' ? `（${t('Not today')}）` : ''
+    return [`${head}${mark}`, ...summary, ...steps, ...waits].join('\n')
   }).join('\n\n')
 }

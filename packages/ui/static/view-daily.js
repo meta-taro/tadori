@@ -4,7 +4,7 @@
 import { t } from './i18n.js'
 import { api, esc, getWho, ICON_INFO, messageOf, nthIndexOf, toast, toastCommit, webUrl, within, idPill } from './util.js'
 import { previewHtml } from './daily-preview.js'
-import { issueGroupsHtml, issueTreeHtml, issueTreeText } from './view-daily-issues.js'
+import { focusHtml, issueGroupsHtml, issueTreeHtml, issueTreeText } from './view-daily-issues.js'
 
 /** @typedef {import('./types').DailyEntry} DailyEntry */
 /** @typedef {import('./types').Origin} Origin */
@@ -21,7 +21,9 @@ const SECTIONS = [['today', 'Today'], ['next', 'Next working day'], ['consult', 
 let readMode = false
 
 /** 人ごと（時系列の欄ごと）か、課題ごと（課題ごとの今の状態と、その課題の行）か。並行する課題を取り違えずに読むため */
-let byIssue = /** @type {boolean | undefined} */ (undefined)
+let byIssue = false
+/** この画面で人が選んだ並べ方（覚えられない環境のため。選ぶまでは undefined） */
+let pickedGroup = /** @type {string | undefined} */ (undefined)
 /** 並べ方を覚えておく所（その PC の画面だけ。覚えられない環境では、その日の行に課題があれば課題ごと） */
 const GROUP_KEY = 'tadori.daily.group'
 const savedGroup = () => { try { return localStorage.getItem(GROUP_KEY) } catch { return null } }
@@ -247,7 +249,9 @@ export async function renderDaily(view, state) {
   marks = new Map((daily.marks ?? []).map(m => [m.id, m]))
   issueLinks = daily.issueLinks ?? {}
   // 並べ方：選んだことがあればそれ、無ければ課題の付いた行がある日は課題ごと（朝会のカンペにそのまま使えるように）
-  if (byIssue === undefined) byIssue = savedGroup() ? savedGroup() === 'issue' : daily.entries.some(e => e.issue)
+  // 日を替えるたびに決め直す（今日の日付で開いたときに課題が無くても、課題のある日へ移れば課題ごとになる）
+  const chosen = pickedGroup ?? savedGroup()
+  byIssue = chosen ? chosen === 'issue' : daily.entries.some(e => e.issue)
   taskUrls = new Map(state.tasks.flatMap(task => (task.url ? [[task.id, task.url]] : [])))
   const base = `/api/daily/${encodeURIComponent(date)}`
   /** @type {import('./view-daily-issues.js').IssueContext} */
@@ -277,6 +281,7 @@ export async function renderDaily(view, state) {
     ${stale.ids.size ? `<div class="note daily-stale-note" role="status">${ICON_INFO}<span>${esc(t('{n} waiting rows have not been updated for {hours} hours or more. Update them before the meeting.', { n: stale.ids.size, hours: stale.hours }))}</span></div>` : ''}
     ${daily.missingIssueLinks?.length ? `<div class="note daily-missing-links" role="status">${ICON_INFO}<span>${esc(t('The source WBS row is not in the ledger for these issues: {ids}. Write its URL in the ledger', { ids: daily.missingIssueLinks.join(', ') }))}</span></div>` : ''}
     ${daily.saved ? '' : `<div class="note">${ICON_INFO}<span>${esc(t('This draft is not saved to the daily file yet. It is saved as soon as you edit or add a row.'))}</span></div>`}
+    ${byIssue ? focusHtml(daily.entries, issueContext) : ''}
     <div class="panel daily-sheet">
       ${byIssue ? issueGroupsHtml(daily.entries, issueContext) : sectionsHtml(daily.entries, state.origins ?? {})}
       <form class="add" id="daily-add">
@@ -297,6 +302,7 @@ export async function renderDaily(view, state) {
   }))
   view.querySelectorAll('[data-group]').forEach(button => button.addEventListener('click', () => {
     byIssue = /** @type {HTMLElement} */ (button).dataset.group === 'issue'
+    pickedGroup = byIssue ? 'issue' : 'section'
     try { localStorage.setItem(GROUP_KEY, byIssue ? 'issue' : 'section') } catch { /* 覚えられなくても、いまの画面は切り替える */ }
     rerender()
   }))
