@@ -42,6 +42,10 @@ export const JA_CLI: Readonly<Record<string, string>> = {
   'area': '範囲',
   'not found; showing nothing': '見つからないので中身は空',
   'For capture: return only this part of the screen (a CSS selector, or words in a heading such as Daily progress). Empty for the whole view': 'capture で、画面のこの部分だけを返す（CSS の選び方か、「1 日の進行」のような見出しの語）。空なら画面の中身全体',
+  'With capture: also return a PNG picture of the same part of the screen (to check how it looks: markers, underlines, broken lines, spacing). The file location is in the text': 'capture のとき、同じ所の PNG の画像も返す（マーカー・下線・行の崩れ・余白など見た目を確かめるため）。ファイルの場所は文字のほうに出す',
+  'image': '画像',
+  'could not take it ({error})': '撮れませんでした（{error}）',
+  'The screen did not send a PNG image': '画面から PNG の画像が届きませんでした',
   'After point, click, type, go or filter, wait for the screen and return what it shows (same as capture)': 'point・click・type・go・filter のあと、画面が描き終わるのを待って見た目を返す（capture と同じ）',
   'The source WBS row is not in the ledger for these issues in the daily progress for today: {ids}. Find the row in the source WBS and write its URL in the ledger':
     '今日の 1 日の進行で、次の課題は正本の WBS の行が台帳にありません：{ids}。正本の WBS でその行を探し、台帳に URL を書いてください',

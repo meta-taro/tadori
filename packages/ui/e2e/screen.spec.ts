@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 
 // 架空の見本の案件（備品貸出アプリ 改修 v1.2）で、画面の振る舞いを確かめる。
 // 見た目の細部ではなく、人が使うときに困ること（動かない帯・押せないリンク・はみ出す札）を見る。
@@ -107,7 +108,8 @@ test.describe('1 日の進行：本文の語の印（要点・注意）', () => 
     await loaded
     const issue = page.locator('.daily-issue[data-issue="ISS-H"]')
     await expect(issue.locator('.issue-now mark.daily-hl.key')).toHaveText('今日中に終える')
-    await expect(issue.locator('.daily-badges mark.daily-hl.note')).toHaveText('期限は明日')
+    // 行の欄の後ろには印の語を並べない（行の続きの 1 行に見えて崩れて見えるため）。印は本文の中のマーカー・下線だけ
+    await expect(issue.locator('.daily-badges mark')).toHaveCount(0)
     await expect(page.locator('.daily-preview mark.daily-hl.note').first()).toHaveText('期限は明日')
   })
 })
@@ -152,6 +154,21 @@ test.describe('画面の見た目を返す（capture）', () => {
       return part.hash === '#daily' && part.found
     }, { timeout: 15_000 }).toBe(true)
     expect(part.text).not.toContain('文をコピー')
+  })
+
+  test('image を付けると、同じ所の PNG の画像を一時フォルダのファイルにして、その場所を返す', async ({ page }) => {
+    await openDaily(page)
+    let shot = { hash: '', imagePath: '', imageError: '' }
+    await expect.poll(async () => {
+      const res = await page.request.post('/api/capture', { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data: { area: '.daily-preview', image: true } })
+      if (!res.ok()) return ''
+      shot = (await res.json() as { capture: typeof shot }).capture
+      return shot.hash === '#daily' ? (shot.imagePath ? 'image' : `no image: ${shot.imageError}`) : 'other screen'
+    }, { timeout: 30_000 }).toBe('image')
+    const png = await readFile(shot.imagePath)
+    // PNG の頭の 8 バイトと、白紙でない大きさ
+    expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a')
+    expect(png.length).toBeGreaterThan(2000)
   })
 })
 

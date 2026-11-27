@@ -3,6 +3,7 @@
 // 人は自分のマウスで、同じ画面を同時に触っていてよい。
 import { t } from './i18n.js'
 import { esc, messageOf, setWho } from './util.js'
+import { pictureOf } from './picture.js'
 
 const MOVE_MS = 650 // カーソルが動く時間（style.css の .agent-cursor の transition と合わせる）
 /** 一言を出しておく時間：最低 5 秒＋1 文字 0.1 秒、上限 20 秒（読み切れる長さにする） */
@@ -265,12 +266,18 @@ export function initAgent(events, toast) {
   let queue = Promise.resolve()
   // エージェントが画面の今の見た目を確かめる（文字で返す。画面は何も変えない）。指示の列に並べ、押した・移ったあとの姿を返す
   events.addEventListener('capture', (/** @type {MessageEvent<string>} */ e) => {
-    /** @type {{ id: string, area?: string }} */
+    /** @type {{ id: string, area?: string, image?: boolean }} */
     let request
     try { request = JSON.parse(e.data) } catch { return }
-    queue = queue.then(() => fetch(`/api/capture/${encodeURIComponent(request.id)}`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-tadori': '1' }, body: JSON.stringify(snapshot(request.area ?? '')),
-    })).then(() => undefined, () => undefined)
+    queue = queue.then(async () => {
+      const seen = snapshot(request.area ?? '')
+      // 画像も頼まれたら、同じ所を PNG にして添える（撮れなかったら、理由を添えて文字だけ返す）
+      const root = request.image ? captureRoot(request.area ?? '') : null
+      const picture = root ? await pictureOf(root).then(image => ({ image }), error => ({ imageError: messageOf(error) })) : {}
+      await fetch(`/api/capture/${encodeURIComponent(request.id)}`, {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-tadori': '1' }, body: JSON.stringify({ ...seen, ...picture }),
+      })
+    }).then(() => undefined, () => undefined)
   })
   events.addEventListener('agent', (/** @type {MessageEvent<string>} */ e) => {
     /** @type {import('./types').AgentAction} */
@@ -278,6 +285,19 @@ export function initAgent(events, toast) {
     try { command = JSON.parse(e.data) } catch { return } // 壊れた知らせは捨てる（サーバーが検査済みの形しか流さない）
     queue = queue.then(() => run(command, toast)).catch(error => toast(t('The agent action failed: {error}', { error: messageOf(error) })))
   })
+}
+
+/**
+ * capture で見る所：area が無ければ画面の本文、あれば CSS の選び方か、見出しの言葉を含む塊
+ * @param {string} area
+ * @returns {Element | null}
+ */
+function captureRoot(area) {
+  if (!area) return document.getElementById('view')
+  /** @type {Element | null} */
+  let root = null
+  try { root = document.querySelector(area) } catch { root = null }
+  return root ?? [...document.querySelectorAll('#view h1, #view h2, #view h3')].find(h => h.textContent?.includes(area))?.closest('section, .panel') ?? null
 }
 
 /** 文字の上限（大きな画面でもエージェントの文脈を埋めないように） */
@@ -289,12 +309,7 @@ const MAX_CAPTURE = 20000
  */
 export function snapshot(area) {
   const view = document.getElementById('view')
-  /** @type {Element | null} */
-  let root = view
-  if (area) {
-    try { root = document.querySelector(area) } catch { root = null }
-    if (!root) root = [...document.querySelectorAll('#view h1, #view h2, #view h3')].find(h => h.textContent?.includes(area))?.closest('section, .panel') ?? null
-  }
+  const root = captureRoot(area)
   const pressed = [...document.querySelectorAll('[aria-pressed="true"], [aria-current="page"], .seg .on')].map(el => el.textContent?.trim()).filter(Boolean)
   const selects = [...document.querySelectorAll('select')].filter(el => el.id || el.getAttribute('aria-label')).map(el => {
     const select = /** @type {HTMLSelectElement} */ (el)

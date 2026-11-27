@@ -82,8 +82,6 @@ export const JA = {
   'The source WBS row is not in the ledger': '正本の WBS の行が台帳にありません',
   'WBS not set': 'WBS 未登録',
   'Ledger': '台帳',
-  'Key point': '要点',
-  'Caution': '注意',
   'How to mark the tree': 'ツリーの印',
   'Bullets': '箇条書き',
   'Numbers': '番号',

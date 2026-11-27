@@ -6,7 +6,8 @@ import { CLI_VERSION } from './version.js'
 import { appendServerError, defaultLogDir } from './error-log.js'
 import { readBuildInfo } from './build-info.js'
 import { fileURLToPath } from 'node:url'
-import { readFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path'
 import {
   langOf, ProjectLoadError, removeRule, saveRule, saveSettings, saveTaskStatus, t, trace, validatePhases, validateStatuses, withLang, WriteRefused,
@@ -75,12 +76,12 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body))
 }
 
-async function readJson(req: IncomingMessage): Promise<unknown> {
+async function readJson(req: IncomingMessage, limit = MAX_BODY_BYTES): Promise<unknown> {
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of req) {
     size += (chunk as Buffer).length
-    if (size > MAX_BODY_BYTES) throw new HttpError(413, t('The request body is too large'))
+    if (size > limit) throw new HttpError(413, t('The request body is too large'))
     chunks.push(chunk as Buffer)
   }
   try {
@@ -222,6 +223,28 @@ function serialized<T>(work: () => Promise<T>): Promise<T> {
 
 /** 画面の見た目を待つ時間（画面が裏にあっても答えられる長さ） */
 const CAPTURE_WAIT_MS = 5000
+/** 画像も撮るときの待ち時間（画面の中で描き直すので、文字だけより長い） */
+const CAPTURE_IMAGE_WAIT_MS = 20_000
+/** 画面からの画像つきの答えの上限 */
+const MAX_CAPTURE_BYTES = 24 * 1024 * 1024
+/** 撮った画像を置く所（手元の一時フォルダ。案件のフォルダには置かない） */
+const CAPTURE_DIR = join(tmpdir(), 'tadori-captures')
+
+/**
+ * 画面の答えに PNG（data URL）が付いていたら、一時フォルダのファイルにして場所に置き換える
+ * （大きな画像を JSON のまま MCP へ流さないため）
+ */
+async function withImageFile(answer: unknown): Promise<unknown> {
+  if (typeof answer !== 'object' || answer === null) return answer
+  const { image, ...rest } = answer as Record<string, unknown>
+  if (typeof image !== 'string') return answer
+  const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(image)
+  if (!match) return { ...rest, imageError: t('The screen did not send a PNG image') }
+  await mkdir(CAPTURE_DIR, { recursive: true })
+  const path = join(CAPTURE_DIR, `capture-${new Date().toISOString().replace(/[:.]/g, '-')}.png`)
+  await writeFile(path, Buffer.from(match[1] ?? '', 'base64'))
+  return { ...rest, imagePath: path }
+}
 /** 答えを待っている capture（id → 受け取る関数） */
 const pendingCaptures = new Map<string, (value: unknown) => void>()
 
@@ -251,24 +274,25 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
   if (req.method === 'POST' && url.pathname === '/api/capture') {
     // 人が開いている画面の今の見た目を、文字で返す（エージェントが画面を確かめるため。画面は何も変えない）
     assertWriteAllowed(req)
-    const body = await readJson(req) as { area?: unknown }
+    const body = await readJson(req) as { area?: unknown; image?: unknown }
     const area = typeof body?.area === 'string' ? body.area.slice(0, 200) : ''
+    const image = body?.image === true
     const id = randomUUID()
     const waiting = new Promise<unknown>((resolve, reject) => {
-      const timer = setTimeout(() => { pendingCaptures.delete(id); reject(new HttpError(504, t('The screen did not answer the capture in time. Check that the tadori screen is open'))) }, CAPTURE_WAIT_MS)
+      const timer = setTimeout(() => { pendingCaptures.delete(id); reject(new HttpError(504, t('The screen did not answer the capture in time. Check that the tadori screen is open'))) }, image ? CAPTURE_IMAGE_WAIT_MS : CAPTURE_WAIT_MS)
       pendingCaptures.set(id, value => { clearTimeout(timer); pendingCaptures.delete(id); resolve(value) })
     })
-    const screens = notifier.send('capture', { id, area })
+    const screens = notifier.send('capture', { id, area, image })
     if (!screens) { pendingCaptures.get(id)?.(undefined); throw new HttpError(409, t('No tadori screen is open. Open the screen, then send again')) }
     // 画面の版も返す（人の画面が新しい版になっているかを、エージェントが見分けられるように）
-    return sendJson(res, 200, { screens, version: options.appVersion ?? CLI_VERSION, capture: await waiting })
+    return sendJson(res, 200, { screens, version: options.appVersion ?? CLI_VERSION, capture: await withImageFile(await waiting) })
   }
 
   if (req.method === 'POST' && url.pathname.startsWith('/api/capture/')) {
     // 画面からの答え（上の capture で配った id ごと）
     assertWriteAllowed(req)
     const answer = pendingCaptures.get(decodeURIComponent(url.pathname.slice('/api/capture/'.length)))
-    if (answer) answer(await readJson(req))
+    if (answer) answer(await readJson(req, MAX_CAPTURE_BYTES))
     return sendJson(res, 200, { ok: Boolean(answer) })
   }
 

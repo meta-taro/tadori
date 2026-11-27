@@ -35,7 +35,7 @@ type JsonRpcResponse =
   | { jsonrpc: '2.0'; id: string | number | null; error: { code: number; message: string } }
 
 interface ToolResult {
-  content: Array<{ type: 'text'; text: string }>
+  content: Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>
   isError?: boolean
 }
 
@@ -390,13 +390,13 @@ async function howToText(options: McpOptions, topic: string): Promise<ToolResult
 const AFTER_ACTION_MS = 1200
 
 /** 画面の今の見た目（文字）を取り、エージェントが読む形にする */
-async function captureScreen(screenUrl: string, area: string): Promise<ToolResult> {
+async function captureScreen(screenUrl: string, area: string, image = false): Promise<ToolResult> {
   let res: Response
   try {
     res = await fetch(`${screenUrl}/api/capture`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-tadori': '1', 'x-tadori-lang': currentLangHeader() },
-      body: JSON.stringify({ area }),
+      body: JSON.stringify({ area, image }),
     })
   } catch {
     return text(t('tadori is not running ({url}). Open the desktop app or start it with tadori serve', { url: screenUrl }), true)
@@ -405,28 +405,36 @@ async function captureScreen(screenUrl: string, area: string): Promise<ToolResul
   if (!res.ok || !body.capture) return text(body.error ?? t('Could not reach the screen ({status})', { status: res.status }), true)
   const c = body.capture
   const list = (v: unknown) => (Array.isArray(v) ? v.join(' / ') : '')
-  return text([
+  const described = text([
     `${t('The screen the person has open now:')} (tadori ${String(body.version ?? '')})`,
     `- hash: ${String(c.hash ?? '')}  ${t('heading')}: ${String(c.heading ?? '')}  (${String(c.width ?? '')}×${String(c.height ?? '')})`,
     `- ${t('pressed or current')}: ${list(c.pressed)}`,
     `- ${t('selected')}: ${list(c.selects)}`,
     ...(c.area ? [`- ${t('area')}: ${String(c.area)}${c.found ? '' : ` (${t('not found; showing nothing')})`}`] : []),
+    ...(typeof c.imagePath === 'string' ? [`- ${t('image')}: ${c.imagePath}`] : []),
+    ...(typeof c.imageError === 'string' ? [`- ${t('image')}: ${t('could not take it ({error})', { error: c.imageError })}`] : []),
     '',
     String(c.text ?? ''),
   ].join('\n'))
+  if (typeof c.imagePath !== 'string') return described
+  // 画像も MCP の画像として返す（エージェントがそのまま見られるように）。読めなければ場所だけ
+  const data = await readFile(c.imagePath).then(buffer => buffer.toString('base64'), () => '')
+  return data ? { content: [...described.content, { type: 'image', data, mimeType: 'image/png' }] } : described
 }
 
 /** 画面の中の専用カーソルへ指示を送る（人のマウスは使わない）。中身の検査はサーバーが行う。capture なら見た目を返す */
 async function sendToScreen(screenUrl: string, input: Record<string, unknown>): Promise<ToolResult> {
-  const { capture, area, ...args } = input
+  const { capture, area, image, ...args } = input
   const areaText = typeof area === 'string' ? area : ''
-  if (args.action === 'capture') return captureScreen(screenUrl, areaText)
+  const withImage = image === true
+  if (args.action === 'capture') return captureScreen(screenUrl, areaText, withImage)
   const sent = await deliverToScreen(screenUrl, args)
   if (sent.isError || capture !== true) return sent
   await new Promise(resolve => setTimeout(resolve, AFTER_ACTION_MS))
-  const seen = await captureScreen(screenUrl, areaText)
-  const body = (result: ToolResult) => result.content.map(c => c.text).join('\n')
-  return text(`${body(sent)}\n\n${body(seen)}`, seen.isError)
+  const seen = await captureScreen(screenUrl, areaText, withImage)
+  const body = (result: ToolResult) => result.content.flatMap(c => (c.type === 'text' ? [c.text] : [])).join('\n')
+  const images = seen.content.filter(c => c.type === 'image')
+  return { content: [{ type: 'text', text: `${body(sent)}\n\n${body(seen)}` }, ...images], ...(seen.isError ? { isError: true } : {}) }
 }
 
 async function deliverToScreen(screenUrl: string, args: Record<string, unknown>): Promise<ToolResult> {
@@ -478,6 +486,7 @@ function buildTools(options: McpOptions): Tool[] {
         action: { type: 'string', enum: ['point', 'click', 'type', 'go', 'say', 'filter', 'capture'] },
         area: { type: 'string', description: t('For capture: return only this part of the screen (a CSS selector, or words in a heading such as Daily progress). Empty for the whole view') },
         capture: { type: 'boolean', description: t('After point, click, type, go or filter, wait for the screen and return what it shows (same as capture)') },
+        image: { type: 'boolean', description: t('With capture: also return a PNG picture of the same part of the screen (to check how it looks: markers, underlines, broken lines, spacing). The file location is in the text') },
         target: { type: 'string', description: t('Text or button name shown on the screen (e.g. Rulesets, File, Search)') },
         value: { type: 'string', description: t('Text to type for type. For filter, a person\'s name (empty for everyone)') },
         hash: { type: 'string', description: t('Where go moves to (e.g. #rules, #trace-F-02)') },
