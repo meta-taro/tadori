@@ -105,6 +105,22 @@ test.describe('1 日の進行：本文の語の印（要点・注意）', () => 
   })
 })
 
+test.describe('1 日の進行：工程の状態と行の印の食い違い', () => {
+  test('未着手の工程に「作業中」の行があると、待ちの注意と同じ並びに 1 行で知らせる', async ({ page }) => {
+    const day = '2026-10-23'
+    // 見本の W-09「試験ケースの作成」は todo（statuses.tsv のいちばん上＝未着手）
+    const res = await page.request.post(`/api/daily/${day}/entries`, { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data: { who: '検証担当', section: 'today', text: '試験ケースを書き始めた', tag: 'doing', wbs: 'W-09' } })
+    expect(res.ok()).toBe(true)
+    await page.goto('/#daily')
+    await expect(page.locator('#daily-date')).toBeVisible()
+    const loaded = page.waitForResponse(r => r.url().includes(`/api/daily?date=${day}`))
+    await page.locator('#daily-date').fill(day)
+    await page.locator('#daily-date').dispatchEvent('change')
+    await loaded
+    await expect(page.locator('.daily-mismatch-note')).toContainText('（W-09）は「未着手」なのに 作業中 の行があります')
+  })
+})
+
 test.describe('画面の見た目を返す（capture）', () => {
   test('開いている画面・押されている並べ方・中身の文字を返す。範囲を決めればその部分だけ', async ({ page }) => {
     await openDaily(page)

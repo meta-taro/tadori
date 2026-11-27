@@ -143,6 +143,17 @@ function originLink(origin) {
 }
 
 /**
+ * 工程の状態と行の印が食い違うときの注意（台帳の status の直し忘れに、会の前に気づくため）。どちらを直すかは人が決める
+ * @param {readonly { task: string, name: string, status: string, tags: readonly string[] }[]} mismatches
+ */
+function mismatchNote(mismatches) {
+  if (!mismatches.length) return ''
+  const tagName = (/** @type {string} */ tag) => t(TAGS.find(([value]) => value === tag)?.[1] ?? tag)
+  const items = mismatches.map(m => t('{name} ({id}) is "{status}" but has rows marked {tags}', { name: m.name, id: m.task, status: m.status, tags: m.tags.map(tagName).join('・') }))
+  return `<div class="note daily-mismatch-note" role="status">${ICON_INFO}<span>${esc(t('The step status and the row tags do not match. Fix the status in the ledger or the row tag: {items}', { items: items.join(t(' / ')) }))}</span></div>`
+}
+
+/**
  * 1 行：番号・本文（その場で直せる）・担当・課題と WBS へのリンク・消すボタン
  * @param {DailyEntry} entry
  * @param {number} no
@@ -285,6 +296,7 @@ export async function renderDaily(view, state) {
       </div>
     </div>
     ${stale.ids.size ? `<div class="note daily-stale-note" role="status">${ICON_INFO}<span>${esc(t('{n} waiting rows have not been updated for {hours} hours or more. Update them before the meeting.', { n: stale.ids.size, hours: stale.hours }))}</span></div>` : ''}
+    ${mismatchNote(daily.mismatches ?? [])}
     ${daily.missingIssueLinks?.length ? `<div class="note daily-missing-links" role="status">${ICON_INFO}<span>${esc(t('The source WBS row is not in the ledger for these issues: {ids}. Write its URL in the ledger', { ids: daily.missingIssueLinks.join(', ') }))}</span></div>` : ''}
     ${daily.saved ? '' : `<div class="note">${ICON_INFO}<span>${esc(t('This draft is not saved to the daily file yet. It is saved as soon as you edit or add a row.'))}</span></div>`}
     ${byIssue ? focusHtml(daily.entries, issueContext) : ''}

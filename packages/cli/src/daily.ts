@@ -1,7 +1,7 @@
 import './i18n.js'
 import {
   BADGE_TONES, HIGHLIGHT_KINDS, buildDaily, checkReply, carriedOver, checkMarkOf, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
-  parseThread, readAloud, THREAD_SERVICE_NAMES, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyHighlight, type DailyLink, type HighlightKind, type DailySection, type ReplyCheck, type ReplyReader,
+  parseThread, readAloud, THREAD_SERVICE_NAMES, readCheckpointLog, readStatusChanges, runsById, staleWaits, statusMismatches, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyHighlight, type DailyLink, type HighlightKind, type DailySection, type ReplyCheck, type ReplyReader, type StatusMismatch,
   shortOf, type Item, type Task,
 } from '@tadori/core'
 import { checkMarkText, checkTagsOf, dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
@@ -36,6 +36,8 @@ export interface Daily {
    * 待ちと読むのは、tone が wait のバッジか、案件が wait_words に書いた語を含む行だけ
    */
   readonly stale: { readonly ids: readonly string[]; readonly hours: number }
+  /** 工程（WBS の作業）の状態と、その工程の行の印が食い違うもの（台帳の status の直し忘れに気づくため） */
+  readonly mismatches: readonly StatusMismatch[]
   /**
    * 行のしるし（つないだチェックの記録）。しるしの無い行（none）は入れない。
    * mark＝ok / open / missing、text＝案件の言葉（文に出すのと同じ）、runs＝つないだ記録（画面がその記録へ飛ぶ）
@@ -193,7 +195,8 @@ export async function loadDaily(dir: string, date: string, who?: string, view: D
   const replies = readers ? Object.fromEntries(await Promise.all(threaded.map(async ({ id, thread }) => [id, await checkReply(thread, readers)] as const))) : {}
   return { date, threads, replies, text: formatEntries(spoken, project, date, format, { showWho: !who, marks: markById, runs }), owners, entries: shown, saved, intro: format.intro, links: linksOf(shown, format, project.tasks), ...issueLinksOf(project.items, shown, format), tags: DAILY_TAGS.map(tag => tagText(tag, format)).filter(Boolean),
     whoMarks: who ? [] : [...new Set(shown.map(e => whoMark(e.who, format)).filter(Boolean))],
-    stale: { ids: staleWaits(shown, view.now ?? new Date(), staleRuleOf(format)).map(e => e.id), hours: staleRuleOf(format).hours }, marks }
+    stale: { ids: staleWaits(shown, view.now ?? new Date(), staleRuleOf(format)).map(e => e.id), hours: staleRuleOf(format).hours }, marks,
+    mismatches: statusMismatches(shown, project.tasks, project.statuses) }
 }
 
 /** 下書きを作って（作り直して）置く。直した行・足した行・消した行は残る */
