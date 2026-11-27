@@ -2,7 +2,7 @@
 // 1 つの案件で課題が何本も並行するときに、どの課題のどの工程の作業かを読み違えないため（朝会のカンペにそのまま使える）。
 // 行の中身は欄ごとの並びと同じ（直す・消す・印を変えるも同じ口）。並べ方だけを変える
 import { t } from './i18n.js'
-import { esc, webUrl } from './util.js'
+import { esc, nthIndexOf, webUrl } from './util.js'
 
 /** @typedef {import('./types').DailyEntry} DailyEntry */
 
@@ -31,6 +31,7 @@ const STEP_HEAD = /^【([^】]{1,40})】\s*/
  * @property {string} label 工程の名前
  * @property {string} status WBS の作業の状態の名前（WBS の作業でなければ空）
  * @property {string} tone 状態の色
+ * @property {readonly import('./types').TaskLink[]} [links] 当てた WBS の作業の成果物へのリンク（wbs.tsv の links 列）
  * @property {DailyEntry[]} rows
  */
 
@@ -128,21 +129,27 @@ export function issueTree(entries, ctx) {
     }
     // 並びの重み：工程（phase）の順 → wbs.tsv の行の順
     const rank = (/** @type {import('./types').Task} */ task) => phaseRank(task) * 100_000 + ctx.tasks.indexOf(task)
-    const orderOf = (/** @type {TreeStep} */ step) => {
-      if (!step.key) return Number.MAX_SAFE_INTEGER
+    /** 工程に当たる WBS の作業（ID が先。【工程名】なら名前で当てる） */
+    const taskOf = (/** @type {TreeStep} */ step) => {
+      if (!step.key) return undefined
       const byId = ctx.tasks.find(task => task.id === step.key)
-      if (byId) return rank(byId)
+      if (byId) return byId
       const match = (/** @type {readonly import('./types').Task[]} */ list) =>
         list.find(task => task.name === step.label) ?? list.find(task => task.name.endsWith(step.label)) ?? list.find(task => task.name.includes(step.label))
-      const byName = match(own) ?? match(ctx.tasks)
-      return byName ? rank(byName) : Number.MAX_SAFE_INTEGER - 1
+      return match(own) ?? match(ctx.tasks)
     }
-    steps.sort((a, b) => orderOf(a) - orderOf(b))
+    const orderOf = (/** @type {TreeStep} */ step) => {
+      if (!step.key) return Number.MAX_SAFE_INTEGER
+      const task = taskOf(step)
+      return task ? rank(task) : Number.MAX_SAFE_INTEGER - 1
+    }
+    // 当てた作業の成果物へのリンクも、工程の見出しに持たせる
+    const sorted = [...steps].sort((a, b) => orderOf(a) - orderOf(b)).map(step => ({ ...step, links: taskOf(step)?.links ?? [] }))
     const summary = rows.find(e => e.section === 'summary')
     const waits = rows.filter(isWait)
     /** @type {TreeIssue['kind']} */
     const kind = !id || rows.some(isWork) ? 'active' : waits.length ? 'waiting' : 'other'
-    return [{ id, name, link: id ? ctx.issueLinks[id] : undefined, summary, latest: summary ? undefined : latestOf(rows), steps, waits, kind }]
+    return [{ id, name, link: id ? ctx.issueLinks[id] : undefined, summary, latest: summary ? undefined : latestOf(rows), steps: sorted, waits, kind }]
   })
 }
 
@@ -234,11 +241,51 @@ function headHtml(issue, ctx) {
 }
 
 /**
+ * 工程の名前を描く。成果物へのリンクの語（anchor）が名前にあればその語をリンクにし、無いリンクは名前の後ろに「表示名 ↗」で出す
+ * @param {string} label
+ * @param {readonly import('./types').TaskLink[]} [links]
+ */
+export function stepLabelHtml(label, links = []) {
+  /** @type {Array<{ start: number, end: number, label: string, url: string }>} */
+  const spans = []
+  /** @type {Array<{ label: string, url: string }>} */
+  const tail = []
+  for (const link of links) {
+    const url = webUrl(link.url)
+    if (!url) continue
+    const start = link.anchor ? nthIndexOf(label, link.anchor, link.nth ?? 1) : -1
+    const end = start + (link.anchor?.length ?? 0)
+    // 名前に無い語や、先に決まった語と重なる語は、後ろに出す
+    if (start < 0 || spans.some(s => start < s.end && end > s.start)) tail.push({ label: link.label, url })
+    else spans.push({ start, end, label: link.label, url })
+  }
+  spans.sort((a, b) => a.start - b.start)
+  let html = ''
+  let last = 0
+  for (const s of spans) {
+    html += esc(label.slice(last, s.start))
+    html += `<a class="daily-anchor" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open {label}: {url}', { label: s.label, url: s.url }))}">${esc(label.slice(s.start, s.end))}</a>`
+    last = s.end
+  }
+  html += esc(label.slice(last))
+  return html + tail.map(l => ` <a class="daily-link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(l.url)}">${esc(l.label)} ↗</a>`).join('')
+}
+
+/**
+ * 文の形（コピーする文字）の工程の後ろに添える成果物へのリンク（「 ― 表示名：URL ／ 表示名：URL」）
+ * @param {readonly import('./types').TaskLink[]} [links]
+ */
+const stepLinksText = (links = []) => {
+  const list = links.flatMap(l => (webUrl(l.url) ? [`${l.label}：${webUrl(l.url)}`] : []))
+  return list.length ? ` ― ${list.join(' ／ ')}` : ''
+}
+
+/**
  * 工程の見出し（WBS の作業なら状態の札も）
  * @param {TreeStep} step
  */
 const stepHead = step => (step.key
-  ? `<h3 class="issue-step">${esc(step.label)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}</h3>`
+  ? `<h3 class="issue-step">${stepLabelHtml(step.label, step.links)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}</h3>`
   : `<h3 class="issue-step cond">${esc(t('Other work'))}</h3>`)
 
 /**
@@ -293,7 +340,7 @@ export function issueTreeHtml(entries, ctx) {
         const line = lineOf(e, issue.name, ctx)
         return `<li><span class="cond">${esc(line.section)}</span> ${line.word ? `<span class="daily-pill">${esc(line.word)}</span>` : ''}${esc(line.text)}</li>`
       }).join('')
-      const label = step.key ? `${esc(step.label)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}` : `<span class="cond">${esc(t('Other work'))}</span>`
+      const label = step.key ? `${stepLabelHtml(step.label, step.links)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}` : `<span class="cond">${esc(t('Other work'))}</span>`
       return `<li class="tree-step">${label}<ul>${rows}</ul></li>`
     }).join('')
     const waits = issue.waits.length ? `<li class="tree-waits"><span class="cond">${esc(t('Waiting'))}</span><ul>${issue.waits.map(e => `<li class="cond">${esc(lineOf(e, issue.name, ctx).text)}</li>`).join('')}</ul></li>` : ''
@@ -317,7 +364,7 @@ export function issueTreeText(entries, ctx) {
     const head = issue.id ? `■ ${placeLabel(origin?.place, issue.id)} ${issue.name}${refs ? `（${refs}）` : ''}` : `■ ${t('Rows without an issue')}`
     const summary = issue.summary ? [`  ${t('Summary')}：${bodyOf(issue.summary, issue.name)}`] : []
     const steps = issue.steps.flatMap(step => [
-      `  ・${step.key ? `${step.label}${step.status ? `（${step.status}）` : ''}` : t('Other work')}`,
+      `  ・${step.key ? `${step.label}${step.status ? `（${step.status}）` : ''}${stepLinksText(step.links)}` : t('Other work')}`,
       ...PARTS.flatMap(([section]) => step.rows.filter(e => e.section === section)).map(e => {
         const line = lineOf(e, issue.name, ctx)
         return `    ${line.section}${line.word ? `［${line.word}］` : '：'}${line.text}`

@@ -8,6 +8,7 @@ import type { SourceDef } from '../domain/sources.js'
 import { t } from '../i18n.js'
 import { parseTestSheet, type TestSheetRow } from './test-sheet.js'
 import { parseTsv } from './tsv.js'
+import { linksFromCell } from './daily-store.js'
 
 /**
  * 案件のフォルダの置き方（すべて git で管理する TSV）
@@ -183,6 +184,8 @@ function sheetRowsToItems(rows: readonly TestSheetRow[], columns: SheetColumns, 
 function toTask({ row, line }: NumberedRow, problems: string[]): Task {
   const start = row.start ?? ''
   const end = row.end ?? ''
+  // 成果物へのリンク（1 日の進行の links と同じ書き方）。http・https でない URL は読まない
+  const taskLinks = linksFromCell(row.links ?? '')
   // 日付は画面に埋め込まれ、遅れの計算にも使うので形を確かめる
   for (const [label, value] of [['start', start], ['end', end]] as const) {
     if (value && !isValidDate(value)) problems.push(t('{file}, {id}: the {label} date "{value}" must be written as YYYY-MM-DD', { file: PATHS.wbs, id: String(row.id), label, value }))
@@ -196,6 +199,7 @@ function toTask({ row, line }: NumberedRow, problems: string[]): Task {
     ...(row.owner?.trim() ? { owner: row.owner.trim() } : {}),
     ...(row.issue?.trim() ? { issue: row.issue.trim() } : {}),
     ...(/^https?:\/\//i.test(row.url?.trim() ?? '') ? { url: (row.url ?? '').trim() } : {}),
+    ...(taskLinks.length ? { links: taskLinks } : {}),
     line,
   }
 }

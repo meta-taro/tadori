@@ -1,7 +1,7 @@
-id	phase	name	start	end	status	owner
+id	phase	name	start	end	status	owner	links
 W-01	bd	要件の整理	2026-09-01	2026-09-11	done	設計担当
 W-02	bd	基本設計書の作成	2026-09-14	2026-10-09	done	設計担当
-W-03	bd	基本設計レビュー	2026-10-12	2026-10-20	review	設計担当
+W-03	bd	基本設計レビュー	2026-10-12	2026-10-20	review	設計担当	レビュー記録 https://docs.example.com/review > レビュー | 指摘一覧 https://sheets.example.com/notes
 W-04	dd	詳細設計（貸出上限）	2026-10-14	2026-10-23	review	設計担当
 W-05	dd	詳細設計（延滞）	2026-10-21	2026-10-29	hold	設計担当
 W-06	impl	貸出上限の改修	2026-10-26	2026-11-03	doing	開発担当

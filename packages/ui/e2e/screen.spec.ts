@@ -65,6 +65,25 @@ test.describe('1 日の進行：工程の段の並び', () => {
     const steps = page.locator('.daily-issue[data-issue="ISS-O"] .issue-step')
     await expect(steps).toHaveText(['要件の整理', '延滞者の貸出制限'])
   })
+
+  test('WBS の作業の成果物へのリンク（wbs.tsv の links 列）は、工程の見出しの語がリンクになり、名前に無いものは後ろに「表示名 ↗」', async ({ page }) => {
+    const day = '2026-10-25'
+    const res = await page.request.post(`/api/daily/${day}/entries`, { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data: { who: '設計担当', section: 'today', issue: 'ISS-L', text: '指摘を直した', tag: 'doing', wbs: 'W-03' } })
+    expect(res.ok()).toBe(true)
+    await page.goto('/#daily')
+    await expect(page.locator('#daily-date')).toBeVisible()
+    const loaded = page.waitForResponse(r => r.url().includes(`/api/daily?date=${day}`))
+    await page.locator('#daily-date').fill(day)
+    await page.locator('#daily-date').dispatchEvent('change')
+    await loaded
+    const head = page.locator('.daily-issue[data-issue="ISS-L"] .issue-step').first()
+    // 見本の W-03「基本設計レビュー」：「レビュー」の語がレビュー記録へ、指摘一覧は名前に無いので後ろに出る
+    await expect(head.locator('a.daily-anchor')).toHaveText('レビュー')
+    await expect(head.locator('a.daily-anchor')).toHaveAttribute('href', 'https://docs.example.com/review')
+    await expect(head.locator('a.daily-link')).toHaveText('指摘一覧 ↗')
+    await expect(head.locator('a.daily-link')).toHaveAttribute('href', 'https://sheets.example.com/notes')
+    await expect(head).toContainText('基本設計レビュー（W-03）')
+  })
 })
 
 test.describe('画面の見た目を返す（capture）', () => {

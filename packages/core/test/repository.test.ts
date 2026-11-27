@@ -76,6 +76,19 @@ describe('loadProject', () => {
     expect(task).not.toHaveProperty('end')
   })
 
+  test('wbs.tsv の links 列は「表示名 URL > 語 | 表示名 URL」で読む。http・https でないものは読まない', async () => {
+    await writeMinimalProject()
+    await put('ledger/wbs.tsv', 'id\tphase\tname\tstart\tend\tstatus\tlinks\n'
+      + 'W-1\tbd\t試験ケースの作成\t\t\ttodo\t試験ケース https://sheets.example.com/tc > 試験ケース | パターン PDF https://drive.example.com/p | わるい javascript:alert(1)\n'
+      + 'W-2\tbd\t見直し\t\t\ttodo\t\n')
+    const [first, second] = (await loadProject(dir)).tasks
+    expect(first?.links).toEqual([
+      { label: '試験ケース', url: 'https://sheets.example.com/tc', anchor: '試験ケース' },
+      { label: 'パターン PDF', url: 'https://drive.example.com/p' },
+    ])
+    expect(second).not.toHaveProperty('links')
+  })
+
   test('ルールの判定の種類が決まった語でなければ、ファイル名と行つきで止める', async () => {
     await writeMinimalProject()
     await put('.tadori/rulesets/detail-design.tsv', 'id\tphase\tkind\tfrom\tto\tfield\tlabel\nR3\tdd\tcover\tBD\tDD\t\tx\n')

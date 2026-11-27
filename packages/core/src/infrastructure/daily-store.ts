@@ -20,7 +20,7 @@ const LINK_SEPARATOR = ' | '
 const ANCHOR_MARK = ' > '
 const linkToText = (l: DailyLink) => `${l.label} ${l.url}${l.anchor ? `${ANCHOR_MARK}${l.anchor}${l.nth && l.nth > 1 ? ` #${l.nth}` : ''}` : ''}`
 const linksToCell = (links: readonly DailyLink[] | undefined) => (links ?? []).map(linkToText).join(LINK_SEPARATOR)
-function linksFromCell(cell: string): DailyLink[] {
+export function linksFromCell(cell: string): DailyLink[] {
   return cell.split(LINK_SEPARATOR).map(part => part.trim()).filter(Boolean).flatMap(part => {
     // URL は空白を含まない。最初の http(s):// の語が URL で、その前が表示名、後ろが語
     const match = /^(.*?)\s+(https?:\/\/\S+)(?:\s+>\s+(.+?))?$/.exec(part)

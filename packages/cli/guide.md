@@ -44,6 +44,8 @@ Columns of `ledger/wbs.tsv`: `id` (starts with W), `phase` (phase ID), `name`, `
 
 The order of `.tadori/statuses.tsv` matters: the 1st row means "not started yet", and a status with tone `ok` means "done". Every other status counts as started and not done (so it can show days late). A status that is not in the table counts the same way, and `tadori check` and the Product screen list it.
 Optional columns: `owner`, `issue` (the ID of the issue this work is for) and `url` (the URL of this work's row in the source WBS). They are used for each person's daily progress (topic: daily). Work with a `url` links from the WBS tag in the daily progress to that row in the source WBS. When some work has a `url`, work without one is shown as assumed (not in the source WBS).
+
+The optional `links` column holds links to this work's deliverables (a test-case sheet, a pattern PDF, a folder), written like the links of a daily row: `display name URL > word`, separated by ` | ` (for example `Test cases https://… > Test cases | Pattern PDF https://…`). With `> word`, that word in the step heading of the per-issue daily view becomes the link. Links whose word is not in the work name, or that have no `> word`, are shown after the heading as "display name ↗". When the word appears more than once, `> word #2` picks which one. Only http and https URLs are read. "Copy text" adds them after the step as " ― display name: URL".
 WBS tasks can also be traced as ledger rows (kind `W`). Do not copy them into the ledger.
 
 **md-business verification sheets are read directly.** List them in `.tadori/sheets.tsv` (columns `path kind id title refs`) and each row of the sheet becomes a ledger row, without copying:

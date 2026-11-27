@@ -31,6 +31,16 @@ export interface Item {
   readonly rowId?: string
 }
 
+/** 作業の成果物へのリンク（1 日の進行の行のリンクと同じ形）。URL は http・https だけ */
+export interface TaskLink {
+  readonly label: string
+  readonly url: string
+  /** 作業の名前の中の語。あればその語をリンクにする */
+  readonly anchor?: string
+  /** 同じ語が何回も出るとき、何番目か（1 から。無ければ最初） */
+  readonly nth?: number
+}
+
 /** WBS のタスク。期間は入っていないこともある */
 export interface Task {
   readonly id: string
@@ -45,6 +55,11 @@ export interface Task {
   readonly issue?: string
   /** 正本の工程表（スプレッドシートなど）のこの作業の行の URL（wbs.tsv の url 列。書かなくてもよい）。1 日の進行の WBS の札から正本の行へ飛ぶ。無ければ tadori の中の WBS へ */
   readonly url?: string
+  /**
+   * この作業の成果物へのリンク（wbs.tsv の links 列。「表示名 URL > 語 | 表示名 URL」。書かなくてもよい）。
+   * 語（anchor）が作業の名前にあれば、画面ではその語をリンクにする。無ければ名前の後ろに「表示名 ↗」
+   */
+  readonly links?: readonly TaskLink[]
   /** wbs.tsv の何行目か */
   readonly line?: number
 }
