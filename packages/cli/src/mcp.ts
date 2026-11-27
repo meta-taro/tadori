@@ -278,6 +278,19 @@ function dailySchemas() {
       },
       description: t('Small badges for the line, shown apart from the text on the screen and after the text in the written daily progress. When editing, pass all of them again (an empty array clears them)'),
     },
+    highlights: {
+      type: 'array', maxItems: 8,
+      items: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: ['key', 'note'], description: t('key = the point to say when reading out (shown with a marker) / note = a caution (shown underlined). Default key') },
+          anchor: { type: 'string', description: t('A word or phrase in the text, exactly as written (up to 80 characters). The text itself is not changed') },
+          nth: { type: 'number', description: t('Which occurrence, when the same word appears more than once (default 1)') },
+        },
+        required: ['anchor'], additionalProperties: false,
+      },
+      description: t('Marks on words in the text so people can pick out the point of a long line: key = the point (marker), note = a caution (underline). Keep them few (one or two per line). The copied text stays plain. When editing, pass all of them again (an empty array clears them)'),
+    },
     checks: {
       type: 'array', maxItems: 8, items: { type: 'string' },
       description: t('Checkpoint record IDs (the record ID that checkpoint_record returns) for the checks done on this work. They become the line\'s mark, showing the work was checked by the rules. When editing, pass all of them again (an empty array clears them)'),

@@ -86,6 +86,25 @@ test.describe('1 日の進行：工程の段の並び', () => {
   })
 })
 
+test.describe('1 日の進行：本文の語の印（要点・注意）', () => {
+  test('要点はマーカー、注意は下線で、課題ごとの要約・文の形・行の後ろに出る。コピーする文は本文のまま', async ({ page }) => {
+    const day = '2026-10-24'
+    const post = (data: Record<string, unknown>) => page.request.post(`/api/daily/${day}/entries`, { headers: { 'x-tadori': '1', 'content-type': 'application/json' }, data })
+    expect((await post({ who: '設計担当', section: 'summary', issue: 'ISS-H', text: '結合試験を始めた。今日中に終える見込み', highlights: [{ anchor: '今日中に終える' }] })).ok()).toBe(true)
+    expect((await post({ who: '設計担当', section: 'today', issue: 'ISS-H', text: '試験ケースを流した。期限は明日', tag: 'doing', highlights: [{ kind: 'note', anchor: '期限は明日' }] })).ok()).toBe(true)
+    await page.goto('/#daily')
+    await expect(page.locator('#daily-date')).toBeVisible()
+    const loaded = page.waitForResponse(r => r.url().includes(`/api/daily?date=${day}`))
+    await page.locator('#daily-date').fill(day)
+    await page.locator('#daily-date').dispatchEvent('change')
+    await loaded
+    const issue = page.locator('.daily-issue[data-issue="ISS-H"]')
+    await expect(issue.locator('.issue-now mark.daily-hl.key')).toHaveText('今日中に終える')
+    await expect(issue.locator('.daily-badges mark.daily-hl.note')).toHaveText('期限は明日')
+    await expect(page.locator('.daily-preview mark.daily-hl.note').first()).toHaveText('期限は明日')
+  })
+})
+
 test.describe('画面の見た目を返す（capture）', () => {
   test('開いている画面・押されている並べ方・中身の文字を返す。範囲を決めればその部分だけ', async ({ page }) => {
     await openDaily(page)

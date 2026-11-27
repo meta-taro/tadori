@@ -30,7 +30,7 @@ describe('1 日の進行の行ごとの更新時刻', () => {
     const { entry: edited } = await updateDaily(dir, day, entry.id, { tag: 'doing' })
     expect(edited.updated).toMatch(STAMP)
     const file = await readFile(join(dir, `.tadori/daily/${day}.tsv`), 'utf8')
-    expect(file.split('\n')[0]).toMatch(/\tupdated\tchecks\tthread$/)
+    expect(file.split('\n')[0]).toMatch(/\tupdated\tchecks\tthread\thighlights$/)
     expect((await loadDaily(dir, day)).entries.find(e => e.id === entry.id)?.updated).toBe(edited.updated)
   })
 

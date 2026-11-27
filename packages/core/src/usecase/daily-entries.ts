@@ -64,6 +64,8 @@ export interface DailyEntry {
   readonly links?: readonly DailyLink[]
   /** 行の札（文字と tone）。画面では本文とは別に色で出し、文では本文のうしろに出す */
   readonly badges?: readonly DailyBadge[]
+  /** 本文の中の語に付けた印（要点・注意）。画面ではマーカー・下線で出す。文（コピーする文字）は本文のまま */
+  readonly highlights?: readonly DailyHighlight[]
   /**
    * 人かエージェントが最後にこの行を足した・直した時刻（その PC の時刻で YYYY-MM-DDTHH:MM）。
    * 自動の行と、この列ができる前に書いた行には無い
@@ -79,6 +81,21 @@ export interface DailyEntry {
    * 返事を待っている元の投稿を指す。本文は持たない。返事が来たかは、そのチャットへ読み取り専用でつないだときだけ確かめる
    */
   readonly thread?: string
+}
+
+/** 本文の中の語に付ける印の種類。key＝要点（マーカー）・note＝注意（下線） */
+export const HIGHLIGHT_KINDS = ['key', 'note'] as const
+export type HighlightKind = typeof HIGHLIGHT_KINDS[number]
+
+/**
+ * 本文の中の語に付ける印（読み上げで伝えればよい要点を、長い行の中から拾えるように）。
+ * 語は本文の中の文字そのもので指す（リンクの anchor と同じ）。本文は書き換えない
+ */
+export interface DailyHighlight {
+  readonly kind: HighlightKind
+  readonly anchor: string
+  /** 同じ語が本文に何回も出るとき、何番目か（1 から。無ければ最初） */
+  readonly nth?: number
 }
 
 /** 行のリンク。表示名は人が読む名前（例：QA表・設計書 3.2.5）。URL は http・https だけ */

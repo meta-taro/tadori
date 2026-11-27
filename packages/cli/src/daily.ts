@@ -1,7 +1,7 @@
 import './i18n.js'
 import {
-  BADGE_TONES, buildDaily, checkReply, carriedOver, checkMarkOf, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
-  parseThread, readAloud, THREAD_SERVICE_NAMES, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyLink, type DailySection, type ReplyCheck, type ReplyReader,
+  BADGE_TONES, HIGHLIGHT_KINDS, buildDaily, checkReply, carriedOver, checkMarkOf, DAILY_SECTIONS, DAILY_TAGS, entriesFromSheet, loadProject, mergeDaily, ownersOf, previousDailyDate, readActivity, readDaily, readDailyFormat, readMembers,
+  parseThread, readAloud, THREAD_SERVICE_NAMES, readCheckpointLog, readStatusChanges, runsById, staleWaits, t, withoutSummaries, writeDaily, type BadgeTone, type CheckMark, type CheckpointRun, type CommitResult, type DailyBadge, type DailyEntry, type DailyHighlight, type DailyLink, type HighlightKind, type DailySection, type ReplyCheck, type ReplyReader,
   shortOf, type Item, type Task,
 } from '@tadori/core'
 import { checkMarkText, checkTagsOf, dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
@@ -293,6 +293,32 @@ function badgeList(body: Record<string, unknown>): DailyBadge[] | undefined {
   })
 }
 
+const MAX_HIGHLIGHTS = 8
+const MAX_HIGHLIGHT_WORD = 80
+
+/**
+ * 本文の中の語に付ける印。[{ kind, anchor, nth? }] で受ける（kind は key＝要点・note＝注意）。
+ * 本文は書き換えず、語で指す（リンクの anchor と同じ）。直すときは全部を渡し直す（空の配列で消す）
+ */
+function highlightList(body: Record<string, unknown>): DailyHighlight[] | undefined {
+  const value = body.highlights
+  if (value === undefined) return undefined
+  if (!Array.isArray(value)) throw new DailyInputError(t('highlights must be [{ "kind": key / note, "anchor": a word in the text }]'))
+  if (value.length > MAX_HIGHLIGHTS) throw new DailyInputError(t('highlights can have up to {max} items', { max: MAX_HIGHLIGHTS }))
+  return value.map((raw, i) => {
+    const item = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
+    const kind = item.kind === undefined || item.kind === '' ? 'key' : String(item.kind)
+    const anchor = typeof item.anchor === 'string' ? item.anchor.replace(/[\t\r\n]+/g, ' ').trim() : ''
+    const nth = item.nth === undefined ? 1 : Number(item.nth)
+    const no = i + 1
+    if (!(HIGHLIGHT_KINDS as readonly string[]).includes(kind)) throw new DailyInputError(t('highlights item {no}: kind must be one of {list}', { no, list: HIGHLIGHT_KINDS.join(' / ') }))
+    // 「|」は日ごとのファイルの区切り、末尾の「 #数」は何番目かの書き方なので、語には使わせない
+    if (!anchor || anchor.length > MAX_HIGHLIGHT_WORD || anchor.includes('|') || / #\d+$/.test(anchor)) throw new DailyInputError(t('highlights item {no}: anchor must be 1–{max} characters, must not contain "|" and must not end with " #number"', { no, max: MAX_HIGHLIGHT_WORD }))
+    if (!Number.isInteger(nth) || nth < 1 || nth > MAX_NTH) throw new DailyInputError(t('highlights item {no}: nth must be an integer from 1 to {max}', { no, max: MAX_NTH }))
+    return { kind: kind as HighlightKind, anchor, ...(nth > 1 ? { nth } : {}) }
+  })
+}
+
 const MAX_NTH = 20
 const linkKey = (l: DailyLink) => `${l.label}\t${l.url}\t${l.anchor ?? ''}\t${l.nth ?? 1}`
 
@@ -314,7 +340,9 @@ export function anchorWarnings(entry: DailyEntry): string[] {
     return [(l.nth ?? 1) > 1
       ? t('Link "{label}": occurrence {nth} of the word "{anchor}" is not in the text (the screen shows "{label} ↗" at the end of the line instead)', vars)
       : t('Link "{label}": the word "{anchor}" is not in the text (the screen shows "{label} ↗" at the end of the line instead)', vars)]
-  })
+  }).concat((entry.highlights ?? []).flatMap(h => (nthIndexOf(entry.text, h.anchor, h.nth ?? 1) >= 0
+    ? []
+    : [t('Highlight "{anchor}" (occurrence {nth}) is not in the text, so the screen does not mark it', { anchor: h.anchor, nth: h.nth ?? 1 })])))
 }
 
 const wbsList = (body: Record<string, unknown>): string[] | undefined => {
@@ -359,6 +387,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
   const chosenTag = tag(body)
   const links = linkList(body)
   const badges = badgeList(body)
+  const highlights = highlightList(body)
   const checks = await checkList(dir, body)
   const thread = threadValue(body)
   const chosenSection = section(body, true) as DailySection
@@ -379,6 +408,7 @@ export async function addDaily(dir: string, date: string, input: unknown): Promi
     ...(chosenTag ? { tag: chosenTag } : {}),
     ...(links?.length ? { links } : {}),
     ...(badges?.length ? { badges } : {}),
+    ...(highlights?.length ? { highlights } : {}),
     ...(checks?.length ? { checks } : {}),
     ...(thread ? { thread } : {}),
     origin: 'manual',
@@ -419,6 +449,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     tag: isCleared('tag') ? '' : tag(body),
     links: isCleared('links') ? [] : linkList(body),
     badges: isCleared('badges') ? [] : badgeList(body),
+    highlights: isCleared('highlights') ? [] : highlightList(body),
     checks: isCleared('checks') ? [] : await checkList(dir, body),
     thread: isCleared('thread') ? '' : threadValue(body),
   }
@@ -426,7 +457,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
   // 本文か課題を変えたときだけ、課題番号と短い件名を頭に付け直す
   const filled: DailyEntry = { ...current, ...changed, origin: current.origin === 'manual' ? 'manual' : 'edited', updated: localStamp() }
   // 空にした欄は、行から外す（日ごとのファイルにも空で書く）
-  const { issue, note, tag: entryTag, links, badges, checks, thread, ...rest } = filled
+  const { issue, note, tag: entryTag, links, badges, highlights, checks, thread, ...rest } = filled
   const merged: DailyEntry = {
     ...rest,
     ...(issue ? { issue } : {}),
@@ -434,6 +465,7 @@ export async function updateDaily(dir: string, date: string, id: string, input: 
     ...(entryTag ? { tag: entryTag } : {}),
     ...(links?.length ? { links } : {}),
     ...(badges?.length ? { badges } : {}),
+    ...(highlights?.length ? { highlights } : {}),
     ...(checks?.length ? { checks } : {}),
     ...(thread ? { thread } : {}),
   }

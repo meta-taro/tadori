@@ -7,7 +7,7 @@
     --hairline:#e2e4e9; --hairline-strong:#cdd1d9;
     --ink:#15171c; --ink-muted:#363b46; --ink-subtle:#5c6370; --ink-tertiary:#878d98;
     --accent:#4f5bd5; --accent-hover:#3d48b5; --accent-soft:rgba(79,91,213,.12);
-    --hole:#a95f00; --hole-soft:rgba(226,140,20,.15);
+    --hole:#a95f00; --hole-soft:rgba(226,140,20,.15); --marker:rgba(255,196,0,.42);
     --wait:#526079; --wait-soft:rgba(82,96,121,.12);
     --ok:#1a7f3f; --ok-soft:rgba(26,127,63,.12);
     --late-blue:#2f6fe0; --late-red:#d1343a; /* 遅れの色の両端 */
@@ -21,7 +21,7 @@
     --hairline:#23252a; --hairline-strong:#34343a;
     --ink:#f7f8f8; --ink-muted:#d0d6e0; --ink-subtle:#8a8f98; --ink-tertiary:#62666d;
     --accent:#5e6ad2; --accent-hover:#828fff; --accent-soft:rgba(94,106,210,.16);
-    --hole:#e2a33b; --hole-soft:rgba(226,163,59,.14);
+    --hole:#e2a33b; --hole-soft:rgba(226,163,59,.14); --marker:rgba(226,163,59,.34);
     --wait:#8f9bb3; --wait-soft:rgba(143,155,179,.14);
     --ok:#3fb562; --ok-soft:rgba(63,181,98,.14);
     --late-blue:#4c8dff; --late-red:#e5484d;
@@ -891,3 +891,9 @@
 /* 課題の参照：正本の課題番号・WBS ↗・台帳（小さく） */
 .issue-refs { display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; }
 .issue-refs .issue-ledger { font-size:11px; }
+
+/* 本文の語の印：要点はマーカー（下半分を塗る）、注意は波線の下線。色は要注意の色と同じ系統で、ダークでも読める濃さ */
+mark.daily-hl { color:inherit; background:none; padding:0 1px; border-radius:2px; }
+mark.daily-hl.key { background:linear-gradient(transparent 50%, var(--marker) 50%); font-weight:600; }
+mark.daily-hl.note { text-decoration:underline wavy var(--late-red); text-underline-offset:3px; text-decoration-thickness:1px; }
+.daily-badges mark.daily-hl { font-size:12px; white-space:nowrap; }

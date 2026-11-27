@@ -26,7 +26,7 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     ]
     const commit = await writeDaily(dir, '2026-11-09', entries, '1 日の進行を直した')
     expect(commit.committed).toBe(false) // git の外なので commit しない
-    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\tupdated\tchecks\tthread\n/)
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/^id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\tupdated\tchecks\tthread\thighlights\n/)
     const back = await readDaily(dir, '2026-11-09')
     expect(back[0]).toEqual({ ...entries[0], text: '画面の設計 を直した' })
     expect(back[1]).toEqual(entries[1])
@@ -41,6 +41,17 @@ describe('日ごとの「1 日の進行」のファイル', () => {
     await mkdir(join(dir, '.tadori/daily'), { recursive: true })
     await writeFile(join(dir, '.tadori/daily/2026-11-08.tsv'), 'id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\nm1\t\ttoday\tx\t\t\t\tmanual\t\t\t\t確認中\n', 'utf8')
     expect((await readDaily(dir, '2026-11-08'))[0]?.badges).toEqual([{ text: '確認中', tone: 'none' }])
+  })
+
+  test('本文の語の印は「種類 語 #番目 | 種類 語」の 1 セルに書き、読むと同じ組に戻る。種類が分からないものは読まない', async () => {
+    const dir = await dirOf()
+    const highlights = [{ kind: 'key' as const, anchor: '結合試験を終える' }, { kind: 'note' as const, anchor: '期限', nth: 2 }]
+    await writeDaily(dir, '2026-11-09', [{ id: 'm1', who: '', section: 'today', text: '期限は明日。結合試験を終える。期限は守る', wbs: [], origin: 'manual', highlights }], 'x')
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toContain('key 結合試験を終える | note 期限 #2')
+    expect((await readDaily(dir, '2026-11-09'))[0]?.highlights).toEqual(highlights)
+    await mkdir(join(dir, '.tadori/daily'), { recursive: true })
+    await writeFile(join(dir, '.tadori/daily/2026-11-08.tsv'), 'id\twho\tsection\ttext\twbs\tissue\tnote\torigin\tkey\ttag\tlinks\tbadges\tupdated\tchecks\tthread\thighlights\nm1\t\ttoday\tx y\t\t\t\tmanual\t\t\t\t\t\t\t\tbold x | key y\n', 'utf8')
+    expect((await readDaily(dir, '2026-11-08'))[0]?.highlights).toEqual([{ kind: 'key', anchor: 'y' }])
   })
 
   test('行のリンク（表示名と URL）は「表示名 URL | 表示名 URL」の 1 セルに書き、読むと同じ組に戻る', async () => {
@@ -101,14 +112,14 @@ describe('行のしるし（チェックの記録の ID）', () => {
 })
 
 describe('待ちのスレッド（チャットの投稿の URL）', () => {
-  test('thread は最後の列に書き、読むと戻る。空なら持たない。thread 列の無い前の版のファイルもそのまま読める', async () => {
+  test('thread は checks の後ろの列に書き、読むと戻る。空なら持たない。thread 列の無い前の版のファイルもそのまま読める', async () => {
     const dir = await dirOf()
     const url = 'https://example.slack.com/archives/C0123ABCD/p1700000000123456'
     await writeDaily(dir, '2026-11-09', [
       { id: 'm1', who: 'A', section: 'today', text: '〈A さんの確認待ち〉', wbs: [], origin: 'manual', thread: url },
       { id: 'm2', who: 'A', section: 'today', text: 'y', wbs: [], origin: 'manual' },
     ], 'x')
-    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/\tchecks\tthread\n/)
+    expect(await readFile(join(dir, '.tadori/daily/2026-11-09.tsv'), 'utf8')).toMatch(/\tchecks\tthread\thighlights\n/)
     const back = await readDaily(dir, '2026-11-09')
     expect(back[0]?.thread).toBe(url)
     expect(back[1]?.thread).toBeUndefined()

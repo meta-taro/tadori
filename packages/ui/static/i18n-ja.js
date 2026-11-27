@@ -82,6 +82,8 @@ export const JA = {
   'The source WBS row is not in the ledger': '正本の WBS の行が台帳にありません',
   'WBS not set': 'WBS 未登録',
   'Ledger': '台帳',
+  'Key point': '要点',
+  'Caution': '注意',
   'Summary': '要約',
   'Open the source WBS row of {id}: {url}': '{id} の正本の WBS の行を開く：{url}',
   'The source WBS row is not in the ledger for these issues: {ids}. Write its URL in the ledger': '次の課題は、正本の WBS の行が台帳にありません：{ids}。台帳にその URL を書いてください',

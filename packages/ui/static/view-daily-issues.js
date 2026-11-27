@@ -2,7 +2,7 @@
 // 1 つの案件で課題が何本も並行するときに、どの課題のどの工程の作業かを読み違えないため（朝会のカンペにそのまま使える）。
 // 行の中身は欄ごとの並びと同じ（直す・消す・印を変えるも同じ口）。並べ方だけを変える
 import { t } from './i18n.js'
-import { esc, nthIndexOf, webUrl } from './util.js'
+import { esc, highlightedHtml, nthIndexOf, webUrl } from './util.js'
 
 /** @typedef {import('./types').DailyEntry} DailyEntry */
 
@@ -175,7 +175,7 @@ export function focusHtml(entries, ctx) {
   const big = active.map(i => `<li><span class="focus-id">${issueRefHtml(i.id, ctx.origins, ctx.issueLinks, ctx.useWbsField)}</span> <span class="focus-name">${esc(i.name)}</span></li>`).join('')
   const small = waiting.map(i => {
     const first = i.waits[0]
-    return `<li><span class="mono">${esc(i.id)}</span> ${esc(i.name)}${first ? ` <span class="cond">— ${esc(bodyOf(first, i.name))}</span>` : ''}</li>`
+    return `<li><span class="mono">${esc(i.id)}</span> ${esc(i.name)}${first ? ` <span class="cond">— ${highlightedHtml(bodyOf(first, i.name), first)}</span>` : ''}</li>`
   }).join('')
   return `<div class="panel daily-focus" role="region" aria-label="${esc(t('Issues to move today'))}">
     <p class="cond">${esc(t('Issues to move today'))}</p>
@@ -237,7 +237,7 @@ function headHtml(issue, ctx) {
   const word = !issue.summary && now?.tag ? ctx.tagWord(now.tag) : ''
   const label = issue.summary ? t('Summary') : t('Now')
   return `<h2>${issueRefHtml(issue.id, ctx.origins, ctx.issueLinks, ctx.useWbsField)} ${esc(issue.name)}</h2>
-    ${now ? `<p class="issue-now"><span class="cond">${esc(label)}</span> ${word ? `<span class="daily-pill">${esc(word)}</span>` : ''}${esc(bodyOf(now, issue.name))}</p>` : ''}`
+    ${now ? `<p class="issue-now"><span class="cond">${esc(label)}</span> ${word ? `<span class="daily-pill">${esc(word)}</span>` : ''}${highlightedHtml(bodyOf(now, issue.name), now)}</p>` : ''}`
 }
 
 /**
@@ -334,16 +334,16 @@ function lineOf(entry, name, ctx) {
 export function issueTreeHtml(entries, ctx) {
   return `<div class="daily-tree">${ordered(issueTree(entries, ctx)).map(issue => {
     const head = issue.id ? `${issueRefHtml(issue.id, ctx.origins, ctx.issueLinks, ctx.useWbsField)} ${esc(issue.name)}` : esc(t('Rows without an issue'))
-    const summary = issue.summary ? `<li class="tree-summary"><span class="cond">${esc(t('Summary'))}</span> ${esc(bodyOf(issue.summary, issue.name))}</li>` : ''
+    const summary = issue.summary ? `<li class="tree-summary"><span class="cond">${esc(t('Summary'))}</span> ${highlightedHtml(bodyOf(issue.summary, issue.name), issue.summary)}</li>` : ''
     const steps = issue.steps.map(step => {
       const rows = PARTS.flatMap(([section]) => step.rows.filter(e => e.section === section)).map(e => {
         const line = lineOf(e, issue.name, ctx)
-        return `<li><span class="cond">${esc(line.section)}</span> ${line.word ? `<span class="daily-pill">${esc(line.word)}</span>` : ''}${esc(line.text)}</li>`
+        return `<li><span class="cond">${esc(line.section)}</span> ${line.word ? `<span class="daily-pill">${esc(line.word)}</span>` : ''}${highlightedHtml(bodyOf(e, issue.name), e)}${esc(line.text.slice(bodyOf(e, issue.name).length))}</li>`
       }).join('')
       const label = step.key ? `${stepLabelHtml(step.label, step.links)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}` : `<span class="cond">${esc(t('Other work'))}</span>`
       return `<li class="tree-step">${label}<ul>${rows}</ul></li>`
     }).join('')
-    const waits = issue.waits.length ? `<li class="tree-waits"><span class="cond">${esc(t('Waiting'))}</span><ul>${issue.waits.map(e => `<li class="cond">${esc(lineOf(e, issue.name, ctx).text)}</li>`).join('')}</ul></li>` : ''
+    const waits = issue.waits.length ? `<li class="tree-waits"><span class="cond">${esc(t('Waiting'))}</span><ul>${issue.waits.map(e => `<li class="cond">${highlightedHtml(bodyOf(e, issue.name), e)}${esc(lineOf(e, issue.name, ctx).text.slice(bodyOf(e, issue.name).length))}</li>`).join('')}</ul></li>` : ''
     const notToday = issue.kind === 'other' ? ` <span class="chip">${esc(t('Not today'))}</span>` : ''
     return `<section class="tree-issue" data-issue="${esc(issue.id)}" data-kind="${issue.kind}"><h3>${head}${notToday}</h3><ul>${summary}${steps}${waits}</ul></section>`
   }).join('')}</div>`

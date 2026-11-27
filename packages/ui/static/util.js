@@ -244,6 +244,34 @@ export function nthIndexOf(text, word, nth = 1) {
 }
 
 /**
+ * 1 日の進行の行の本文に、語の印（key＝要点はマーカー・note＝注意は下線）を付けて描く。
+ * shown は画面に出す本文（課題番号の頭を外したものでもよい）。何回目の語かは行の本文全体で数える
+ * @param {string} shown
+ * @param {{ text: string, highlights?: readonly { kind: string, anchor: string, nth?: number }[] }} entry
+ * @param {(text: string) => string} [render] 印の外と中の文字の描き方（既定は esc）
+ */
+export function highlightedHtml(shown, entry, render = esc) {
+  const base = entry.text.indexOf(shown)
+  /** @type {Array<{ start: number, end: number, kind: string }>} */
+  const spans = []
+  for (const h of base >= 0 ? entry.highlights ?? [] : []) {
+    const start = nthIndexOf(entry.text, h.anchor, h.nth ?? 1) - base
+    const end = start + h.anchor.length
+    // 見せている本文の外にある語や、先に決まった語と重なる語には付けない
+    if (start < 0 || end > shown.length || spans.some(s => start < s.end && end > s.start)) continue
+    spans.push({ start, end, kind: h.kind === 'note' ? 'note' : 'key' })
+  }
+  spans.sort((a, b) => a.start - b.start)
+  let html = ''
+  let last = 0
+  for (const s of spans) {
+    html += render(shown.slice(last, s.start)) + `<mark class="daily-hl ${s.kind}">${render(shown.slice(s.start, s.end))}</mark>`
+    last = s.end
+  }
+  return html + render(shown.slice(last))
+}
+
+/**
  * ID で要素を取る。画面の骨組み（index.html）にあるはずのものが無いのは作りの誤りなので、黙って進まずに止める
  * @param {string} id
  * @returns {HTMLElement}

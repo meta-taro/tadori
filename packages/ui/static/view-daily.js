@@ -167,6 +167,8 @@ function entryRow(entry, no, origins = {}, isAll = true, isSummary = entry.secti
   const origin = source?.stale ? originLink(source) : ''
   // 行のバッジ（人かエージェントが書いた札）。本文とは別に、tone の色で出す
   const badges = (entry.badges ?? []).map(b => `<span class="chip ${esc(b.tone)}"><span class="dot"></span>${esc(b.text)}</span>`).join('')
+    // 本文の語の印（要点・注意）。欄の中は色を付けられないので、印の付いた語を本文の後ろに並べる
+    + (entry.highlights ?? []).map(h => `<mark class="daily-hl ${h.kind === 'note' ? 'note' : 'key'}" title="${esc(h.kind === 'note' ? t('Caution') : t('Key point'))}">${esc(h.anchor)}</mark>`).join('')
   // 古いままの待ちの行は、会の前に直す行と一目で分かるよう、要注意の札と枠で出す
   const isStale = stale.ids.has(entry.id)
   const staleChip = isStale ? `<span class="chip hole daily-stale"><span class="dot"></span>${esc(t('Not updated for {hours}h+', { hours: stale.hours }))}</span>` : ''

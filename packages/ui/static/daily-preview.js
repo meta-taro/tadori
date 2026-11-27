@@ -69,10 +69,10 @@ function inlineHtml(line, links, tags, whoMarks = []) {
  * @param {(text: string) => string} rest
  */
 function anchoredHtml(line, entries, rest) {
-  const entry = entries.find(e => e.text && (e.links ?? []).some(l => l.anchor) && line.includes(e.text))
+  const entry = entries.find(e => e.text && ((e.links ?? []).some(l => l.anchor) || (e.highlights ?? []).length) && line.includes(e.text))
   if (!entry) return rest(line)
   const base = line.indexOf(entry.text)
-  /** @type {Array<{ start: number, end: number, label: string, url: string }>} */
+  /** @type {Array<{ start: number, end: number, label: string, url: string, mark?: string }>} */
   const spans = []
   for (const link of entry.links ?? []) {
     const url = webUrl(link.url)
@@ -85,11 +85,21 @@ function anchoredHtml(line, entries, rest) {
     if (spans.some(s => start < s.end && end > s.start)) continue
     spans.push({ start, end, label: link.label, url })
   }
+  // 本文の語の印（要点＝マーカー・注意＝下線）。リンクの語と重なるものは付けない
+  for (const h of entry.highlights ?? []) {
+    const at = nthIndexOf(entry.text, h.anchor, h.nth ?? 1)
+    if (at < 0) continue
+    const start = base + at
+    const end = start + h.anchor.length
+    if (spans.some(s => start < s.end && end > s.start)) continue
+    spans.push({ start, end, label: '', url: '', mark: h.kind === 'note' ? 'note' : 'key' })
+  }
   spans.sort((a, b) => a.start - b.start)
   let html = ''
   let last = 0
   for (const s of spans) {
     html += rest(line.slice(last, s.start))
+    if (s.mark) { html += `<mark class="daily-hl ${s.mark}">${rest(line.slice(s.start, s.end))}</mark>`; last = s.end; continue }
     html += `<a class="daily-anchor" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open {label}: {url}', { label: s.label, url: s.url }))}">${esc(line.slice(s.start, s.end))}</a>`
     last = s.end
   }

@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { BADGE_TONES, DAILY_SECTIONS, type BadgeTone, type DailyBadge, type DailyEntry, type DailyLink, type DailyOrigin, type DailySection, type Member } from '../usecase/daily-entries.js'
+import { BADGE_TONES, DAILY_SECTIONS, type BadgeTone, type DailyBadge, type DailyEntry, type DailyHighlight, HIGHLIGHT_KINDS, type HighlightKind, type DailyLink, type DailyOrigin, type DailySection, type Member } from '../usecase/daily-entries.js'
 import { commitFiles, type CommitResult } from './git.js'
 import { ownersOf } from '../domain/people.js'
 import { t } from '../i18n.js'
@@ -11,8 +11,8 @@ export const DAILY_DIR = '.tadori/daily'
 const MEMBERS = '.tadori/members.tsv'
 /** 1 日の進行の文の形（見出しの言葉など）。案件ごとに決める。書かなければ tadori の既定の形 */
 const DAILY_FORMAT = '.tadori/daily-format.tsv'
-// tag・links・badges・updated・checks・thread は後から足した列なので最後に置く（前の版で書いたファイルも、そのまま読める）
-const COLUMNS = ['id', 'who', 'section', 'text', 'wbs', 'issue', 'note', 'origin', 'key', 'tag', 'links', 'badges', 'updated', 'checks', 'thread'] as const
+// tag・links・badges・updated・checks・thread・highlights は後から足した列なので最後に置く（前の版で書いたファイルも、そのまま読める）
+const COLUMNS = ['id', 'who', 'section', 'text', 'wbs', 'issue', 'note', 'origin', 'key', 'tag', 'links', 'badges', 'updated', 'checks', 'thread', 'highlights'] as const
 
 /** 行のリンクは「表示名 URL | 表示名 URL」の 1 セルに書く（人が TSV を開いても読める。URL に空白は入らないので、最後の空白で分けられる） */
 const LINK_SEPARATOR = ' | '
@@ -30,6 +30,16 @@ export function linksFromCell(cell: string): DailyLink[] {
     const anchor = nthMatch ? nthMatch[1] : anchorPart
     const nth = nthMatch ? Number(nthMatch[2]) : undefined
     return [{ label: label.trim(), url, ...(anchor ? { anchor: anchor.trim() } : {}), ...(nth && nth > 1 ? { nth } : {}) }]
+  })
+}
+/** 本文の語の印は「種類 語 #番目 | 種類 語」の 1 セルに書く（#番目は 2 回目以降のときだけ） */
+const highlightsToCell = (list: readonly DailyHighlight[] | undefined) => (list ?? []).map(h => `${h.kind} ${h.anchor}${h.nth && h.nth > 1 ? ` #${h.nth}` : ''}`).join(LINK_SEPARATOR)
+function highlightsFromCell(cell: string): DailyHighlight[] {
+  return cell.split(LINK_SEPARATOR).map(part => part.trim()).filter(Boolean).flatMap(part => {
+    const match = /^(\S+)\s+(.+?)(?:\s+#(\d+))?$/.exec(part)
+    if (!match || !(HIGHLIGHT_KINDS as readonly string[]).includes(match[1] ?? '')) return []
+    const nth = match[3] ? Number(match[3]) : undefined
+    return [{ kind: match[1] as HighlightKind, anchor: (match[2] ?? '').trim(), ...(nth && nth > 1 ? { nth } : {}) }]
   })
 }
 /** 行のバッジは「tone 文字 | tone 文字」の 1 セルに書く（人が TSV を開いても読める。文字に「|」は使わせない） */
@@ -81,6 +91,7 @@ function toEntry(row: Record<string, string>, path: string): DailyEntry {
     ...(row.updated ? { updated: row.updated } : {}),
     ...(row.checks ? { checks: splitIds(row.checks) } : {}),
     ...(row.thread ? { thread: row.thread } : {}),
+    ...(row.highlights ? { highlights: highlightsFromCell(row.highlights) } : {}),
   }
 }
 
@@ -111,7 +122,7 @@ export async function previousDailyDate(dir: string, date: string): Promise<stri
 export async function writeDaily(dir: string, date: string, entries: readonly DailyEntry[], message: string): Promise<CommitResult> {
   const path = dailyPath(date)
   await mkdir(dirname(join(dir, path)), { recursive: true })
-  const rows = entries.map(e => ({ ...e, wbs: e.wbs.join(','), issue: e.issue ?? '', note: e.note ?? '', key: e.key ?? '', tag: e.tag ?? '', links: linksToCell(e.links), badges: badgesToCell(e.badges), updated: e.updated ?? '', checks: (e.checks ?? []).join(','), thread: e.thread ?? '' }))
+  const rows = entries.map(e => ({ ...e, wbs: e.wbs.join(','), issue: e.issue ?? '', note: e.note ?? '', key: e.key ?? '', tag: e.tag ?? '', links: linksToCell(e.links), badges: badgesToCell(e.badges), updated: e.updated ?? '', checks: (e.checks ?? []).join(','), thread: e.thread ?? '', highlights: highlightsToCell(e.highlights) }))
   await writeFile(join(dir, path), toTsv(COLUMNS, rows as unknown as Record<string, string>[]), 'utf8')
   return commitFiles(dir, [path], message)
 }
