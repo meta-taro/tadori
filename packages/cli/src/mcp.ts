@@ -388,12 +388,12 @@ async function captureScreen(screenUrl: string, area: string): Promise<ToolResul
   } catch {
     return text(t('tadori is not running ({url}). Open the desktop app or start it with tadori serve', { url: screenUrl }), true)
   }
-  const body = await res.json().catch(() => ({})) as { error?: string; capture?: Record<string, unknown> }
+  const body = await res.json().catch(() => ({})) as { error?: string; version?: string; capture?: Record<string, unknown> }
   if (!res.ok || !body.capture) return text(body.error ?? t('Could not reach the screen ({status})', { status: res.status }), true)
   const c = body.capture
   const list = (v: unknown) => (Array.isArray(v) ? v.join(' / ') : '')
   return text([
-    t('The screen the person has open now:'),
+    `${t('The screen the person has open now:')} (tadori ${String(body.version ?? '')})`,
     `- hash: ${String(c.hash ?? '')}  ${t('heading')}: ${String(c.heading ?? '')}  (${String(c.width ?? '')}×${String(c.height ?? '')})`,
     `- ${t('pressed or current')}: ${list(c.pressed)}`,
     `- ${t('selected')}: ${list(c.selects)}`,

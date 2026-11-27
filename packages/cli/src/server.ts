@@ -245,7 +245,8 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
     })
     const screens = notifier.send('capture', { id, area })
     if (!screens) { pendingCaptures.get(id)?.(undefined); throw new HttpError(409, t('No tadori screen is open. Open the screen, then send again')) }
-    return sendJson(res, 200, { screens, capture: await waiting })
+    // 画面の版も返す（人の画面が新しい版になっているかを、エージェントが見分けられるように）
+    return sendJson(res, 200, { screens, version: options.appVersion ?? CLI_VERSION, capture: await waiting })
   }
 
   if (req.method === 'POST' && url.pathname.startsWith('/api/capture/')) {
