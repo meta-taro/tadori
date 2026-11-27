@@ -2,7 +2,7 @@
 // 材料（WBS の状態の変化・台帳の差分・チェックの記録）から作った下書きを、日ごとのファイルに置き、行を足す・直す・消す。
 // 直した行・足した行・消した行は、下書きを作り直しても上書きしない。
 import { t } from './i18n.js'
-import { api, esc, getWho, ICON_INFO, messageOf, nthIndexOf, toast, toastCommit, webUrl, within, idPill } from './util.js'
+import { api, esc, getWho, ICON_INFO, isLocalRef, localLinkHtml, messageOf, nthIndexOf, toast, toastCommit, webUrl, within, idPill } from './util.js'
 import { previewHtml } from './daily-preview.js'
 import { focusHtml, issueGroupsHtml, issueRefHtml, issueTreeHtml, issueTreeText } from './view-daily-issues.js'
 
@@ -99,9 +99,14 @@ const outLink = (label, url, title, extra = '') => `<a class="daily-link ${extra
 
 /** その作業でさわった正本の場所（エージェントや人が links で付けたもの） */
 // 本文の語（anchor）が見つかるリンクは、文の形でその語をリンクにするので、行末には出さない（見つからなければ行末に出す）
+// 手元のフォルダ・ファイルのリンクは、押すと tadori が OS に開かせる（何本目かで指す）
 const entryLinks = (/** @type {DailyEntry} */ entry) => (entry.links ?? [])
-  .filter(l => !l.anchor || nthIndexOf(entry.text, l.anchor, l.nth ?? 1) < 0)
-  .flatMap(l => (webUrl(l.url) ? [outLink(l.label, webUrl(l.url), t('Open {label}: {url}', { label: l.label, url: l.url }))] : [])).join('')
+  .map((l, index) => ({ l, index }))
+  .filter(({ l }) => !l.anchor || nthIndexOf(entry.text, l.anchor, l.nth ?? 1) < 0)
+  .flatMap(({ l, index }) => {
+    if (isLocalRef(l.url)) return [localLinkHtml(`${l.label} ↗`, l.url, { kind: 'daily', entry: entry.id, index })]
+    return webUrl(l.url) ? [outLink(l.label, webUrl(l.url), t('Open {label}: {url}', { label: l.label, url: l.url }))] : []
+  }).join('')
 
 /**
  * 待ちの行に結んだチャットのスレッドへのリンク（返事が来たかを、その場から開いて確かめられるように）。

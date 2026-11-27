@@ -271,6 +271,21 @@ export function highlightedHtml(shown, entry, render = esc) {
   return html + render(shown.slice(last))
 }
 
+/** links の URL の所が手元のフォルダ・ファイル（file:/// か C:\ の Windows のパス）か */
+export const isLocalRef = (/** @type {string | undefined} */ ref) => /^file:\/\/\//i.test(ref ?? '') || /^[A-Za-z]:\\/.test(ref ?? '')
+
+/**
+ * 手元のフォルダ・ファイルを開くリンク。押すと tadori の server が OS に開かせる（ブラウザは file: を開かないため）。
+ * 送るのは「台帳のどの行の何本目か」だけで、パスは送らない
+ * @param {string} text 画面に出す文字
+ * @param {string} path 台帳に書いたパス（説明に出す）
+ * @param {{ kind: 'task', id: string, index: number } | { kind: 'daily', entry: string, index: number }} target
+ * @param {string} [cls]
+ */
+export function localLinkHtml(text, path, target, cls = 'daily-link') {
+  return `<a class="${cls} local-link" href="#" data-open-local="${esc(JSON.stringify(target))}" title="${esc(t('Open on this PC: {path}', { path }))}">${esc(text)}</a>`
+}
+
 /**
  * ID で要素を取る。画面の骨組み（index.html）にあるはずのものが無いのは作りの誤りなので、黙って進まずに止める
  * @param {string} id

@@ -442,3 +442,20 @@ describe('server の中の例外（画面に要点と記録の場所を出し、
     await rm(logDir, { recursive: true, force: true })
   })
 })
+
+describe('POST /api/open-local', () => {
+  test('台帳のリンクを何本目かで指して開かせる。画面からでない書き込み・パスそのもの・無いフォルダは断り、OS には頼まない', async () => {
+    const opened: string[] = []
+    const app = await startServer({ dir, port: 0, uiDir: null, openLocal: async path => { opened.push(path) } })
+    const url = `http://127.0.0.1:${(app.address as { port: number }).port}/api/open-local`
+    const post = (body: unknown, headers: Record<string, string> = WRITE_HEADERS) => fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+    // 見本の W-03 の 3 本目は手元の控え（file:///C:/example/review-notes）。この PC には無いので「見つかりません」
+    expect((await post({ kind: 'task', id: 'W-03', index: 2 })).status).toBe(404)
+    // 1 本目は http のリンクなので、手元としては開かない
+    expect((await post({ kind: 'task', id: 'W-03', index: 0 })).status).toBe(400)
+    expect((await post({ path: 'C:\\Windows' })).status).toBe(400)
+    expect((await post({ kind: 'task', id: 'W-03', index: 2 }, { 'content-type': 'application/json' })).status).toBe(403)
+    expect(opened).toEqual([])
+    await app.close()
+  })
+})

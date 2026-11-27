@@ -2,7 +2,7 @@
 // 1 つの案件で課題が何本も並行するときに、どの課題のどの工程の作業かを読み違えないため（朝会のカンペにそのまま使える）。
 // 行の中身は欄ごとの並びと同じ（直す・消す・印を変えるも同じ口）。並べ方だけを変える
 import { t } from './i18n.js'
-import { esc, highlightedHtml, nthIndexOf, webUrl } from './util.js'
+import { esc, highlightedHtml, isLocalRef, localLinkHtml, nthIndexOf, webUrl } from './util.js'
 
 /** @typedef {import('./types').DailyEntry} DailyEntry */
 
@@ -32,6 +32,7 @@ const STEP_HEAD = /^【([^】]{1,40})】\s*/
  * @property {string} status WBS の作業の状態の名前（WBS の作業でなければ空）
  * @property {string} tone 状態の色
  * @property {readonly import('./types').TaskLink[]} [links] 当てた WBS の作業の成果物へのリンク（wbs.tsv の links 列）
+ * @property {string} [taskId] 当てた WBS の作業 ID
  * @property {DailyEntry[]} rows
  */
 
@@ -144,7 +145,7 @@ export function issueTree(entries, ctx) {
       return task ? rank(task) : Number.MAX_SAFE_INTEGER - 1
     }
     // 当てた作業の成果物へのリンクも、工程の見出しに持たせる
-    const sorted = [...steps].sort((a, b) => orderOf(a) - orderOf(b)).map(step => ({ ...step, links: taskOf(step)?.links ?? [] }))
+    const sorted = [...steps].sort((a, b) => orderOf(a) - orderOf(b)).map(step => ({ ...step, links: taskOf(step)?.links ?? [], taskId: taskOf(step)?.id ?? '' }))
     const summary = rows.find(e => e.section === 'summary')
     const waits = rows.filter(isWait)
     /** @type {TreeIssue['kind']} */
@@ -244,31 +245,38 @@ function headHtml(issue, ctx) {
  * 工程の名前を描く。成果物へのリンクの語（anchor）が名前にあればその語をリンクにし、無いリンクは名前の後ろに「表示名 ↗」で出す
  * @param {string} label
  * @param {readonly import('./types').TaskLink[]} [links]
+ * @param {string} [taskId] 当てた WBS の作業 ID（手元のフォルダのリンクを開くとき、どの作業の何本目かを送るため）
  */
-export function stepLabelHtml(label, links = []) {
-  /** @type {Array<{ start: number, end: number, label: string, url: string }>} */
+export function stepLabelHtml(label, links = [], taskId = '') {
+  /** @type {Array<{ start: number, end: number, label: string, url: string, index: number }>} */
   const spans = []
-  /** @type {Array<{ label: string, url: string }>} */
+  /** @type {Array<{ label: string, url: string, index: number }>} */
   const tail = []
-  for (const link of links) {
-    const url = webUrl(link.url)
-    if (!url) continue
+  links.forEach((link, index) => {
+    // 手元のフォルダ・ファイルは、作業 ID が分かるときだけ出す（押すと tadori が OS に開かせる）
+    const url = isLocalRef(link.url) ? (taskId ? link.url : '') : webUrl(link.url)
+    if (!url) return
     const start = link.anchor ? nthIndexOf(label, link.anchor, link.nth ?? 1) : -1
     const end = start + (link.anchor?.length ?? 0)
     // 名前に無い語や、先に決まった語と重なる語は、後ろに出す
-    if (start < 0 || spans.some(s => start < s.end && end > s.start)) tail.push({ label: link.label, url })
-    else spans.push({ start, end, label: link.label, url })
-  }
+    if (start < 0 || spans.some(s => start < s.end && end > s.start)) tail.push({ label: link.label, url, index })
+    else spans.push({ start, end, label: link.label, url, index })
+  })
   spans.sort((a, b) => a.start - b.start)
   let html = ''
   let last = 0
   for (const s of spans) {
     html += esc(label.slice(last, s.start))
-    html += `<a class="daily-anchor" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open {label}: {url}', { label: s.label, url: s.url }))}">${esc(label.slice(s.start, s.end))}</a>`
+    const word = label.slice(s.start, s.end)
+    html += isLocalRef(s.url)
+      ? localLinkHtml(word, s.url, { kind: 'task', id: taskId, index: s.index }, 'daily-anchor')
+      : `<a class="daily-anchor" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(t('Open {label}: {url}', { label: s.label, url: s.url }))}">${esc(word)}</a>`
     last = s.end
   }
   html += esc(label.slice(last))
-  return html + tail.map(l => ` <a class="daily-link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(l.url)}">${esc(l.label)} ↗</a>`).join('')
+  return html + tail.map(l => ` ${isLocalRef(l.url)
+    ? localLinkHtml(`${l.label} ↗`, l.url, { kind: 'task', id: taskId, index: l.index })
+    : `<a class="daily-link" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" data-external title="${esc(l.url)}">${esc(l.label)} ↗</a>`}`).join('')
 }
 
 /**
@@ -285,7 +293,7 @@ const stepLinksText = (links = []) => {
  * @param {TreeStep} step
  */
 const stepHead = step => (step.key
-  ? `<h3 class="issue-step">${stepLabelHtml(step.label, step.links)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}</h3>`
+  ? `<h3 class="issue-step">${stepLabelHtml(step.label, step.links, step.taskId)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}</h3>`
   : `<h3 class="issue-step cond">${esc(t('Other work'))}</h3>`)
 
 /**
@@ -340,7 +348,7 @@ export function issueTreeHtml(entries, ctx) {
         const line = lineOf(e, issue.name, ctx)
         return `<li><span class="cond">${esc(line.section)}</span> ${line.word ? `<span class="daily-pill">${esc(line.word)}</span>` : ''}${highlightedHtml(bodyOf(e, issue.name), e)}${esc(line.text.slice(bodyOf(e, issue.name).length))}</li>`
       }).join('')
-      const label = step.key ? `${stepLabelHtml(step.label, step.links)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}` : `<span class="cond">${esc(t('Other work'))}</span>`
+      const label = step.key ? `${stepLabelHtml(step.label, step.links, step.taskId)}${step.status ? ` <span class="chip ${esc(step.tone)}"><span class="dot"></span>${esc(step.status)}</span>` : ''}` : `<span class="cond">${esc(t('Other work'))}</span>`
       return `<li class="tree-step">${label}<ul>${rows}</ul></li>`
     }).join('')
     const waits = issue.waits.length ? `<li class="tree-waits"><span class="cond">${esc(t('Waiting'))}</span><ul>${issue.waits.map(e => `<li class="cond">${highlightedHtml(bodyOf(e, issue.name), e)}${esc(lineOf(e, issue.name, ctx).text.slice(bodyOf(e, issue.name).length))}</li>`).join('')}</ul></li>` : ''

@@ -192,6 +192,21 @@ async function reloadState(options = {}) {
 async function reload() { await reloadState() }
 
 window.addEventListener('hashchange', route)
+// 手元のフォルダ・ファイルのリンク：台帳のどの行の何本目かを server に送り、OS に開かせる（ブラウザは file: を開かないため）
+document.addEventListener('click', e => {
+  const link = e.target instanceof Element ? e.target.closest('a[data-open-local]') : null
+  if (!(link instanceof HTMLAnchorElement)) return
+  e.preventDefault()
+  /** @type {Record<string, unknown>} */
+  let target
+  try { target = JSON.parse(link.dataset.openLocal ?? '{}') } catch { return }
+  // 1 日の進行の行は、いま開いている日付の行
+  const date = /** @type {HTMLInputElement | null} */ (document.querySelector('#daily-date'))?.value ?? ''
+  const body = target.kind === 'daily' ? { ...target, date } : target
+  api('/api/open-local', { method: 'POST', body })
+    .then(() => toast(t('Opened on this PC'), 2000))
+    .catch(error => toast(messageOf(error)))
+})
 // 別のウィンドウや git pull で台帳が変わっても、画面に戻ったら読み直す
 window.addEventListener('focus', () => { void reloadState({ keepUnsaved: true }) })
 initSearch({ getState: () => state, navigate })

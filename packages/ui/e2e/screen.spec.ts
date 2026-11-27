@@ -80,8 +80,15 @@ test.describe('1 日の進行：工程の段の並び', () => {
     // 見本の W-03「基本設計レビュー」：「レビュー」の語がレビュー記録へ、指摘一覧は名前に無いので後ろに出る
     await expect(head.locator('a.daily-anchor')).toHaveText('レビュー')
     await expect(head.locator('a.daily-anchor')).toHaveAttribute('href', 'https://docs.example.com/review')
-    await expect(head.locator('a.daily-link')).toHaveText('指摘一覧 ↗')
-    await expect(head.locator('a.daily-link')).toHaveAttribute('href', 'https://sheets.example.com/notes')
+    await expect(head.locator('a.daily-link[data-external]')).toHaveText('指摘一覧 ↗')
+    await expect(head.locator('a.daily-link[data-external]')).toHaveAttribute('href', 'https://sheets.example.com/notes')
+    // 手元のフォルダのリンク：押すと「どの作業の何本目か」だけを server に送る（パスは送らない）。試験では OS に開かせない
+    let sent: unknown = null
+    await page.route('**/api/open-local', async route => { sent = route.request().postDataJSON(); await route.fulfill({ json: { opened: 'C:\\example\\review-notes' } }) })
+    const local = head.locator('a.local-link')
+    await expect(local).toHaveText('手元の控え ↗')
+    await local.click()
+    await expect.poll(() => sent).toEqual({ kind: 'task', id: 'W-03', index: 2 })
     await expect(head).toContainText('基本設計レビュー（W-03）')
   })
 })

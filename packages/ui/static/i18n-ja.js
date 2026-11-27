@@ -84,6 +84,8 @@ export const JA = {
   'Ledger': '台帳',
   'Key point': '要点',
   'Caution': '注意',
+  'Open on this PC: {path}': 'この PC で開く：{path}',
+  'Opened on this PC': 'この PC で開きました',
   '{name} ({id}) is "{status}" but has rows marked {tags}': '{name}（{id}）は「{status}」なのに {tags} の行があります',
   'The step status and the row tags do not match. Fix the status in the ledger or the row tag: {items}': '工程の状態と行の印が食い違っています。台帳の状態か行の印を直してください：{items}',
   ' / ': ' ／ ',

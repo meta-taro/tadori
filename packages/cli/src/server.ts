@@ -18,6 +18,7 @@ import { collectProjects, readRecentProjects } from './projects.js'
 import { watchProject, type ChangeNotifier } from './watch.js'
 import { AgentActionError, parseAgentAction } from './agent.js'
 import { replyReaders } from './replies.js'
+import { openLocalLink, OpenLocalError, parseLocalLinkRef, type Opener } from './open-local.js'
 import { addDaily, DailyInputError, generateDaily, isDay, loadDaily, removeDaily, updateDaily } from './daily.js'
 
 export interface ServerOptions {
@@ -35,6 +36,8 @@ export interface ServerOptions {
   readonly logDir?: string
   /** 最近の案件の一覧のファイル（テストでは差し替える）。既定はデスクトップアプリが書く場所 */
   readonly recentProjectsFile?: string
+  /** 手元のフォルダ・ファイルを OS に開かせる（テストでは差し替える）。既定はエクスプローラー・Finder */
+  readonly openLocal?: Opener
 }
 
 export interface RunningServer {
@@ -231,6 +234,18 @@ async function route(options: ServerOptions, port: number, notifier: ChangeNotif
   if (req.method === 'GET' && url.pathname === '/api/events') {
     notifier.attach(res)
     return
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/open-local') {
+    // 台帳に書いた手元のフォルダ・ファイルのリンクを、OS に開かせる（パスそのものは受けない。どの行の何本目かだけ）
+    assertWriteAllowed(req)
+    try {
+      const path = await openLocalLink(dir, parseLocalLinkRef(await readJson(req)), options.openLocal)
+      return sendJson(res, 200, { opened: path })
+    } catch (error: unknown) {
+      if (error instanceof OpenLocalError) throw new HttpError(error.status, error.message)
+      throw error
+    }
   }
 
   if (req.method === 'POST' && url.pathname === '/api/capture') {

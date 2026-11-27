@@ -6,6 +6,7 @@ import {
 } from '@tadori/core'
 import { checkMarkText, checkTagsOf, dailyFormatOf, formatEntries, staleRuleOf, tagText, wbsLabel, whoMark, type DailyFormat } from './daily-format.js'
 import { localToday } from './state.js'
+import { isLocalRef, localPathOf } from './local-ref.js'
 
 /**
  * 人単位の「1 日の進行」。画面・CLI・MCP が同じものを使う。
@@ -249,9 +250,14 @@ function linkList(body: Record<string, unknown>): DailyLink[] | undefined {
     const url = typeof link.url === 'string' ? link.url.trim() : ''
     const no = i + 1
     if (!label || label.length > MAX_LABEL || label.includes('|')) throw new DailyInputError(t('links item {no}: the display name must be 1–{max} characters and must not contain "|"', { no, max: MAX_LABEL }))
-    let parsed: URL
-    try { parsed = new URL(url) } catch { throw new DailyInputError(t('links item {no}: not a valid URL', { no })) }
-    if (!['http:', 'https:'].includes(parsed.protocol) || /\s/.test(url)) throw new DailyInputError(t('links item {no}: the URL must be http or https and must not contain spaces', { no }))
+    if (isLocalRef(url)) {
+      // 手元のフォルダ・ファイル（file:/// か C:\ のパス）。空白は区切りに使うので %20 で書いてもらう。ネットワークのパスは受けない
+      if (/\s/.test(url) || !localPathOf(url)) throw new DailyInputError(t('links item {no}: a folder or file on this PC must be a file:/// URL or a Windows path like C:\\folder, without spaces (write spaces as %20 in a file:/// URL). Network paths are not allowed', { no }))
+    } else {
+      let parsed: URL
+      try { parsed = new URL(url) } catch { throw new DailyInputError(t('links item {no}: not a valid URL', { no })) }
+      if (!['http:', 'https:'].includes(parsed.protocol) || /\s/.test(url)) throw new DailyInputError(t('links item {no}: the URL must be http or https and must not contain spaces', { no }))
+    }
     const anchor = typeof link.anchor === 'string' ? link.anchor.replace(/[\t\r\n]+/g, ' ').trim() : ''
     if (anchor.length > MAX_LABEL * 2 || anchor.includes('|') || anchor.includes(' > ')) throw new DailyInputError(t('links item {no}: anchor must be up to {max} characters and must not contain "|" or " > "', { no, max: MAX_LABEL * 2 }))
     const nth = link.nth === undefined ? 1 : Number(link.nth)

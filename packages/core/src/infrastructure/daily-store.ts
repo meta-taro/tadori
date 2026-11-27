@@ -22,8 +22,9 @@ const linkToText = (l: DailyLink) => `${l.label} ${l.url}${l.anchor ? `${ANCHOR_
 const linksToCell = (links: readonly DailyLink[] | undefined) => (links ?? []).map(linkToText).join(LINK_SEPARATOR)
 export function linksFromCell(cell: string): DailyLink[] {
   return cell.split(LINK_SEPARATOR).map(part => part.trim()).filter(Boolean).flatMap(part => {
-    // URL は空白を含まない。最初の http(s):// の語が URL で、その前が表示名、後ろが語
-    const match = /^(.*?)\s+(https?:\/\/\S+)(?:\s+>\s+(.+?))?$/.exec(part)
+    // URL は空白を含まない。最初の http(s):// の語が URL で、その前が表示名、後ろが語。
+    // 手元のフォルダ・ファイル（file:/// の URL か、C:\ で始まる Windows のパス）も読む。開くのは tadori の server が OS に頼む
+    const match = /^(.*?)\s+(https?:\/\/\S+|file:\/\/\/\S+|[A-Za-z]:\\\S*)(?:\s+>\s+(.+?))?$/.exec(part)
     if (!match) return []
     const [, label = '', url = '', anchorPart] = match
     const nthMatch = anchorPart ? /^(.*?)\s+#(\d+)$/.exec(anchorPart) : null
