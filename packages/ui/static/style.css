@@ -853,27 +853,41 @@
 /* 正本の WBS に無い（想定で置いた）作業：破線の下線で見分ける */
 .daily-ref.assumed { text-decoration-style:dashed; }
 
-/* 1 日の進行の課題ごと：工程の位置と今の 1 行 */
-.daily-issue .issue-steps { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0; }
-.daily-issue .issue-now { margin:4px 0 8px; }
-.daily-issue h3 { font-size:13px; margin:10px 0 4px; }
+/* ---- 1 日の進行の課題ごと ----
+   余白は 4・8・12・16・24・32 の段だけを使う。課題どうしは 32、工程どうしは 16、欄の見出しと行は 4〜8 */
 
-/* 1 日の進行のツリー（課題 → 工程 → 行） */
-.daily-issue .issue-step { font-size:14px; margin:12px 0 2px; }
-.daily-issue h4 { font-size:12px; margin:6px 0 2px; color:var(--muted, inherit); }
-.daily-tree .tree-issue h3 { margin:12px 0 4px; }
-.daily-tree ul { margin:2px 0 2px 18px; padding:0; }
+/* いちばん上の帯：今日動かす課題を大きく、待ちだけの課題は線の下に小さく */
+.daily-focus { padding:16px 20px; margin:0 0 16px; }
+.daily-focus > .cond:first-child { margin:0 0 8px; font-size:12px; font-weight:600; letter-spacing:.02em; }
+.daily-focus .focus-active { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.daily-focus .focus-active li { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 12px; font-size:20px; font-weight:700; line-height:1.4; color:var(--ink); }
+.daily-focus .focus-active .issue-refs { font-size:13px; font-weight:500; }
+.daily-focus .focus-wait-head { margin:16px 0 4px; padding-top:12px; border-top:1px solid var(--hairline); font-size:12px; font-weight:600; }
+.daily-focus .focus-waiting { list-style:none; margin:0; padding:0; display:grid; gap:4px; font-size:13px; line-height:1.6; color:var(--ink-muted); }
+.daily-focus .focus-waiting .mono { margin-right:8px; }
+
+/* 課題の塊：見出し（課題番号・WBS・台帳・名前）→ 要約 → 工程 → 欄 → 行 */
+.daily-issue + .daily-issue, .daily-others .daily-issue:first-of-type { margin-top:32px; }
+.daily-issue h2 { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 12px; margin:16px 0 8px; line-height:1.4; }
+.daily-issue h2 .issue-refs { font-size:13px; font-weight:500; }
+.daily-issue .issue-now { margin:0 0 4px; padding:8px 12px; border-radius:var(--r-md); background:var(--surface-2); font-size:13px; line-height:1.7; color:var(--ink-muted); }
+.daily-issue .issue-now > .cond:first-child { margin-right:8px; font-weight:600; }
+.daily-issue .issue-step-block { margin-top:16px; }
+.daily-issue .issue-step { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:0 0 4px; font-size:14px; font-weight:600; color:var(--ink); }
+.daily-issue .issue-step.cond { color:var(--ink-subtle); }
+.daily-issue h4 { margin:8px 0 0; padding-left:16px; font-size:11px; font-weight:600; letter-spacing:.02em; color:var(--ink-subtle); }
+.daily-issue .issue-waits { margin-top:16px; padding-top:12px; border-top:1px dashed var(--hairline-strong); }
+.daily-issue .issue-waits h4 { margin-top:0; }
+.daily-others { margin-top:32px; padding-top:12px; border-top:1px solid var(--hairline); }
+.daily-others > summary { cursor:pointer; padding:4px 0; font-size:13px; color:var(--ink-subtle); }
+
+/* 文の形のツリー（課題 → 工程 → 行） */
+.daily-tree .tree-issue + .tree-issue { margin-top:24px; }
+.daily-tree .tree-issue h3 { margin:16px 0 4px; }
+.daily-tree ul { margin:4px 0 4px 16px; padding:0; }
 .daily-tree .tree-step { margin:4px 0; }
-
-/* 1 日の進行のいちばん上：今日動かす課題を大きく、待ちは小さく */
-.daily-focus { margin:0 0 12px; }
-.daily-focus .focus-active { list-style:none; margin:4px 0; padding:0; }
-.daily-focus .focus-active li { font-size:22px; font-weight:700; margin:2px 0; }
-.daily-focus .focus-waiting { margin:2px 0 0 18px; padding:0; font-size:12px; }
-.daily-issue .issue-waits { margin-top:8px; font-size:12px; opacity:.85; }
-.daily-others > summary { cursor:pointer; margin:12px 0 4px; color:var(--muted, inherit); }
 .daily-tree .tree-waits { font-size:12px; }
 
 /* 課題の参照：正本の課題番号・WBS ↗・台帳（小さく） */
-.issue-refs { display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:6px; }
+.issue-refs { display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; }
 .issue-refs .issue-ledger { font-size:11px; }
