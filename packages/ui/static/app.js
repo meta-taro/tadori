@@ -167,21 +167,33 @@ const scroller = () => {
   return main && getComputedStyle(main).overflowY === 'auto' ? main : (document.scrollingElement ?? document.documentElement)
 }
 
-async function reload() {
+/**
+ * 案件を読み直して描き直す。keepUnsaved なら、読み終えた時点で書きかけのフォームがあれば描き直さず、あとに回す
+ * （読みに行っている間に人がフォームを開くことがあるので、読み終えてから確かめる）
+ * @param {{ keepUnsaved?: boolean }} [options] @returns {Promise<boolean>} 描き直したか
+ */
+async function reloadState(options = {}) {
   try {
     const top = scroller().scrollTop // 読み直しても、読んでいた位置から動かさない
-    state = await api('/api/state')
+    const next = await api('/api/state')
+    if (options.keepUnsaved && isEditing()) { reloadPending = true; return false }
+    state = next
     setKindLabels(state.labels?.kinds)
     route()
     scroller().scrollTop = top
+    return true
   } catch (error) {
+    if (options.keepUnsaved && isEditing()) { reloadPending = true; return false }
     view.innerHTML = `<h1>${esc(t('Could not read the project'))}</h1><div class="note">${ICON_INFO}<span>${esc(messageOf(error))}${(error instanceof ApiError ? error.problems : []).map(p => `<br>${esc(p)}`).join('')}</span></div>`
+    return true
   }
 }
+/** 案件を読み直して描き直す（保存したあとなど、人が自分で変えたとき） @returns {Promise<void>} */
+async function reload() { await reloadState() }
 
 window.addEventListener('hashchange', route)
 // 別のウィンドウや git pull で台帳が変わっても、画面に戻ったら読み直す
-window.addEventListener('focus', reload)
+window.addEventListener('focus', () => { void reloadState({ keepUnsaved: true }) })
 initSearch({ getState: () => state, navigate })
 initDesktop()
 // 1 日に 1 回、新しい版があるかを確かめ、あれば上の帯に札を出す
@@ -199,10 +211,18 @@ let reloadPending = false
  * @param {Element} el
  */
 const isTyping = el => (el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !['checkbox', 'radio', 'date', 'button', 'submit'].includes(el.type))) && el.value !== el.defaultValue
-function reloadFromElsewhere() {
+/** 選び直しただけの欄（select）も、書きかけとして見る @param {Element} el */
+const isChangedSelect = el => el instanceof HTMLSelectElement && [...el.options].some(o => o.selected !== o.defaultSelected)
+/** 画面のフォームに、保存していない書きかけの欄があるか（開いて直している最中のフォーム［data-mode］も含む。絞り込みの欄などフォームの外は見ない。入力中の欄にフォーカスが無くても、開いたフォームを消さないため） */
+const hasUnsaved = () => Boolean(view.querySelector('form[data-mode]')) || [...view.querySelectorAll('form input, form textarea, form select')].some(el => isTyping(el) || isChangedSelect(el))
+/** 入力中の欄があるか、フォームに書きかけがある */
+function isEditing() {
   const el = document.activeElement
-  if (el && view.contains(el) && isTyping(el)) { reloadPending = true; return }
-  reload().then(() => toast(t('Applied changes made in another app'), 2000))
+  return Boolean(el && view.contains(el) && isTyping(el)) || hasUnsaved()
+}
+function reloadFromElsewhere() {
+  if (isEditing()) { reloadPending = true; return }
+  void reloadState({ keepUnsaved: true }).then(done => { if (done) toast(t('Applied changes made in another app'), 2000) })
 }
 view.addEventListener('focusout', () => { if (reloadPending) { reloadPending = false; setTimeout(reloadFromElsewhere, 0) } })
 if ('EventSource' in window) {

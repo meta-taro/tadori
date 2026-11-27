@@ -523,6 +523,23 @@ test.describe('server の中の例外と版', () => {
   })
 })
 
+test.describe('別の所の変更の反映と、書きかけのフォーム', () => {
+  test('選び直しただけのフォームも、別の所の変更を読み直したときに消えない', async ({ page }) => {
+    // 別の所で変わったという知らせ（changed）を、つなぐたびに 1 回送る（切れると EventSource がつなぎ直す）
+    let connects = 0
+    await page.route('**/api/events', route => { connects += 1; return route.fulfill({ headers: { 'content-type': 'text/event-stream' }, body: 'retry: 200\nevent: changed\ndata: x\n\n' }) })
+    await page.goto('/#rules')
+    await page.getByRole('button', { name: 'ルールを足す' }).click()
+    const form = page.locator('#rule-form')
+    await form.locator('[name="kind"]').selectOption('filled')
+    await form.locator('[name="kind"]').evaluate(el => (el as HTMLSelectElement).blur())
+    const before = connects
+    await expect.poll(() => connects, { timeout: 10_000 }).toBeGreaterThan(before + 1)
+    await expect(form).toBeVisible()
+    await expect(form.locator('[name="kind"]')).toHaveValue('filled')
+  })
+})
+
 test.describe('ルールを画面から足す・直す・消す', () => {
   test('空いている ID で足すと、すぐ一覧に出る。直す・消すもできる', async ({ page }) => {
     await page.goto('/#rules')
